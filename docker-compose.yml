@@ -1,0 +1,36 @@
+# Production stack: the PULP app behind Caddy, which obtains and renews HTTPS certificates for $DOMAIN.
+# Usage on the server:  DOMAIN=yourdomain.tld docker compose up -d --build
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - EVERPATH_DATA_DIR=/app/data
+    volumes:
+      - ./data:/app/data:ro
+      - context:/app/backend/app/storage/context
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  context:
+  caddy_data:
+  caddy_config:

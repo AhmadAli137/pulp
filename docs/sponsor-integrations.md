@@ -36,6 +36,15 @@ error states for unsupported browsers or denied permission. ElevenLabs is not in
 Gemini-native audio relay (`backend/app/api/voice.py`, `frontend/src/voice.js`, `public/pcm-worklet.js`) was
 added to the repository by a parallel contributor and is not wired into the PULP UI or tests.
 
+## Vultr and GoDaddy (hosting)
+
+The app ships as one Docker image (API + built frontend) behind Caddy, which issues HTTPS certificates for the
+domain in `DOMAIN`. `deploy/vultr-setup.sh` bootstraps an Ubuntu Vultr instance; GoDaddy DNS points the domain at
+it; `.github/workflows/deploy.yml` runs tests and redeploys over SSH on every push to `master`. Verified locally:
+the image builds and serves the app and API with the data mounted. Details in `docs/deployment.md`. `pulp.ai`
+and `pulp.app` are already registered; the domain is a setting.
+
 ## Entire
 
-Not used in this build.
+The repository was pushed once to `/et/sheridandatathon26/pulp` through the Entire CLI (kept as the `entire`
+git remote); GitHub is the primary remote. Session tracking (`entire enable`) is not turned on.

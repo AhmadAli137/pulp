@@ -1,0 +1,56 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements.txt
+      - name: Formula and unit tests (no dataset needed)
+        working-directory: backend
+        run: python -m pytest -q tests/test_tangerine_metrics.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+
+  deploy:
+    needs: test
+    # Enable by adding the repository variable DEPLOY_ENABLED=true (Settings -> Secrets and variables -> Actions -> Variables)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency: deploy-production
+    steps:
+      - name: Redeploy on the Vultr host over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VULTR_HOST }}
+          username: ${{ secrets.VULTR_USER }}
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/pulp
+            git fetch origin master
+            git reset --hard origin/master
+            docker compose up -d --build --remove-orphans
+            docker image prune -f
+            for i in $(seq 1 30); do
+              if docker compose exec -T app python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3)" 2>/dev/null; then echo healthy; exit 0; fi
+              sleep 5
+            done
+            echo "app did not become healthy"; docker compose logs --tail=100 app; exit 1

@@ -53,6 +53,9 @@ logo); Settings has a Replay button.
 
 Production build: `cd frontend && npm run build` produces `frontend/dist/`; the backend serves it at `/` when present.
 
+**Hosting**: one Docker image behind Caddy with automatic HTTPS, a Vultr bootstrap script, a GoDaddy DNS recipe and a
+GitHub Actions workflow that redeploys on every push to `master`. See [docs/deployment.md](docs/deployment.md).
+
 ## Tests and reproducibility
 
 ```bash

@@ -1,0 +1,14 @@
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+frontend/dist
+frontend/.npm-cache
+frontend/test-results
+backend/app/storage/context/*.json
+data-*/
+data/*.csv
+pulp/
+pulp2/
+*.pdf
+.git
+.env

@@ -40,9 +40,14 @@ app = FastAPI(
     ),
     lifespan=lifespan,
 )
+_DEFAULT_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8000", "http://127.0.0.1:8000"]
+_extra_origins = [o.strip() for o in os.environ.get("PULP_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+_domain = os.environ.get("DOMAIN", "").strip()
+if _domain:
+    _extra_origins += [f"https://{_domain}", f"https://www.{_domain}"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins=_DEFAULT_ORIGINS + _extra_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -59,11 +64,28 @@ def worklet():
     return FileResponse(WEB / 'pcm-worklet.js', media_type='application/javascript')
 
 
+@app.get('/favicon.svg', include_in_schema=False)
+def favicon():
+    return FileResponse(WEB / 'favicon.svg', media_type='image/svg+xml')
+
+
 @app.get("/")
 def root():
     if (WEB / 'index.html').exists():
         return FileResponse(WEB / 'index.html')
     return {"name": "PULP API", "docs": "/docs", "health": "/api/health", "frontend": "Run npm run build in frontend"}
+
+
+@app.get("/{spa_path:path}", include_in_schema=False)
+def spa_fallback(spa_path: str):
+    """Serve the single-page app for client-side routes (/shock, /goals, ...). API and docs paths are matched earlier."""
+    if spa_path.startswith(("api/", "docs", "openapi.json", "redoc")) or not (WEB / 'index.html').exists():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Not found")
+    candidate = WEB / spa_path
+    if candidate.is_file() and candidate.resolve().is_relative_to(WEB.resolve()):
+        return FileResponse(candidate)
+    return FileResponse(WEB / 'index.html')
 
 
 if __name__ == "__main__":  # pragma: no cover
