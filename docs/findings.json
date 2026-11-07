@@ -1,0 +1,360 @@
+{
+  "generated_from": "C:\\Users\\Ahmad\\OneDrive\\Desktop\\EverPath\\data-20261107T180312Z-1-001\\data",
+  "accounts_total": 4500,
+  "accounts_eligible_positive_inflow": 4486,
+  "accounts_excluded_zero_inflow": 14,
+  "horizon_months": 6,
+  "matching_rule": "sort by I; greedy adjacent pairing with |Ia-Ib|/max(Ia,Ib) <= tol; no reuse; ties by account_id",
+  "runs": {
+    "primary_5pct_layoff": {
+      "pairs_unequal_buffer": 2238,
+      "reversals": 78,
+      "reversal_pct_of_pairs": 3.485254691689008,
+      "expected_order": 641,
+      "both_fail": 437,
+      "both_survive": 1082,
+      "discordant_pairs": 719,
+      "reversal_pct_of_discordant": 10.848400556328233,
+      "median_buffer_gap_in_reversals": 3869.1050000000023,
+      "median_buffer_ratio_in_reversals": 1.1656207322104937,
+      "median_spending_gap_in_reversals": 3939.8900000000003,
+      "median_runway_big_in_reversals": 4.56921313273277,
+      "median_runway_small_in_reversals": 8.954812936307603,
+      "tolerance": 0.05,
+      "r": 0.55,
+      "h": 0.0,
+      "min_months": 12,
+      "eligible": 4486,
+      "pairs": 2238,
+      "unmatched": 10,
+      "pairs_equal_buffer_dropped": 0,
+      "reversal_pairs_where_small_spends_less": 78,
+      "reversal_pairs_where_small_gap_smaller": 78,
+      "median_spend_ratio_big": 1.0838001612914903,
+      "median_spend_ratio_small": 0.7880581145799761
+    },
+    "tight_2pct_layoff": {
+      "pairs_unequal_buffer": 2220,
+      "reversals": 76,
+      "reversal_pct_of_pairs": 3.4234234234234235,
+      "expected_order": 642,
+      "both_fail": 435,
+      "both_survive": 1067,
+      "discordant_pairs": 718,
+      "reversal_pct_of_discordant": 10.584958217270195,
+      "median_buffer_gap_in_reversals": 4603.483333333335,
+      "median_buffer_ratio_in_reversals": 1.1866826583807293,
+      "median_spending_gap_in_reversals": 4142.485,
+      "median_runway_big_in_reversals": 4.558642847594809,
+      "median_runway_small_in_reversals": 8.955367204466407,
+      "tolerance": 0.02,
+      "r": 0.55,
+      "h": 0.0,
+      "min_months": 12,
+      "eligible": 4486,
+      "pairs": 2220,
+      "unmatched": 46,
+      "pairs_equal_buffer_dropped": 0
+    },
+    "tight_1pct_layoff": {
+      "pairs_unequal_buffer": 2202,
+      "reversals": 77,
+      "reversal_pct_of_pairs": 3.4968210717529518,
+      "expected_order": 649,
+      "both_fail": 426,
+      "both_survive": 1050,
+      "discordant_pairs": 726,
+      "reversal_pct_of_discordant": 10.606060606060606,
+      "median_buffer_gap_in_reversals": 4459.436666666665,
+      "median_buffer_ratio_in_reversals": 1.209550616593835,
+      "median_spending_gap_in_reversals": 4750.990000000001,
+      "median_runway_big_in_reversals": 4.530693110821309,
+      "median_runway_small_in_reversals": 8.847312163088066,
+      "tolerance": 0.01,
+      "r": 0.55,
+      "h": 0.0,
+      "min_months": 12,
+      "eligible": 4486,
+      "pairs": 2202,
+      "unmatched": 82,
+      "pairs_equal_buffer_dropped": 0
+    },
+    "primary_5pct_combined": {
+      "pairs_unequal_buffer": 2238,
+      "reversals": 80,
+      "reversal_pct_of_pairs": 3.5746201966041107,
+      "expected_order": 667,
+      "both_fail": 501,
+      "both_survive": 990,
+      "discordant_pairs": 747,
+      "reversal_pct_of_discordant": 10.7095046854083,
+      "median_buffer_gap_in_reversals": 3659.6166666666677,
+      "median_buffer_ratio_in_reversals": 1.1562993776610302,
+      "median_spending_gap_in_reversals": 3798.1800000000003,
+      "median_runway_big_in_reversals": 4.600858585303948,
+      "median_runway_small_in_reversals": 8.55140120918205,
+      "tolerance": 0.05,
+      "r": 0.55,
+      "h": 0.15,
+      "min_months": 12,
+      "eligible": 4486,
+      "pairs": 2238,
+      "unmatched": 10,
+      "pairs_equal_buffer_dropped": 0
+    },
+    "tight_2pct_combined": {
+      "pairs_unequal_buffer": 2220,
+      "reversals": 78,
+      "reversal_pct_of_pairs": 3.5135135135135136,
+      "expected_order": 668,
+      "both_fail": 499,
+      "both_survive": 975,
+      "discordant_pairs": 746,
+      "reversal_pct_of_discordant": 10.455764075067025,
+      "median_buffer_gap_in_reversals": 4079.314999999997,
+      "median_buffer_ratio_in_reversals": 1.164544179149165,
+      "median_spending_gap_in_reversals": 3939.8900000000003,
+      "median_runway_big_in_reversals": 4.590108434725636,
+      "median_runway_small_in_reversals": 8.55140120918205,
+      "tolerance": 0.02,
+      "r": 0.55,
+      "h": 0.15,
+      "min_months": 12,
+      "eligible": 4486,
+      "pairs": 2220,
+      "unmatched": 46,
+      "pairs_equal_buffer_dropped": 0
+    },
+    "primary_5pct_layoff_min24months": {
+      "pairs_unequal_buffer": 1818,
+      "reversals": 52,
+      "reversal_pct_of_pairs": 2.8602860286028604,
+      "expected_order": 528,
+      "both_fail": 366,
+      "both_survive": 872,
+      "discordant_pairs": 580,
+      "reversal_pct_of_discordant": 8.96551724137931,
+      "median_buffer_gap_in_reversals": 4582.694166666672,
+      "median_buffer_ratio_in_reversals": 1.2186504292131728,
+      "median_spending_gap_in_reversals": 4429.740000000001,
+      "median_runway_big_in_reversals": 4.4918181022909,
+      "median_runway_small_in_reversals": 7.629244411184613,
+      "tolerance": 0.05,
+      "r": 0.55,
+      "h": 0.0,
+      "min_months": 24,
+      "eligible": 3651,
+      "pairs": 1818,
+      "unmatched": 15,
+      "pairs_equal_buffer_dropped": 0
+    },
+    "tight_2pct_combined_min24months": {
+      "pairs_unequal_buffer": 1806,
+      "reversals": 53,
+      "reversal_pct_of_pairs": 2.9346622369878186,
+      "expected_order": 547,
+      "both_fail": 418,
+      "both_survive": 788,
+      "discordant_pairs": 600,
+      "reversal_pct_of_discordant": 8.833333333333334,
+      "median_buffer_gap_in_reversals": 5906.253333333341,
+      "median_buffer_ratio_in_reversals": 1.216106153864523,
+      "median_spending_gap_in_reversals": 4238.189999999999,
+      "median_runway_big_in_reversals": 4.705219568590772,
+      "median_runway_small_in_reversals": 7.660604222087636,
+      "tolerance": 0.02,
+      "r": 0.55,
+      "h": 0.15,
+      "min_months": 24,
+      "eligible": 3651,
+      "pairs": 1806,
+      "unmatched": 39,
+      "pairs_equal_buffer_dropped": 0
+    }
+  },
+  "population": {
+    "baseline_no_shortfall_pct": 73.67365135978599,
+    "baseline_shortfall_pct": 26.326348640213997,
+    "layoff55_survive6_pct": 64.44493981275077,
+    "layoff55_survive6_n": 2891,
+    "layoff55_no_shortfall_pct": 4.993312527864467,
+    "layoff55_median_runway_finite": 8.049401040263131,
+    "combined_survive6_pct": 60.96745430227374,
+    "combined_survive6_n": 2735,
+    "layoff_survivors_pushed_under6_by_bills": 156,
+    "layoff_survivors_pushed_under6_by_bills_pct": 5.396056727775856,
+    "median_runway_loss_from_bills_among_pushed": 0.8837455437222426,
+    "observed_any_negative_balance_pct": 6.397681676326348,
+    "observed_negative_and_fail_layoff_pct": 74.91289198606272,
+    "no_observed_negative_but_fail_layoff_pct": 32.864967849487975,
+    "spearman_buffer_vs_runway_layoff": -0.02066990329751796,
+    "spearman_spendratio_vs_runway_layoff": -0.7460934009128736,
+    "buffer_in_months_of_spending_median": 3.360295897156975,
+    "baseline_deficit_accounts": 1177
+  },
+  "variance_decomposition_layoff55": {
+    "n_accounts_with_shortfall": 4239,
+    "var_log_runway": 1.3384593767140223,
+    "share_from_buffer": 0.2450829083813901,
+    "share_from_gap": 1.2073111492282171,
+    "share_from_covariance": -0.45239405760960694,
+    "corr_logB_logGap": 0.41583474856814345,
+    "note": "Var(log R) = Var(log B) + Var(log gap) - 2 Cov. Shares can exceed 1 when B and gap are positively correlated."
+  },
+  "survival_by_quartile": {
+    "buffer_B": [
+      {
+        "quartile": "Q1 (lowest)",
+        "n": 1122,
+        "survive6_pct": 69.78609625668449,
+        "median_value": 11253.116666666667
+      },
+      {
+        "quartile": "Q2",
+        "n": 1121,
+        "survive6_pct": 57.35950044603033,
+        "median_value": 17923.045000000002
+      },
+      {
+        "quartile": "Q3",
+        "n": 1121,
+        "survive6_pct": 57.89473684210527,
+        "median_value": 27936.071666666667
+      },
+      {
+        "quartile": "Q4 (highest)",
+        "n": 1122,
+        "survive6_pct": 72.72727272727273,
+        "median_value": 42629.081666666665
+      }
+    ],
+    "spending_ratio_S_over_I": [
+      {
+        "quartile": "Q1 (lowest)",
+        "n": 1122,
+        "survive6_pct": 99.19786096256684,
+        "median_value": 0.6563501242539266
+      },
+      {
+        "quartile": "Q2",
+        "n": 1121,
+        "survive6_pct": 81.71275646743979,
+        "median_value": 0.8484927642663104
+      },
+      {
+        "quartile": "Q3",
+        "n": 1121,
+        "survive6_pct": 51.65031222123104,
+        "median_value": 0.9623177935776988
+      },
+      {
+        "quartile": "Q4 (highest)",
+        "n": 1122,
+        "survive6_pct": 25.22281639928699,
+        "median_value": 1.0665410753083608
+      }
+    ],
+    "buffer_in_months_of_spending": [
+      {
+        "quartile": "Q1 (lowest)",
+        "n": 1105,
+        "survive6_pct": 2.6244343891402715,
+        "median_value": 1.4885569420564082
+      },
+      {
+        "quartile": "Q2",
+        "n": 1105,
+        "survive6_pct": 55.022624434389144,
+        "median_value": 2.6105483015881292
+      },
+      {
+        "quartile": "Q3",
+        "n": 1104,
+        "survive6_pct": 98.0072463768116,
+        "median_value": 4.481195877548261
+      },
+      {
+        "quartile": "Q4 (highest)",
+        "n": 1105,
+        "survive6_pct": 100.0,
+        "median_value": 9.252595195181494
+      }
+    ],
+    "typical_inflow_I": [
+      {
+        "quartile": "Q1 (lowest)",
+        "n": 1122,
+        "survive6_pct": 95.54367201426025,
+        "median_value": 2197.13
+      },
+      {
+        "quartile": "Q2",
+        "n": 1121,
+        "survive6_pct": 78.85816235504014,
+        "median_value": 4439.31
+      },
+      {
+        "quartile": "Q3",
+        "n": 1121,
+        "survive6_pct": 51.025869759143625,
+        "median_value": 10591.685
+      },
+      {
+        "quartile": "Q4 (highest)",
+        "n": 1122,
+        "survive6_pct": 32.35294117647059,
+        "median_value": 17551.17
+      }
+    ]
+  },
+  "survival_by_spending_ratio_band": [
+    {
+      "band": "0.0-0.7",
+      "n": 897,
+      "survive6_pct": 99.88851727982163
+    },
+    {
+      "band": "0.7-0.8",
+      "n": 454,
+      "survive6_pct": 95.37444933920705
+    },
+    {
+      "band": "0.8-0.9",
+      "n": 703,
+      "survive6_pct": 82.64580369843529
+    },
+    {
+      "band": "0.9-1.0",
+      "n": 1255,
+      "survive6_pct": 54.581673306772906
+    },
+    {
+      "band": ">= 1.0",
+      "n": 1177,
+      "survive6_pct": 25.148683092608326
+    }
+  ],
+  "representative_pair": {
+    "big": 47788,
+    "small": 88789,
+    "B_big": 25792.10666666667,
+    "B_small": 21218.528333333332,
+    "S_big": 10927.025,
+    "S_small": 9554.58,
+    "I_big": 11493.335,
+    "I_small": 11486.22,
+    "gap_big": 4605.69075,
+    "gap_small": 3237.1589999999997,
+    "runway_big": 5.600051776525958,
+    "runway_small": 6.5546759777117325,
+    "big_ok": false,
+    "small_ok": true,
+    "reversal": true,
+    "both_fail": false,
+    "both_ok": false,
+    "expected": false,
+    "bgap": 4573.578333333338,
+    "dist": 231.55166666667355
+  },
+  "chart": "docs\\findings_chart.png"
+}

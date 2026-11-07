@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Node
+node_modules/
+frontend/dist/
+# Secrets
+.env
+# Runtime storage (user context is per-demo; keep seeds)
+backend/app/storage/context/*.json
+!backend/app/storage/context/.gitkeep
+# Large data (credit: PKDD'99 Financial dataset via Tangerine track). Keep out of git.
+data-*/
+data/*.csv
+# OS
+.DS_Store
+Thumbs.db
+.tools/
+.npm-cache/
+.runtime/
+.entire/settings.local.json
+*.log
+test-results/
+playwright-report/
+
+frontend/.npm-cache/
+frontend/node_modules/
+
+# parallel checkouts from another tool and the event PDF
+pulp/
+pulp2/
+*.pdf
+frontend/test-results/
+frontend/.shoot*.mjs
