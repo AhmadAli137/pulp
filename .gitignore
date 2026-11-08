@@ -39,3 +39,6 @@ frontend/.shoot*.mjs
 
 .vercel
 .env*
+
+# Stage 1 feature cache (recomputed at startup; archetypes.json and hunter_findings.json ARE committed)
+data/derived/features.csv

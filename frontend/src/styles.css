@@ -227,3 +227,44 @@ table.data tr.hl td { background: var(--orange-soft); font-weight: 600; }
   .diffrow { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---- Stage 1: profile insights ---- */
+.insights { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr); gap: 18px; align-items: start; }
+.insights.compact { grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr); }
+.insight-list, .evidence-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.insight-list li, .evidence-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.45; }
+.insight-list li .chip, .evidence-list li .chip { flex: none; margin-top: 2px; white-space: nowrap; }
+.evidence-list { margin-top: 10px; font-size: 13px; }
+.archetype-box { background: #F4F6EE; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.archetype-box .label { font-size: 11px; color: var(--gray); font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
+.archetype-box .name { font-family: var(--font-head); font-size: 18px; font-weight: 750; letter-spacing: -0.02em; }
+.archetype-box .kv { font-size: 12px; }
+@media (max-width: 760px) { .insights, .insights.compact { grid-template-columns: 1fr; } }
+
+/* ---- Stage 3: twist cards ---- */
+.twist-deck { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; perspective: 900px; }
+.twist-card { position: relative; min-height: 132px; border: 1px solid var(--line); border-radius: 12px; background: #fff; text-align: left; cursor: pointer; padding: 0; color: inherit; transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+.twist-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.twist-card .twist-face { display: flex; flex-direction: column; gap: 6px; padding: 14px 14px 12px; height: 100%; animation: twist-flip 420ms ease both; transform-origin: center; }
+.twist-card .twist-title { font-family: var(--font-head); font-weight: 750; font-size: 14px; letter-spacing: -0.01em; }
+.twist-card .twist-text { font-size: 12px; color: #49543F; line-height: 1.4; }
+.twist-card .twist-again { font-size: 11px; color: var(--orange-text); font-weight: 600; margin-top: auto; }
+.twist-card.active { border-color: var(--orange); background: var(--orange-soft); }
+.twist-card.active .twist-title { color: var(--orange-text); }
+.twist-card.random { background: var(--forest); color: #fff; border-color: transparent; }
+.twist-card.random .twist-text { color: rgba(255,255,255,0.8); }
+.twist-card.random.active { outline: 2px solid var(--orange); }
+.twist-card.random .twist-again { color: #FDBA74; }
+.twist-card.custom { border-style: dashed; background: transparent; }
+@keyframes twist-flip { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
+@media (max-width: 1000px) { .twist-deck { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .twist-deck { grid-template-columns: 1fr 1fr; } }
+
+/* ---- Insights page: archetypes and hunter ---- */
+.arch-table td.name { font-weight: 650; }
+.arch-table tr.mine td { background: var(--orange-soft); }
+.finding { border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; background: #fff; display: flex; flex-direction: column; gap: 6px; }
+.finding .t { font-weight: 650; font-size: 14px; }
+.finding-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .finding-grid { grid-template-columns: 1fr; } }
+.select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; background: #fff; }

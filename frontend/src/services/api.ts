@@ -155,6 +155,34 @@ export interface PlanResult {
   tool_calls: { agent: string; tool: string; args: Record<string, unknown> }[]
   timing_seconds: { fan_out: number; total: number }; disclaimer: string
 }
+export interface InsightFlag { key: string; label: string; severity: 'info' | 'watch' | 'risk'; evidence: string; insight: string }
+export interface Archetype {
+  id: number; name: string; description: string; likely_life_stage: string; likely_occupation: string; confidence: number; evidence: string
+  share: number; size: number; survive6_layoff_pct: number; naming_source: string
+}
+export interface Insights {
+  account_id: number; flags: InsightFlag[]; archetype: Archetype | null
+  features: Record<string, { value: number | boolean | null; percentile?: number | null; doc?: string }>
+  narrative: { headline: string; insights: { text: string; flag: string }[]; source: string }
+  narrator_error?: string
+}
+export interface ArchetypeCluster {
+  id: number; size: number; share: number; medians: Record<string, number | null>; survive6_layoff_pct: number; survive6_combined_pct: number
+  median_runway_layoff: number; distinguishing: { feature: string; cluster_median: number; population_median: number; z: number }[]
+  flag_prevalence: Record<string, number>; example_accounts: number[]
+  name: string; description: string; likely_life_stage: string; likely_occupation: string; confidence: number; evidence: string
+}
+export interface ArchetypesDoc {
+  k: number; method: string; features: string[]; naming_source: string; built_at: string; n_accounts: number; loaded_from?: string
+  flag_catalog: { key: string; label: string; severity: string }[]; clusters: ArchetypeCluster[]
+}
+export interface HunterFinding { title: string; statement: string; evidence: string; strength: 'strong' | 'moderate' | 'weak'; caveat: string; effect?: number }
+export interface HunterDoc {
+  mode: 'adk' | 'baseline'; model: string | null; ran_at: string; budget: number | null; tool_calls_made: number
+  tool_log: { tool: string; args: Record<string, unknown> }[]; findings: HunterFinding[]; summary: string | null; best_finding: string | null
+  seconds: number | null; n_accounts: number; baseline_findings?: unknown[]; loaded_from?: string
+}
+export interface FeatureSurvival { feature: string; meaning: string; bins: { range: string; n: number; survive6_layoff_pct: number; survive6_combined_pct: number }[] }
 export interface RoadmapAction { action: string; amount: number | null; expected_effect: string; goal: string; tradeoffs: string; assumptions: string; review_trigger: string }
 export interface Roadmap { account_id: number; this_week: RoadmapAction[]; this_month: RoadmapAction[]; next_three_months: RoadmapAction[]; next_year: RoadmapAction[]; long_term: RoadmapAction[]; summary: { goal: Comparison['goal']; recommended: string; layoff_verdict: string; goal_plan_note: string; capacity_per_month: number } }
 
@@ -166,6 +194,10 @@ export const api = {
   history: (id: number) => get<{ history: HistoryRow[]; inflow_mix: Record<string, number>; outflow_mix: Record<string, number>; observed: { negative_balance_days: number; months_with_negative_days: number; min_balance: number } }>(`/api/customers/${id}/history`),
   cohort: (id: number) => get<Cohort>(`/api/customers/${id}/cohort`),
   research: () => get<Research>('/api/research/summary'),
+  insights: (id: number, useAi = true) => get<Insights>(`/api/customers/${id}/insights?use_ai=${useAi}`),
+  archetypes: () => get<ArchetypesDoc>('/api/research/archetypes'),
+  hunter: () => get<HunterDoc>('/api/research/hunter'),
+  featureSurvival: (feature: string, bins = 4) => get<FeatureSurvival>(`/api/research/features?feature=${encodeURIComponent(feature)}&bins=${bins}`),
   shock: (body: { account_id: number } & Partial<ShockInputs> & { preset?: string }) => post<ShockReport>('/api/shocks/calculate', body),
   simulate: (body: { account_id: number; scenario: Record<string, unknown>; strategy?: Record<string, unknown> }) => post<SimBundle>('/api/scenarios/simulate', body),
   branches: (id: number, horizon = 24) => get<{ branches: Branch[]; horizon_months: number }>(`/api/scenarios/branches/${id}?horizon=${horizon}&n_paths=300`),

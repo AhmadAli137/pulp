@@ -1,0 +1,110 @@
+{
+ "mode": "baseline",
+ "model": null,
+ "ran_at": "2026-11-08T06:30:11Z",
+ "budget": null,
+ "tool_calls_made": 27,
+ "tool_log": [],
+ "findings": [
+  {
+   "title": "I / district average salary spreads survival by 62 points",
+   "statement": "Lowest quartile of inflow_vs_district_salary (-0.001 to 0.564) survives 95% of the time; highest quartile (2.25 to 8.22) 33%.",
+   "evidence": "survival_by_quantile(inflow_vs_district_salary, layoff, 4)",
+   "strength": "strong",
+   "caveat": "Quartile spread; not adjusted for income.",
+   "effect": 62.4
+  },
+  {
+   "title": "bank fees and penalty interest / outflow spreads survival by 59 points",
+   "statement": "Lowest quartile of fee_share (-0.001 to 0.000555) survives 36% of the time; highest quartile (0.00229 to 0.0126) 96%.",
+   "evidence": "survival_by_quantile(fee_share, layoff, 4)",
+   "strength": "strong",
+   "caveat": "Quartile spread; not adjusted for income.",
+   "effect": 59.3
+  },
+  {
+   "title": "Flag 'Spending close to income' moves layoff survival by -53 points",
+   "statement": "1847 accounts with 'Spending close to income' survive six months on 55% income 33% of the time versus 86% for the other 2653.",
+   "evidence": "compare_flag(thin_margin)",
+   "strength": "strong",
+   "caveat": "Flags correlate with income and buffer; this is a difference, not a cause.",
+   "effect": 53.1
+  },
+  {
+   "title": "share of months with inflow within 20% of the median spreads survival by 53 points",
+   "statement": "Lowest quartile of inflow_regular_share (-0.001 to 0.567) survives 54% of the time; highest quartile (0.828 to 1) 95%.",
+   "evidence": "survival_by_quantile(inflow_regular_share, layoff, 4)",
+   "strength": "strong",
+   "caveat": "Quartile spread; not adjusted for income.",
+   "effect": 52.7
+  },
+  {
+   "title": "cash withdrawals / outflow spreads survival by 43 points",
+   "statement": "Lowest quartile of cash_wd_share (0.0721 to 0.491) survives 88% of the time; highest quartile (0.873 to 1) 57%.",
+   "evidence": "survival_by_quantile(cash_wd_share, layoff, 4)",
+   "strength": "strong",
+   "caveat": "Quartile spread; not adjusted for income.",
+   "effect": 43.2
+  },
+  {
+   "title": "Flag 'Inflow well below the local average salary' moves layoff survival by +43 points",
+   "statement": "1228 accounts with 'Inflow well below the local average salary' survive six months on 55% income 96% of the time versus 53% for the other 3272.",
+   "evidence": "compare_flag(below_district_pay)",
+   "strength": "strong",
+   "caveat": "Flags correlate with income and buffer; this is a difference, not a cause.",
+   "effect": 42.6
+  },
+  {
+   "title": "Flag 'Pension is the main income' moves layoff survival by +41 points",
+   "statement": "740 accounts with 'Pension is the main income' survive six months on 55% income 99% of the time versus 58% for the other 3760.",
+   "evidence": "compare_flag(pension_dependent)",
+   "strength": "strong",
+   "caveat": "Flags correlate with income and buffer; this is a difference, not a cause.",
+   "effect": 41.0
+  },
+  {
+   "title": "Flag 'Buffer covers many months of spending' moves layoff survival by +38 points",
+   "statement": "296 accounts with 'Buffer covers many months of spending' survive six months on 55% income 100% of the time versus 62% for the other 4204.",
+   "evidence": "compare_flag(deep_buffer)",
+   "strength": "strong",
+   "caveat": "Flags correlate with income and buffer; this is a difference, not a cause.",
+   "effect": 38.0
+  },
+  {
+   "title": "Flag 'Loan payment is heavy' moves layoff survival by -37 points",
+   "statement": "103 accounts with 'Loan payment is heavy' survive six months on 55% income 28% of the time versus 65% for the other 4397.",
+   "evidence": "compare_flag(loan_stress)",
+   "strength": "strong",
+   "caveat": "Flags correlate with income and buffer; this is a difference, not a cause.",
+   "effect": 37.2
+  },
+  {
+   "title": "Flag 'Fees well above typical' moves layoff survival by +35 points",
+   "statement": "310 accounts with 'Fees well above typical' survive six months on 55% income 97% of the time versus 62% for the other 4190.",
+   "evidence": "compare_flag(fee_bleed)",
+   "strength": "strong",
+   "caveat": "Flags correlate with income and buffer; this is a difference, not a cause.",
+   "effect": 34.7
+  },
+  {
+   "title": "Flag 'Balance trending down' moves layoff survival by -34 points",
+   "statement": "493 accounts with 'Balance trending down' survive six months on 55% income 35% of the time versus 68% for the other 4007.",
+   "evidence": "compare_flag(balance_sliding)",
+   "strength": "strong",
+   "caveat": "Flags correlate with income and buffer; this is a difference, not a cause.",
+   "effect": 33.5
+  },
+  {
+   "title": "inflow volatility (std / mean) spreads survival by 31 points",
+   "statement": "Lowest quartile of income_cv (0.00302 to 0.176) survives 85% of the time; highest quartile (0.446 to 3.21) 55%.",
+   "evidence": "survival_by_quantile(income_cv, layoff, 4)",
+   "strength": "strong",
+   "caveat": "Quartile spread; not adjusted for income.",
+   "effect": 30.6
+  }
+ ],
+ "summary": null,
+ "best_finding": "I / district average salary spreads survival by 62 points",
+ "seconds": null,
+ "n_accounts": 4500
+}

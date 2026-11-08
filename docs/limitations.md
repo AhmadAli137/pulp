@@ -41,3 +41,12 @@ explicit user input and simulated scenarios; nothing synchronizes with a live ac
 **Not implemented.** Reinforcement learning, payment authorization, newsletters, transfers, product
 applications and any autonomous financial action. The Gemini-native audio relay added separately under
 `backend/app/api/voice.py` requires a key and was not validated by this build's tests.
+
+## Model quota
+
+The Gemini key used for development is on the free tier, which allows about 20 generate-content requests per model per
+day. A council run uses two, a narration one, an archetype naming one, and a Pattern Hunter run up to 28. Every model
+role has a deterministic fallback (grid-only council, template narrative, rule-named archetypes, the baseline battery),
+so the product keeps working, but the demo needs a key on a billed project or the quota will be gone within a few
+accounts. Narratives are cached per account so repeated loads do not spend quota.
+

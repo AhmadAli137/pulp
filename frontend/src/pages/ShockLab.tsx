@@ -4,6 +4,8 @@ import { api, type SampleAccount } from '../services/api'
 import { useApp } from '../stores/useApp'
 import ShockPanel from '../components/ShockPanel'
 import CouncilPanel from '../components/CouncilPanel'
+import ProfileInsights from '../components/ProfileInsights'
+import ShockCards from '../components/ShockCards'
 import { Card, Chip, Empty, Spinner, Tile, fmt } from '../components/ui'
 
 /* The judge's exact-input calculator: baseline tiles, twist controls, verdict, plans. */
@@ -58,7 +60,9 @@ export default function ShockLab() {
         <Tile label="Most relevant concern" value={concern?.label ?? 'Income interruption (default stress)'} sub={concern ? 'confirmed by you' : 'nothing confirmed yet'} />
         <Tile gold label="Recommended next action" value={lastReplan ? lastReplan.snapshot.recommended_label : 'Run the layoff twist'} sub={<Link to="/roadmap">See roadmap</Link>} />
       </div>
-      <ShockPanel compact />
+      <ProfileInsights compact />
+      <ShockCards />
+      <div id="shock-controls"><ShockPanel compact /></div>
       <CouncilPanel />
     </div>
   )

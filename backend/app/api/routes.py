@@ -10,6 +10,10 @@ from .. import schemas
 from ..services import context_manager as cm
 from ..services.cohort_analysis import cohort_for, research_summary
 from ..services.council import council_available, run_council
+from ..services.archetypes import flag_catalog, get_archetypes
+from ..services.hunter import get_findings
+from ..services.narrator import narrative_for
+from ..services.features import FEATURE_DOCS, get_features
 from ..services.data_store import get_store
 from ..services.feedback_loop import replan, replanning_diff
 from ..services.financial_profiles import get_metrics, get_population, percentile_of
@@ -46,7 +50,8 @@ def _metrics_or_404(account_id: int):
 def health():
     store = get_store()
     return {"ok": True, "accounts": len(store.account_ids), "data_dir": str(store.data_dir),
-            "gemini_configured": bool(GEMINI_API_KEY), "gemini_model": GEMINI_MODEL if GEMINI_API_KEY else None, "context_storage": cm.storage_backend(), **provider_info()}
+            "gemini_configured": bool(GEMINI_API_KEY), "gemini_model": GEMINI_MODEL if GEMINI_API_KEY else None, "context_storage": cm.storage_backend(),
+            "council": council_available(), **provider_info()}
 
 
 @router.get("/accounts/sample")
@@ -123,6 +128,45 @@ def get_history(account_id: int):
 def get_cohort(account_id: int):
     _metrics_or_404(account_id)
     return _clean(cohort_for(account_id))
+
+
+@router.get("/customers/{account_id}/insights")
+def get_insights(account_id: int, use_ai: bool = Query(True)):
+    """Stage 1 profile: rule-based flags with evidence, behavioural archetype, and the narrator's sentences
+    (Gemini on ADK when configured, templated otherwise). Every number comes from the feature table."""
+    _metrics_or_404(account_id)
+    return _clean(narrative_for(account_id, use_ai=use_ai))
+
+
+@router.get("/research/archetypes")
+def get_research_archetypes():
+    """Behavioural archetypes over all accounts: cluster statistics (code) and names (Gemini or rules)."""
+    doc = get_archetypes()
+    return _clean({k: v for k, v in doc.items() if k != "labels"} | {"flag_catalog": flag_catalog()})
+
+
+@router.get("/research/hunter")
+def get_research_hunter():
+    """Pattern Hunter findings (the ADK hypothesis loop, run offline) or the deterministic battery."""
+    return _clean(get_findings())
+
+
+@router.get("/research/features")
+def get_research_features(feature: str = Query(..., description="feature name from FEATURE_DOCS"), bins: int = Query(4, ge=2, le=10)):
+    """Six-month layoff survival by quantile bin of one feature, for the bank-side view."""
+    f = get_features()
+    if feature not in f.columns or feature not in FEATURE_DOCS:
+        raise HTTPException(status_code=404, detail=f"Unknown feature {feature}")
+    import numpy as np
+    import pandas as pd
+    s = pd.to_numeric(f[feature], errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+    try:
+        q = pd.qcut(s, bins, duplicates="drop")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    rows = [{"range": f"{iv.left:.3g} to {iv.right:.3g}", "n": int(len(idx)), "survive6_layoff_pct": float(f.loc[idx, "survives6_layoff"].mean() * 100),
+             "survive6_combined_pct": float(f.loc[idx, "survives6_combined"].mean() * 100)} for iv, idx in s.groupby(q, observed=True).groups.items()]
+    return {"feature": feature, "meaning": FEATURE_DOCS[feature], "bins": rows}
 
 
 @router.get("/research/summary")

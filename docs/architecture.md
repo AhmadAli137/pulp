@@ -22,6 +22,12 @@ backend (FastAPI + pandas + numpy + Pydantic)
   services/feedback_loop.py       replan, snapshot, diff with materiality rules
   services/gemini_agent.py        Gemini/Vultr tools + validated extraction; offline engine; question heuristic
   services/council.py             Stage 3 council: fan-out grid + Google ADK Strategist/Challenger + validation
+  services/features.py            Stage 1 Feature Forge: ~58 behavioural signals per account from semantic roles; rule-based flags with evidence
+  services/archetypes.py          Stage 1: k-means archetypes described in numbers (code), named by Gemini on ADK (or rules)
+  services/narrator.py            Stage 1 Profile Narrator: grounded sentences per account (ADK LlmAgent, template fallback, cached)
+  services/hunter.py              Stage 1 Pattern Hunter: ADK hypothesis loop with statistical tools + deterministic battery
+  services/adk_runtime.py         one way to run any ADK agent: session, message, state, tool log
+  scripts/run_stage1.py           offline Stage 1 run -> data/derived/archetypes.json, hunter_findings.json (committed)
   services/roadmap.py             actions by timeframe
   api/routes.py                   REST endpoints; schemas/ Pydantic models
   scripts/analyze_population.py   reproducible discovery → docs/findings.json, docs/findings_chart.png
@@ -66,10 +72,28 @@ Everything authoritative is deterministic Python; the model only converses, inte
 | POST | /api/context/propose, /confirm, /edit | staged updates, confirmation (+ replan), direct edits |
 | POST | /api/agent/chat | companion turn |
 | POST | /api/agent/plan | Stage 3 council: fan-out grid, Strategist + Challenger on Google ADK, validated ranking |
+| GET | /api/customers/{id}/insights | Stage 1 profile: flags with evidence, archetype, narrator sentences |
+| GET | /api/research/archetypes | archetype clusters with statistics and names |
+| GET | /api/research/hunter | Pattern Hunter findings (ADK run) or the deterministic battery |
+| GET | /api/research/features?feature= | layoff survival by quantile of any feature |
 | POST | /api/replan · GET /api/replan/{id}/diff | replan on demand; last diff |
 
 OpenAPI docs are served at `/docs`.
 
+
+## Stage 1: inferred profiles (Google ADK for the model roles)
+
+```
+CSVs ─▶ features.build_feature_table (roles → ~58 signals, flags)      code, ~15 s, cached
+     ─▶ archetypes.cluster_accounts (k-means) ─▶ describe_clusters      code
+     ─▶ LlmAgent archetype_namer (Gemini, output_schema)                 names, life-stage/occupation guesses with confidence
+     ─▶ LlmAgent pattern_hunter (Gemini, 7 statistical tools, budget)   findings that clear n>=100 and >=10 pp / |rho|>=0.2
+     ─▶ per account on load: LlmAgent profile_narrator (Gemini)          3-4 sentences, each tied to a flag key, else template
+```
+
+The model never sees raw rows: it receives cluster medians, tool results and flag evidence strings. `scripts/run_stage1.py`
+runs the batch offline and commits the artefacts; the API serves them and recomputes the deterministic parts when they
+are missing.
 
 ## Planning council (Google ADK)
 

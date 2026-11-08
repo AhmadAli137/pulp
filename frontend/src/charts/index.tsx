@@ -230,3 +230,22 @@ export function GoalProgressChart({ path, target, deadline }: { path: number[]; 
     </ResponsiveContainer>
   )
 }
+
+
+/* Six-month layoff survival by quantile bin of one behavioural feature (Insights explorer). */
+export function FeatureSurvivalChart({ bins }: { bins: { range: string; n: number; survive6_layoff_pct: number; survive6_combined_pct: number }[] }) {
+  const data = bins.map((b) => ({ range: b.range, n: b.n, layoff: b.survive6_layoff_pct, combined: b.survive6_combined_pct }))
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid stroke={C.line} vertical={false} />
+        <XAxis dataKey="range" tick={{ fontSize: 11, fill: C.gray }} interval={0} />
+        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: C.gray }} width={44} />
+        <Tooltip contentStyle={tipStyle} formatter={(v) => `${Number(v).toFixed(1)}%`} labelFormatter={(l, p) => `${l} · ${p?.[0]?.payload?.n ?? ''} accounts`} />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Bar dataKey="layoff" name="Layoff, 55% income" fill={C.emerald} radius={[3, 3, 0, 0]} label={{ position: 'top', fontSize: 10, fill: C.forest, formatter: (v: unknown) => `${Math.round(Number(v))}%` }} />
+        <Bar dataKey="combined" name="Layoff + bills 15%" fill={C.gold} radius={[3, 3, 0, 0]} label={{ position: 'top', fontSize: 10, fill: C.gray, formatter: (v: unknown) => `${Math.round(Number(v))}%` }} />
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}

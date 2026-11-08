@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { api, type Cohort, type Research } from '../services/api'
+import { api, type ArchetypesDoc, type Cohort, type FeatureSurvival, type HunterDoc, type Insights as InsightsDoc, type Research } from '../services/api'
 import { useApp } from '../stores/useApp'
-import { CohortChart, PairChart, QuartileChart } from '../charts'
+import { CohortChart, FeatureSurvivalChart, PairChart, QuartileChart } from '../charts'
+import ProfileInsights from '../components/ProfileInsights'
 import { Card, Chip, DataTable, Empty, Spinner, Tile, Tip, fmt } from '../components/ui'
+
+const FEATURES = ['timing_dip_share', 'fee_share', 'lifestyle_creep', 'balance_trend_pm', 'bills_share_trend', 'income_cv', 'inflow_regular_share', 'regular_transfer_out_amount', 'owner_age', 'account_age_years', 'inflow_vs_district_salary', 'pension_share', 'spending_ratio']
 
 function bucketOf(r: number | null): string | null {
   if (r == null) return '24+'
@@ -17,6 +20,17 @@ export default function Insights() {
   const [co, setCo] = useState<Cohort | null>(null)
   useEffect(() => { api.research().then(setRes).catch(() => setRes({ available: false })) }, [])
   useEffect(() => { if (accountId) api.cohort(accountId).then(setCo).catch(() => undefined) }, [accountId])
+  const [arch, setArch] = useState<ArchetypesDoc | null>(null)
+  const [archFailed, setArchFailed] = useState(false)
+  const [hunter, setHunter] = useState<HunterDoc | null>(null)
+  const [hunterFailed, setHunterFailed] = useState(false)
+  const [mine, setMine] = useState<InsightsDoc | null>(null)
+  const [feature, setFeature] = useState('timing_dip_share')
+  const [fs, setFs] = useState<FeatureSurvival | null>(null)
+  useEffect(() => { api.archetypes().then(setArch).catch(() => setArchFailed(true)) }, [])
+  useEffect(() => { api.hunter().then(setHunter).catch(() => setHunterFailed(true)) }, [])
+  useEffect(() => { if (accountId) api.insights(accountId).then(setMine).catch(() => setMine(null)); else setMine(null) }, [accountId])
+  useEffect(() => { setFs(null); api.featureSurvival(feature, 4).then(setFs).catch(() => setFs(null)) }, [feature])
 
   const prim = res?.runs?.primary_5pct_layoff
   const pop = res?.population
@@ -26,6 +40,7 @@ export default function Insights() {
 
   return (
     <div className="stack">
+      {accountId && <ProfileInsights />}
       {res?.available && prim && pop && qb && qs ? (<>
         <div className="hero">
           <div className="row" style={{ marginBottom: 8 }}><Chip tone="gold">Discovery · {res.accounts_eligible_positive_inflow?.toLocaleString()} accounts · simulated outcomes</Chip></div>
@@ -73,6 +88,70 @@ export default function Insights() {
           </Card>
         )}
       </>) : <Card title="Dataset discovery">{res ? <p className="small muted">{res.note ?? 'Findings file not generated yet.'}</p> : <Spinner />}</Card>}
+
+      <div className="section">
+        <h2>Behavioural archetypes</h2>
+        {archFailed ? <Empty>Archetypes are not available right now.</Empty> : !arch ? <Empty><Spinner /></Empty> : (
+          <Card
+            title={<>{arch.k} groups across {arch.n_accounts.toLocaleString()} accounts <Tip text={arch.method} /></>}
+            right={<Chip tone={arch.naming_source.startsWith('google-adk') ? 'gold' : 'gray'}>{arch.naming_source.startsWith('google-adk') ? 'named by Gemini on Google ADK' : 'named by rules'}</Chip>}
+          >
+            <table className="data arch-table">
+              <thead><tr><th>Archetype</th><th className="num">Share</th><th className="num">Lasts 6 mo, layoff</th><th className="num">Layoff + bills</th><th>Likely life stage / occupation (a guess)</th><th>What sets it apart</th></tr></thead>
+              <tbody>
+                {arch.clusters.map((c) => (
+                  <tr key={c.id} className={mine?.archetype?.id === c.id ? 'mine' : ''}>
+                    <td className="name">{c.name}{mine?.archetype?.id === c.id && <> <Chip tone="gold">this account</Chip></>}<div className="tiny muted">{c.description}</div></td>
+                    <td className="num">{fmt.pct(c.share)}<div className="tiny muted">{c.size.toLocaleString()}</div></td>
+                    <td className="num">{fmt.pct100(c.survive6_layoff_pct)}</td>
+                    <td className="num">{fmt.pct100(c.survive6_combined_pct)}</td>
+                    <td className="small">{c.likely_life_stage} / {c.likely_occupation}<div className="tiny muted">confidence {fmt.pct(c.confidence)}</div></td>
+                    <td className="tiny">{c.distinguishing.slice(0, 3).map((d) => <div key={d.feature}>{d.feature}: {fmt.num(d.cluster_median, 2)} vs {fmt.num(d.population_median, 2)}</div>)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="tiny muted" style={{ marginTop: 8 }}>Clusters and every number are computed in code; the model only wrote the names and the hedged guesses from those numbers.</p>
+          </Card>
+        )}
+      </div>
+
+      <div className="section">
+        <h2>What the Pattern Hunter found</h2>
+        {hunterFailed ? <Empty>Findings are not available right now.</Empty> : !hunter ? <Empty><Spinner /></Empty> : (
+          <div className="stack">
+            <div className="row">
+              <Chip tone={hunter.mode === 'adk' ? 'gold' : 'gray'}>{hunter.mode === 'adk' ? `Gemini on ADK, ${hunter.tool_calls_made} tool calls` : 'deterministic battery'}</Chip>
+              {hunter.model && <Chip tone="outline">{hunter.model}</Chip>}
+              <Chip tone="outline">{hunter.findings.length} findings · {hunter.n_accounts.toLocaleString()} accounts</Chip>
+              {hunter.seconds != null && <Chip tone="outline">{hunter.seconds}s</Chip>}
+            </div>
+            {hunter.summary && <p className="small">{hunter.summary}</p>}
+            {hunter.findings.length === 0 ? <Empty>No finding cleared the evidence bar.</Empty> : (
+              <div className="finding-grid">
+                {hunter.findings.map((f, i) => (
+                  <div key={i} className="finding">
+                    <div className="row"><Chip tone={f.strength === 'strong' ? 'gold' : f.strength === 'moderate' ? 'outline' : 'gray'}>{f.strength}</Chip><span className="t">{f.title}</span></div>
+                    <div className="small">{f.statement}</div>
+                    <div className="tiny muted">{f.evidence}</div>
+                    {f.caveat && <div className="tiny muted">Caveat: {f.caveat}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+            <Card title="Survival by feature" right={
+              <select className="select" value={feature} onChange={(e) => setFeature(e.target.value)} aria-label="Feature">
+                {FEATURES.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            }>
+              {fs ? (<>
+                <p className="small muted" style={{ marginBottom: 6 }}>{fs.meaning}. Accounts split into four equal-count bins; bars show the share that lasts six months.</p>
+                <FeatureSurvivalChart bins={fs.bins} />
+              </>) : <Empty><Spinner /></Empty>}
+            </Card>
+          </div>
+        )}
+      </div>
 
       <div className="section">
         <h2>Where this account sits among similar customers</h2>
