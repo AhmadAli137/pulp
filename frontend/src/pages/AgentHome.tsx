@@ -1,10 +1,13 @@
 /* Conversation-first landing page. Ported from the Codex build (pulp2) and wired to this app's store, router and API. */
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowUp, ArrowUpRight, ChevronDown, Mic, Square, Plus, Menu, X, ArrowRight, MessageCircle, Leaf, Wallet, RotateCcw, LoaderCircle, Check, ShieldCheck, SlidersHorizontal, BookOpen, Compass } from 'lucide-react'
+import { ArrowUp, ArrowUpRight, ChevronDown, Mic, Square, Plus, Menu, X, ArrowRight, MessageCircle, Leaf, Wallet, RotateCcw, LoaderCircle, Check, ShieldCheck, SlidersHorizontal, BookOpen, Compass, Sparkles, Zap } from 'lucide-react'
 import { PulpMark, Tangerine, clearIntroSeen } from '../components/PulpMascot'
 import { startVoice } from '../services/voice'
-import { api, type ContextSummary, type Proposal, type ReplanResult, type SampleAccount } from '../services/api'
+import { API_BASE, api, type AgentEvent, type ContextSummary, type HabitKind, type HabitParams, type Insights, type PlanResult, type Proposal, type ReplanResult, type SampleAccount, type Scene, type StageEvent } from '../services/api'
+import AgentTrace, { COUNCIL_DATA, COUNCIL_LANES, normalizeCouncilEvents } from '../components/AgentTrace'
+import ScenePlayer from '../components/ScenePlayer'
+import HabitScene from '../components/scenes/HabitScene'
 import { useApp } from '../stores/useApp'
 
 const money = (n: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n)
@@ -25,11 +28,30 @@ function Rich({ text }: { text: string }) {
   return <p>{parts.map((part, i) => part.startsWith('**') && part.endsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : <span key={i}>{part}</span>)}</p>
 }
 type VoiceProposal = { income_fraction?: number | null; bills_increase?: number | null; one_off_cost?: number | null; horizon_months?: number | null; explanation?: string }
+type RunState = { raw: Array<{ type: 'stage'; data: StageEvent } | { type: 'agent'; data: AgentEvent }>; plan: PlanResult | null; scenes: Scene[] | null; scenesSource: string; running: boolean; error: string | null; seconds: number | null }
+const HABIT_KIND: Record<string, HabitKind> = { timing_dips: 'timing', fee_bleed: 'fee', lifestyle_creep: 'creep', savings_elsewhere: 'transfer', thin_margin: 'margin', income_volatile: 'volatile', loan_stress: 'loan' }
+const TWISTS: [string, string][] = [['layoff', 'Layoff'], ['furnace', 'Furnace'], ['combined', 'Layoff + bills']]
+/* Build the one habit scene for the top flag, from the flags and the feature map the insights endpoint returns. */
+function habitFromInsights(ins: Insights): HabitParams {
+  const num = (k: string) => { const v = ins.features[k]?.value; return typeof v === 'number' ? v : 0 }
+  const flag = ins.flags.find((f) => HABIT_KIND[f.key])
+  if (!flag) return { flag: 'none', label: ins.flags[0]?.label ?? 'A typical account', kind: 'none', evidence: ins.flags[0]?.evidence ?? '', numbers: {} }
+  const kind = HABIT_KIND[flag.key]
+  const negMonths = Number((flag.evidence.match(/(\d+) months had/) ?? [])[1] ?? 0)
+  const numbers: Record<string, number> = kind === 'timing' ? { neg_months: negMonths, timing_share: num('timing_dip_share') }
+    : kind === 'fee' ? { fee_share: num('fee_share') }
+      : kind === 'creep' ? { spending_drift_pm: num('spending_drift_pm') || num('lifestyle_creep'), income_drift_pm: num('income_drift_pm') }
+        : kind === 'transfer' ? { amount: num('regular_transfer_out_amount') }
+          : kind === 'margin' ? { spending_ratio: num('spending_ratio'), I: num('I'), S: num('S') }
+            : kind === 'volatile' ? { income_cv: num('income_cv') }
+              : { loan_payment_share: num('loan_payment_share') }
+  return { flag: flag.key, label: flag.label, kind, evidence: flag.evidence, numbers }
+}
 
 const PAGES: [string, string, typeof Wallet][] = [['/shock', 'Financial snapshot & shock lab', Wallet], ['/explore', 'Explore futures', SlidersHorizontal], ['/goals', 'My goals & plan review', MessageCircle], ['/roadmap', 'Financial roadmap', Compass], ['/insights', 'Research & insights', BookOpen]]
 
 export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void }) {
-  const { accountId, profile: account, loadAccount, loadingProfile: loading, profileError: error, aiLabel, geminiConfigured, refreshContext, setLastReplan, setInputs, runShock, setGemini } = useApp()
+  const { accountId, profile: account, loadAccount, loadingProfile: loading, profileError: error, aiLabel, geminiConfigured, refreshContext, setLastReplan, setInputs, runShock, setGemini, applyPreset, activePreset } = useApp()
   const nav = useNavigate()
   const [inputId, setInputId] = useState(accountId ? String(accountId) : '')
   const [samples, setSamples] = useState<SampleAccount[]>([])
@@ -48,6 +70,10 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
   const [live, setLive] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
   const [contextReady, setContextReady] = useState(false)
   const [voiceProposal, setVoiceProposal] = useState<VoiceProposal | null>(null)
+  const [insight, setInsight] = useState<Insights | null>(null)
+  const [insightBusy, setInsightBusy] = useState(false)
+  const [run, setRun] = useState<RunState | null>(null)
+  const source = useRef<EventSource | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const alive = useRef(true)
   const voiceStop = useRef<(() => void) | null>(null)
@@ -67,6 +93,7 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
     let cancelled = false
     setContextReady(false)
     setMessages([]); setProposal(null); setPlan(null); setVoiceProposal(null); setNotice(''); setBusy(false); setConfirming(false)
+    setInsight(null); setInsightBusy(false); setRun(null); source.current?.close(); source.current = null
     if (id) {
       api.context(id).then((r) => {
         if (cancelled || !alive.current) return
@@ -76,9 +103,9 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
       }).catch(() => { if (!cancelled && alive.current) setNotice('Your financial snapshot is ready. Saved context could not be loaded.') })
         .finally(() => { if (!cancelled && alive.current) setContextReady(true) })
     } else { setMessages([]); setContext(null); setProposal(null); setContextReady(true) }
-    return () => { cancelled = true; alive.current = false; voiceRequest.current++; voiceStop.current?.() }
+    return () => { cancelled = true; alive.current = false; voiceRequest.current++; voiceStop.current?.(); source.current?.close(); source.current = null }
   }, [id])
-  useEffect(() => { if (messages.length) messagesEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [messages, busy])
+  useEffect(() => { if (messages.length || insight || run) messagesEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [messages, busy, insight, run?.raw.length, run?.scenes, run?.running])
   useEffect(() => { if (accountId) setInputId(String(accountId)) }, [accountId])
 
   const choose = (text: string) => { setDraft(text); input.current?.focus() }
@@ -140,6 +167,43 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
     }
   }
 
+  /* "Tell me about my money": the narrator's sentences as an agent message plus one habit scene for the top flag. */
+  async function tellMe() {
+    if (!id || insightBusy) return
+    setInsightBusy(true); setNotice('')
+    try {
+      const ins = await api.insights(id)
+      if (!alive.current || useApp.getState().accountId !== id) return
+      setInsight(ins)
+    } catch { if (alive.current) setNotice('I could not read the record just now. Please try again.') }
+    finally { if (alive.current) setInsightBusy(false) }
+  }
+
+  /* "Run the twist": stream the council over SSE, show the agents working, then play the scenes. */
+  function runTwist() {
+    if (!id || run?.running) return
+    source.current?.close()
+    const si = useApp.getState().shockInputs
+    const q = new URLSearchParams({ account_id: String(id), income_fraction: String(si.income_fraction), bills_increase: String(si.bills_increase), one_off_cost: String(si.one_off_cost), shock_duration: String(si.horizon_months), use_ai: 'true' })
+    const es = new EventSource(`${API_BASE}/api/agent/run?${q}`)
+    source.current = es
+    setRun({ raw: [], plan: null, scenes: null, scenesSource: '', running: true, error: null, seconds: null })
+    const parse = <T,>(e: Event): T | null => { try { return JSON.parse((e as MessageEvent).data) as T } catch { return null } }
+    const guard = () => alive.current && useApp.getState().accountId === id && source.current === es
+    es.addEventListener('insight', (e) => { const d = parse<Insights>(e); if (d && guard()) setInsight((cur) => cur ?? d) })
+    es.addEventListener('stage', (e) => { const d = parse<StageEvent>(e); if (d && guard()) setRun((r) => r && { ...r, raw: [...r.raw, { type: 'stage', data: d }] }) })
+    es.addEventListener('agent', (e) => { const d = parse<AgentEvent>(e); if (d && guard()) setRun((r) => r && { ...r, raw: [...r.raw, { type: 'agent', data: d }] }) })
+    es.addEventListener('plan', (e) => { const d = parse<PlanResult>(e); if (d && guard()) setRun((r) => r && { ...r, plan: d }) })
+    es.addEventListener('scenes', (e) => { const d = parse<{ source: string; scenes: Scene[] }>(e); if (d && guard()) setRun((r) => r && { ...r, scenes: d.scenes, scenesSource: d.source }) })
+    es.addEventListener('done', (e) => { const d = parse<{ seconds: number }>(e); if (guard()) setRun((r) => r && { ...r, running: false, seconds: d?.seconds ?? null }); es.close(); if (source.current === es) source.current = null })
+    es.addEventListener('error', (e) => {
+      if (!guard()) return
+      const server = 'data' in e ? parse<{ message: string }>(e) : null
+      setRun((r) => r && { ...r, running: false, error: server?.message ?? 'The connection to the council dropped.' })
+      es.close(); if (source.current === es) source.current = null
+    })
+  }
+
   const applyVoiceProposal = () => {
     if (!voiceProposal) return
     setInputs({
@@ -154,7 +218,7 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
 
   const worries = (context?.concerns ?? []) as { label?: string; type?: string }[]
   const goals = (context?.goals ?? []) as { label?: string; type?: string }[]
-  const hasConversation = messages.length > 0
+  const hasConversation = messages.length > 0 || insight != null || run != null || insightBusy
   const replay = () => { clearIntroSeen(); onReplayIntro() }
 
   return (
@@ -202,6 +266,24 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
           <section className="agent-conversation" aria-label="Conversation" aria-live="polite">
             {messages.map((m, i) => <article key={i} className={`agent-bubble ${m.role}`}><span>{m.role === 'user' ? 'You' : <><PulpMark size={19} />PULP</>}</span><Rich text={m.text} /></article>)}
             {(Object.entries(live) as [string, string][]).filter(([, text]) => text).map(([role, text]) => <article className={`agent-bubble ${role}`} key={role}><span>{role === 'user' ? 'You' : 'PULP'} · live</span><p>{text}</p></article>)}
+            {insightBusy && <div className="agent-thinking"><span /><span /><span /><small>Reading the record…</small></div>}
+            {insight && (
+              <div className="agent-run" aria-label="What the data says">
+                <article className="agent-bubble assistant"><span><PulpMark size={19} />PULP</span><Rich text={`**${insight.narrative.headline}**\n\n${insight.narrative.insights.map((x) => x.text).join(' ')}`} /></article>
+                <HabitScene p={habitFromInsights(insight)} />
+                {insight.archetype && <p className="tiny muted">Your money behaves like the “{insight.archetype.name}” group · {insight.narrative.source.startsWith('google-adk') ? 'written by Gemini on Google ADK from the flags above' : 'rule-based wording'}</p>}
+              </div>
+            )}
+            {run && (
+              <div className="agent-run" aria-label="Council run">
+                {run.error && <p className="agent-notice" role="alert">{run.error}</p>}
+                {(run.running || !run.scenes) && run.raw.length > 0 && <AgentTrace events={normalizeCouncilEvents(run.raw)} lanes={COUNCIL_LANES} live dataNames={COUNCIL_DATA} title="Agents at work" />}
+                {run.running && run.raw.length === 0 && <div className="agent-thinking"><span /><span /><span /><small>Convening the council…</small></div>}
+                {run.scenes && run.scenes.length > 0 && <ScenePlayer scenes={run.scenes} source={run.scenesSource} />}
+                {run.plan?.why && !run.running && <article className="agent-bubble assistant"><span><PulpMark size={19} />PULP</span><Rich text={`**${run.plan.recommended ?? 'The plan'}.** ${run.plan.why}${run.seconds != null ? ` (${run.seconds.toFixed(0)} s, ${run.plan.mode === 'adk' ? 'two agents on Google ADK plus the engine' : 'engine only'})` : ''}`} /></article>}
+                {!run.running && run.scenes && <details className="agent-run-trace"><summary className="tiny muted">How the agents got there</summary><AgentTrace events={normalizeCouncilEvents(run.raw)} lanes={COUNCIL_LANES} live={false} dataNames={COUNCIL_DATA} stepMs={350} /></details>}
+              </div>
+            )}
             {busy && <div className="agent-thinking"><span /><span /><span /><small>Finding a little clarity…</small></div>}
             <div ref={messagesEnd} />
           </section>
@@ -240,6 +322,11 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
         <section className="agent-focus" aria-label="Current priorities">
           <span className="agent-small-label">{worries.length || goals.length ? 'WHAT MATTERS TO YOU' : 'A PLACE TO START'}</span>
           <div className="focus-chips">
+            {account && (<>
+              <button className="action" onClick={tellMe} disabled={insightBusy}><Sparkles size={12} />Tell me about my money</button>
+              <button className="action" onClick={runTwist} disabled={!!run?.running}><Zap size={12} />Run the {TWISTS.find(([k]) => k === activePreset)?.[1].toLowerCase() ?? 'chosen'} twist</button>
+              <span className="twist-pick" role="group" aria-label="Pick a twist">{TWISTS.map(([k, label]) => <button key={k} type="button" className={activePreset === k ? 'on' : ''} onClick={() => applyPreset(k)}>{label}</button>)}</span>
+            </>)}
             {worries.length || goals.length ? (<>
               {[...worries.map((w) => ({ label: w.label || String(w.type ?? '').replaceAll('_', ' '), text: `Can we revisit my concern about ${w.label || String(w.type ?? '').replaceAll('_', ' ')}?` })),
                 ...goals.slice(0, 2).map((g) => ({ label: g.label || String(g.type ?? '').replaceAll('_', ' '), text: `Can we talk about my goal to ${g.label || String(g.type ?? '').replaceAll('_', ' ')}?` }))]

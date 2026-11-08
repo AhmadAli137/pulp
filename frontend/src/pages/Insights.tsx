@@ -3,6 +3,7 @@ import { api, type ArchetypesDoc, type Cohort, type FeatureSurvival, type Hunter
 import { useApp } from '../stores/useApp'
 import { CohortChart, FeatureSurvivalChart, PairChart, QuartileChart } from '../charts'
 import ProfileInsights from '../components/ProfileInsights'
+import AgentTrace, { HUNTER_DATA, HUNTER_LANES, normalizeHunterReplay } from '../components/AgentTrace'
 import { Card, Chip, DataTable, Empty, Spinner, Tile, Tip, fmt } from '../components/ui'
 
 const FEATURES = ['timing_dip_share', 'fee_share', 'lifestyle_creep', 'balance_trend_pm', 'bills_share_trend', 'income_cv', 'inflow_regular_share', 'regular_transfer_out_amount', 'owner_age', 'account_age_years', 'inflow_vs_district_salary', 'pension_share', 'spending_ratio']
@@ -139,6 +140,12 @@ export default function Insights() {
                 ))}
               </div>
             )}
+            <Card title="How the Pattern Hunter worked" right={<span className="small muted">{hunter.tool_log.length > 0 ? `${hunter.tool_log.length} tool calls, replayed` : 'no agent run to replay'}</span>}>
+              {hunter.tool_log.length > 0 ? (<>
+                <p className="small muted" style={{ marginBottom: 8 }}>The agent proposes a hypothesis, asks a statistical tool that runs on the feature table, reads the numbers back, and records a finding only when it clears the evidence bar. Press play to watch the run.</p>
+                <AgentTrace events={normalizeHunterReplay(hunter)} lanes={HUNTER_LANES} live={false} dataNames={HUNTER_DATA} />
+              </>) : <Empty>This run used the deterministic battery, so there is no agent conversation to replay.</Empty>}
+            </Card>
             <Card title="Survival by feature" right={
               <select className="select" value={feature} onChange={(e) => setFeature(e.target.value)} aria-label="Feature">
                 {FEATURES.map((k) => <option key={k} value={k}>{k}</option>)}

@@ -176,7 +176,7 @@ export interface ArchetypesDoc {
   k: number; method: string; features: string[]; naming_source: string; built_at: string; n_accounts: number; loaded_from?: string
   flag_catalog: { key: string; label: string; severity: string }[]; clusters: ArchetypeCluster[]
 }
-export interface HunterFinding { title: string; statement: string; evidence: string; strength: 'strong' | 'moderate' | 'weak'; caveat: string; effect?: number }
+export interface HunterFinding { title: string; statement: string; evidence: string; strength: 'strong' | 'moderate' | 'weak'; caveat: string; effect?: number; recorded_after_call?: number }
 export interface HunterDoc {
   mode: 'adk' | 'baseline'; model: string | null; ran_at: string; budget: number | null; tool_calls_made: number
   tool_log: { tool: string; args: Record<string, unknown> }[]; findings: HunterFinding[]; summary: string | null; best_finding: string | null
@@ -185,6 +185,34 @@ export interface HunterDoc {
 export interface FeatureSurvival { feature: string; meaning: string; bins: { range: string; n: number; survive6_layoff_pct: number; survive6_combined_pct: number }[] }
 export interface RoadmapAction { action: string; amount: number | null; expected_effect: string; goal: string; tradeoffs: string; assumptions: string; review_trigger: string }
 export interface Roadmap { account_id: number; this_week: RoadmapAction[]; this_month: RoadmapAction[]; next_three_months: RoadmapAction[]; next_year: RoadmapAction[]; long_term: RoadmapAction[]; summary: { goal: Comparison['goal']; recommended: string; layoff_verdict: string; goal_plan_note: string; capacity_per_month: number } }
+
+
+// ------------------------------------------------------------------ agent run (SSE) and scenes
+export interface RunwayParams { duration_months: number; buffer_start: number; income_before: number; income_after: number; spending_after: number; monthly_gap: number; runs_out_month: number | null; runway_label: string; verdict: string }
+export interface FuturePath { label: string; prob_shortfall: number; buffer_path: number[]; months_to_goal: number | null }
+export interface LeverDial { freed_up_per_month: number; goal_contribution_per_month: number; emergency_floor: number; extra_income_per_month: number }
+export interface TwoFuturesParams { goal: { label: string; target_amount: number; target_months: number }; stay: FuturePath; plan: FuturePath & { levers: LeverDial } }
+export type HabitKind = 'timing' | 'fee' | 'creep' | 'transfer' | 'margin' | 'volatile' | 'loan' | 'none'
+export interface HabitParams { flag: string; label: string; kind: HabitKind; evidence: string; numbers: Record<string, number> }
+export interface LeverParams { lever_label: string; dial: LeverDial; before: { prob_shortfall: number; median_min_buffer: number }; after: { prob_shortfall: number; median_min_buffer: number }; typical_spending: number }
+export type Scene = { id: string; title: string; narration: string } & (
+  | { type: 'runway'; params: RunwayParams }
+  | { type: 'two_futures'; params: TwoFuturesParams }
+  | { type: 'habit'; params: HabitParams }
+  | { type: 'lever'; params: LeverParams })
+export type StageName = 'freeze' | 'fan_out' | 'council' | 'validate' | 'rank' | 'explain'
+export interface StageEvent { name: StageName; status: 'start' | 'done'; detail: string; seconds?: number; data?: Record<string, unknown> }
+export interface AgentEvent { t: number; agent: 'strategist' | 'challenger' | 'explainer'; kind: 'tool_call' | 'tool_result' | 'text' | 'final'; tool?: string; args?: Record<string, unknown>; summary?: string }
+export type RunEvent =
+  | { type: 'insight'; data: Insights }
+  | { type: 'stage'; data: StageEvent }
+  | { type: 'agent'; data: AgentEvent }
+  | { type: 'plan'; data: PlanResult }
+  | { type: 'scenes'; data: { source: string; scenes: Scene[] } }
+  | { type: 'done'; data: { seconds: number } }
+  | { type: 'error'; data: { message: string } }
+export interface HunterReplayStep { index: number; tool: string; args: Record<string, unknown>; finding?: HunterFinding }
+export const API_BASE = BASE
 
 // ------------------------------------------------------------------ calls
 export const api = {
