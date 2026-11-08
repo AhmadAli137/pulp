@@ -15,7 +15,10 @@ before(async () => {
     try { if ((await fetch(`${base}/api/health`)).ok) break } catch {}
     await new Promise(r => setTimeout(r, 200))
   }
-  browser = await chromium.launch({ channel: process.env.PULP_BROWSER_CHANNEL || 'chrome', headless: true })
+  const executablePath = process.env.PULP_BROWSER_EXECUTABLE
+  browser = await chromium.launch(executablePath
+    ? { executablePath, headless: true }
+    : { channel: process.env.PULP_BROWSER_CHANNEL || 'chrome', headless: true })
 })
 after(async () => { await browser?.close(); server?.kill() })
 
@@ -71,6 +74,26 @@ test('mobile navigation reaches research without horizontal overflow', async t =
   await p.getByRole('button', { name: 'Open navigation' }).click()
   await p.getByRole('button', { name: 'Research & insights' }).click()
   await p.getByText('Ever had a negative balance day', { exact: true }).waitFor()
+})
+
+test('account workspace clearly identifies demo data and navigates to planning', async t => {
+  const p = await pageFor(t)
+  await p.goto(`${base}/twin`)
+  await p.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Financial snapshot' }).waitFor()
+  await p.getByText('Demonstration only', { exact: true }).waitFor()
+  await p.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Shock Lab' }).click()
+  await p.getByRole('heading', { name: 'Shock Lab', exact: true }).waitFor()
+})
+
+test('invalid demo account input gives feedback without switching customers', async t => {
+  const p = await pageFor(t)
+  await p.goto(`${base}/twin`)
+  const account = p.getByRole('textbox', { name: 'Demo account' })
+  await account.fill('1.5')
+  await p.getByRole('button', { name: 'Load', exact: true }).click()
+  await p.getByRole('alert').filter({ hasText: 'Enter a valid positive account ID' }).waitFor()
+  assert.equal(await account.getAttribute('aria-invalid'), 'true')
+  assert.equal(await p.evaluate(() => localStorage.getItem('pulp.account')), '20111')
 })
 
 test('replaying intro can be skipped and restores composer', async t => {

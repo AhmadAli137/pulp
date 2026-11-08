@@ -1,18 +1,26 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { BarChart3, Compass, FlaskConical, Goal, House, Map, Settings2, UserRound, Wallet } from 'lucide-react'
 import { useApp } from '../stores/useApp'
 import { api } from '../services/api'
 import { Spinner } from './ui'
 
-const NAV = [
-  { to: '/', label: 'Home (Pip)', ic: '◎' },
-  { to: '/shock', label: 'Shock Lab', ic: '⚡' },
-  { to: '/twin', label: 'My Financial Twin', ic: '◫' },
-  { to: '/explore', label: 'Explore Futures', ic: '⟡' },
-  { to: '/goals', label: 'My Goals', ic: '◉' },
-  { to: '/roadmap', label: 'Financial Roadmap', ic: '⇢' },
-  { to: '/insights', label: 'Insights', ic: '▥' },
-  { to: '/settings', label: 'Settings', ic: '⚙' },
+const NAV_GROUPS = [
+  { label: 'Overview', links: [
+    { to: '/', label: 'Home', icon: House },
+    { to: '/twin', label: 'Financial snapshot', icon: Wallet },
+    { to: '/insights', label: 'Research & insights', icon: BarChart3 },
+  ] },
+  { label: 'Plan ahead', links: [
+    { to: '/shock', label: 'Shock Lab', icon: FlaskConical },
+    { to: '/explore', label: 'Explore futures', icon: Compass },
+    { to: '/goals', label: 'My goals', icon: Goal },
+    { to: '/roadmap', label: 'Financial roadmap', icon: Map },
+  ] },
+  { label: 'Preferences', links: [
+    { to: '/companion', label: 'AI companion', icon: UserRound },
+    { to: '/settings', label: 'Settings', icon: Settings2 },
+  ] },
 ]
 
 const TITLES: Record<string, [string, string]> = {
@@ -30,6 +38,7 @@ const TITLES: Record<string, [string, string]> = {
 export default function Layout() {
   const { accountId, loadAccount, loadingProfile, profileError, setGemini, aiLabel } = useApp()
   const [draft, setDraft] = useState(accountId ? String(accountId) : '')
+  const [inputError, setInputError] = useState('')
   const loc = useLocation()
   const [title, subtitle] = TITLES[loc.pathname] ?? ['PULP', '']
 
@@ -37,14 +46,20 @@ export default function Layout() {
     api.health().then((h) => setGemini(h.ai_provider !== 'offline', h.ai_label)).catch(() => setGemini(false))
     // Restore the last account on any page after a reload so deep links keep working.
     const saved = (() => { try { return localStorage.getItem('pulp.account') } catch { return null } })()
-    if (!accountId && saved && Number.isInteger(Number(saved))) void loadAccount(Number(saved))
+    if (!accountId && saved && /^\d+$/.test(saved) && Number.isSafeInteger(Number(saved)) && Number(saved) > 0) void loadAccount(Number(saved))
   }, [setGemini]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (accountId) setDraft(String(accountId)) }, [accountId])
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    const id = Number(draft)
-    if (Number.isInteger(id) && id > 0) void loadAccount(id)
+    const raw = draft.trim()
+    const id = Number(raw)
+    if (!/^\d+$/.test(raw) || !Number.isSafeInteger(id) || id < 1) {
+      setInputError('Enter a valid positive account ID from the demo dataset.')
+      return
+    }
+    setInputError('')
+    void loadAccount(id)
   }
 
   return (
@@ -59,17 +74,23 @@ export default function Layout() {
             <div className="tag">Planning Under Life's Pressures</div>
           </div>
         </div>
-        <nav className="nav" aria-label="Main">
-          {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
-              <span className="ic" aria-hidden>{n.ic}</span>{n.label}
-            </NavLink>
+        <nav className="nav" aria-label="Main navigation">
+          {NAV_GROUPS.map((group) => (
+            <div className="nav-group" key={group.label}>
+              <div className="nav-group-label">{group.label}</div>
+              {group.links.map(({ to, label, icon: Icon }) => (
+                <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => isActive ? 'active' : ''}>
+                  <Icon className="ic" size={18} strokeWidth={1.8} aria-hidden="true" />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="foot">
-          Tangerine track · Sheridan Datathon 2026<br />
-          Prepare for what comes next.<br />Data: PKDD'99 Financial dataset (anonymized). Amounts in CAD.<br />
-          AI: {aiLabel}
+          <span className="demo-label">Demonstration only</span>
+          <span>PKDD'99 anonymized research data. Not a live bank account.</span>
+          <span>Amounts in CAD · AI: {aiLabel}</span>
         </div>
       </aside>
       <main className="main">
@@ -78,12 +99,17 @@ export default function Layout() {
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>
-          <form className="acct-pill" onSubmit={submit} aria-label="Select account">
-            <span className="dot" aria-hidden />
-            <label htmlFor="acct" className="small muted">Account</label>
-            <input id="acct" inputMode="numeric" placeholder="account_id" value={draft} onChange={(e) => setDraft(e.target.value)} />
-            <button className="btn primary sm" type="submit" disabled={loadingProfile}>{loadingProfile ? <Spinner /> : 'Load'}</button>
-          </form>
+          <div className="account-control">
+            <form className="acct-pill" onSubmit={submit} aria-label="Select demo account">
+              <span className="dot" aria-hidden />
+              <label htmlFor="acct" className="small muted">Demo account</label>
+              <input id="acct" inputMode="numeric" autoComplete="off" placeholder="Account ID" value={draft}
+                aria-invalid={Boolean(inputError)} aria-describedby={inputError ? 'account-input-error' : undefined}
+                onChange={(e) => { setDraft(e.target.value); setInputError('') }} />
+              <button className="btn primary sm" type="submit" disabled={loadingProfile}>{loadingProfile ? <Spinner /> : 'Load'}</button>
+            </form>
+            {inputError && <p id="account-input-error" className="account-error" role="alert">{inputError}</p>}
+          </div>
         </div>
         {profileError && <div className="err" role="alert" style={{ marginBottom: 16 }}>{profileError} Account IDs are integers from accounts.csv; try a sample from the Overview page.</div>}
         <Outlet />
