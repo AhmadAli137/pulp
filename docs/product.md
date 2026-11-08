@@ -75,3 +75,14 @@ A primary feature must help a person understand their current position, compare 
 The Explore screen and its editable simulation path count are retired; `/explore` redirects to `/shock`. Duplicate shock controls, historical/vulnerability charts in the financial picture, research quartile/archetype/feature dashboards, occupation guesses, strategy scatter charts, plan version tables and repeated strategy cards in briefings are removed from the UI. The underlying analytical services remain for grounded calculations and research reproduction.
 
 Plan options now show practical action language, assumed monthly changes, modeled consequences and missing context. Model provenance, engine calls, scoring weights, objective formulas and challenger role labels are not user controls. Scenario mismatch or stale context hides earlier option results until comparison is refreshed. Goals distinguish reported progress from modeled future progress and link directly to next steps.
+
+
+## Explainable financial stories and loan motivations
+
+The existing financial picture and evidence views include a plain-English `PersonProfile`, rather than adding a new destination. It describes recent account cash flow, the interpretation it supports, confirmed goals/preferences, and borrowing context. A working account pattern is not presented as a biography, personality type or occupation.
+
+Loan facts are original principal, recorded start, scheduled payment, term and status at December 31, 2025. Current outstanding balances and terms remain unknown. Evidence uses up to three calendar months immediately before origination, excludes the origination month because monthly data cannot establish transaction order, and can compare the following three complete calendar months excluding loan repayments. Fewer than three pre-loan months produce no purpose hypothesis.
+
+Repeated pre-loan deficits may suggest bridging a gap; uneven inflows may suggest smoothing cash flow; a later increase in non-repayment outflows may suggest a larger expense. Each explanation is marked unconfirmed, cites its actual basis, presents an alternative, and links to a question and practical decision. These are heuristics, with no calibrated likelihood or causal claim. There is no inferred car, house, business or psychological motive.
+
+A person can explicitly save/correct their loan purpose in the profile. It is scoped to the selected account's recorded loan and updates conversation context, decision questions and profile explanations. Spoken or typed purpose extraction stages a proposal for confirmation and does not turn a past financed purchase into a future goal. Confirmed purpose replaces all purpose hypotheses. Current terms remain a follow-up question; no new affordability or prepayment recommendation is generated from purpose alone.

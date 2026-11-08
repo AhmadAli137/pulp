@@ -49,3 +49,5 @@ The frontend build currently emits a large-bundle warning. Desktop/mobile checks
 - A2UI/Rive migration; current visuals use the existing React/SVG/chart/motion stack.
 
 See [the agent inventory](agents/README.md) for the distinction between runtime roles, deterministic components and proposed future roles.
+
+Loan-purpose hypotheses use coarse monthly patterns and heuristic thresholds, not calibrated probabilities. Loan proceeds and purchase funding cannot be traced from those totals; original principal is not outstanding debt, and historical status is not a current payment assessment. Confirmed purpose improves questions but does not fill in rates, current balances, settlement rules or verified affordability.

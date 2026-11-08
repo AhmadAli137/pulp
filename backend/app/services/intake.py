@@ -1,12 +1,7 @@
 """Intake: getting to know the person before and while planning, with the least friction.
 
-Rules the stage follows:
-  * If PULP has just met someone (no confirmed goal, concern or constraint) it asks the most useful question or two
-    before it runs a shock, and remembers the twist it was asked to run.
-  * Every turn ends with one sharper question, chosen from what is still unknown and from what Stage 1 inferred but
-    could not be sure of (occupation, what the recurring transfer is, whether the loan can move).
-  * What PULP learns is said back in one sentence ("So you want to move out in about a year and you're worried about
-    losing your job, right?") and a spoken or typed "yes" confirms it. Buttons remain as a fallback.
+Explicit scenarios run immediately. Ask one relevant missing question after the calculation, avoid
+repeating answered questions, and confirm new personal details before saving them.
 """
 from __future__ import annotations
 

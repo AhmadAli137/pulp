@@ -269,6 +269,14 @@ def offline_extract(text: str, summary: dict) -> AgentExtraction:
     if re.search(r"can(?:not|'t) (?:cut|reduce) (?:my )?spending|nothing (?:left )?to cut", t):
         changes.append(ProposedChange(field="constraints", value={"type": "can_free_up_per_month", "amount": 0}))
     changes = list(changes) + [c for c in _profile_answers(text) if not any(x.field == "constraints" and x.value.get("type") == c.value.get("type") for x in changes)]
+    purpose_match = re.fullmatch(r"(?:i (?:took out|used) (?:the|this|my|a) loan (?:for|to)|(?:my|the|that|this) loan (?:was|is) (?:taken out )?(?:for|to))\s+(.+?)[.!]?", text.strip(), re.I)
+    if purpose_match and "?" not in text:
+        from .data_store import get_store
+        loan = get_store().loan_for(summary.get("account_id", -1))
+        if loan is not None:
+            purpose = purpose_match[1].strip()[:300]
+            changes = [c for c in changes if c.field != "goals"]
+            changes.append(ProposedChange(field="constraints", value={"type": "loan_purpose", "loan_id": int(loan.loan_id), "purpose": purpose, "label": f"Loan purpose: {purpose}"}))
     return AgentExtraction(intent=intent, proposed_changes=changes, requires_confirmation=bool(changes),
                            rationale="Offline keyword extraction (no AI service).")
 
@@ -404,7 +412,7 @@ Account id: {account_id}. Confirmed context so far: {context}. Questions already
 EXTRACT_PROMPT = """From the user's latest message, extract structured updates to their profile. Output JSON matching the schema.
 Vocabulary: goals.value = {{type: one of {goal_types}, label, target_amount?, target_months?, saved_amount? (only money explicitly already set aside for this goal; never its budget), priority: 1}};
 concerns.value = {{type: one of {concern_types}, label}};
-constraints.value = {{type: expected_rent|can_free_up_per_month|startup_budget|income_replacement|transfer_purpose|bill_date_flexibility|other_income|fee_conditions|protected_spending|extra_income_capacity|current_finances, amount?, fraction?, months?, value?, label?}};
+constraints.value = {{type: expected_rent|can_free_up_per_month|startup_budget|income_replacement|transfer_purpose|bill_date_flexibility|other_income|fee_conditions|protected_spending|extra_income_capacity|current_finances|loan_purpose, amount?, fraction?, months?, value?, label?, loan_id? (use the recorded loan ID), purpose? (only the purpose explicitly stated by the person; never infer from the loan size or account patterns)}};
 preferences.value = {{type: risk_preference, choice: safety|speed|balanced}};
 upcoming_events.value = {{type: life_event, label, months_from_now, amount?}}.
 Only propose what the user actually said. If nothing new, proposed_changes = []. follow_up_question must be one short question
@@ -446,6 +454,7 @@ def gemini_turn(account_id: int, text: str, summary: dict, history: list[dict], 
 
     ex_prompt = EXTRACT_PROMPT.format(goal_types=list(GOAL_LABELS.keys()), concern_types=["income_loss", "irregular_income", "rising_costs", "rent_increase", "debt", "unexpected_expense", "other"],
                                       context=json.dumps({k: summary[k] for k in ("goals", "concerns", "constraints", "preferences")}), message=text)
+    ex_prompt += "\nRecorded loan for this account (bind purpose to this ID; no purpose is inferred): " + json.dumps(summary.get("recorded_loan"))
     ex_prompt += "\nRecent conversation (use the question to interpret short answers; do not invent details): " + json.dumps(history[-6:], default=str)
     ex_prompt += "\nPreserve what the user will not cut, transfer purpose, current changes and work limitations as constraints. A payment or support transfer is not savings."
     ex_cfg = types.GenerateContentConfig(response_mime_type="application/json", response_json_schema=AgentExtraction.model_json_schema(), temperature=0.0)
@@ -492,6 +501,12 @@ AI_MODES = ("gemini", "vultr")
 def chat(account_id: int, text: str, prefer_offline: bool = False, record_history: bool = True) -> dict:
     ctx = cm.load_context(account_id)
     summary = cm.summarize(ctx)
+    from .data_store import get_store
+    try:
+        recorded_loan = get_store().loan_for(account_id)
+    except FileNotFoundError:
+        recorded_loan = None  # Optional extraction context; formula-only tests need no dataset.
+    summary["recorded_loan"] = {"loan_id": int(recorded_loan.loan_id), "loan_start": str(recorded_loan.loan_start)} if recorded_loan is not None else None
     pending = summary["pending_proposals"]
     if record_history:
         cm.record_turn(account_id, "user", text)
@@ -514,6 +529,7 @@ def chat(account_id: int, text: str, prefer_offline: bool = False, record_histor
                 goal_types=list(GOAL_LABELS.keys()),
                 concern_types=["income_loss", "irregular_income", "rising_costs", "rent_increase", "debt", "unexpected_expense", "other"],
                 context=json.dumps({k: summary[k] for k in ("goals", "concerns", "constraints", "preferences")}), message=text)
+            ex_prompt += "\nRecorded loan for this account: " + json.dumps(summary.get("recorded_loan"))
             reply, extraction, tools_used = vultr_turn(account_id, text, summary, ctx["conversation"][:-1], SYSTEM_PROMPT, ex_prompt, AgentExtraction)
             mode = "vultr"
         except Exception as e:

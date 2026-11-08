@@ -68,7 +68,7 @@ def freeze_request(m: OfficialMetrics, ctx: dict, *, r: float, h: float, one_off
     try:
         from .decision_profile import build_decision_profile
         from .data_store import get_store
-        decision_profile = build_decision_profile(get_store().monthly_for(m.account_id), get_features().loc[m.account_id], summary)
+        decision_profile = build_decision_profile(get_store().monthly_for(m.account_id), get_features().loc[m.account_id], summary, get_store().loan_for(m.account_id))
     except KeyError:  # synthetic metrics may not have source records
         pass
     return {

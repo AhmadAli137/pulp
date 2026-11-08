@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 
 
-def build_decision_profile(monthly, row, summary: dict) -> dict:
+def build_decision_profile(monthly, row, summary: dict, loan=None) -> dict:
     recent = monthly.sort_values("month").tail(6)
     net = recent["money_in"] - recent["money_out"]
     period = {"from": str(recent["month"].iloc[0]), "to": str(recent["month"].iloc[-1]), "months": len(recent)}
@@ -50,6 +50,11 @@ def build_decision_profile(monthly, row, summary: dict) -> dict:
             "Compare eligible account options or a payment buffer after checking their conditions.", 75, "fee_conditions")
     goals = sorted(summary.get("goals", []), key=lambda g: g.get("priority", 1))
     questions = []
+    from .life_profile import build_life_profile
+    life_profile = build_life_profile(monthly, summary, loan)
+    if life_profile["loan"]:
+        story = life_profile["loan"]
+        questions.append({"key": "loan_current_terms" if story["confirmed_purpose"] else "loan_purpose", "text": story["question"], "why": story["decision"], "value": 1.1})
     if goals:
         goal = goals[0]
         if not goal.get("target_months"):
@@ -61,6 +66,7 @@ def build_decision_profile(monthly, row, summary: dict) -> dict:
     for o in sorted(observations, key=lambda o: -o["priority"]):
         if o["needs_answer"]:
             questions.append({"key": o["key"], "text": o["question"], "why": o["life_effect"], "value": o["priority"] / 100})
+    questions.sort(key=lambda q: -q["value"])
     small = [{"label": "Add a monthly expense or keep that money for your goal", "question": "What monthly purchase or service are you considering, and what would it cost?"}]
     if any(o["key"] == "bill_timing" for o in observations):
         small.insert(0, {"label": "Change a bill date or keep a payment buffer", "question": "Which bill would you want to move, and when does it leave?"})
@@ -69,7 +75,7 @@ def build_decision_profile(monthly, row, summary: dict) -> dict:
         big = [{"label": f"{label}: keep the date, lower the budget, or wait longer", "question": questions[0]["text"] if questions else "Would you rather adjust the cost or the date?"}]
     else:
         big = [{"label": "A trip, a move, study, or a change in work", "question": "What bigger decision are you weighing up in your own life?"}]
-    return {"period": period, "recent_monthly_room": margin, "lowest_recorded_monthly_room": round(float(net.min()), 2),
+    return {"life_profile": life_profile, "period": period, "recent_monthly_room": margin, "lowest_recorded_monthly_room": round(float(net.min()), 2),
         "observations": observations, "questions": questions, "decisions": {"small": small, "big": big},
         "limits": ["These are historical records, not a live balance or a promise of affordability.",
                    "Card and cash totals do not identify optional purchases.",

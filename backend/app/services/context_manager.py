@@ -134,12 +134,20 @@ def _apply_change(ctx: dict, change: dict, source: str) -> dict:
     value = change.get("value", {})
     if change.get("operation") == "update" and field == "constraints":
         existing = next((i for i in ctx[field] if i["id"] == change.get("target_id") or (value.get("type") and i["value"].get("type") == value["type"])), None)
-        if existing and existing["value"].get("type") == "financial_position":
+        if existing and existing["value"].get("type") in ("financial_position", "loan_purpose"):
             value = {**existing["value"], **value}
             change = {**change, "value": value}
     if change.get("operation", "add") != "remove" and field == "constraints" and value.get("type") == "financial_position":
         from .financial_overview import FinancialPosition
         change = {**change, "value": FinancialPosition.model_validate(value).model_dump(mode="json")}
+    if change.get("operation", "add") != "remove" and field == "constraints" and value.get("type") == "loan_purpose":
+        from .life_profile import LoanPurpose
+        from .data_store import get_store
+        validated = LoanPurpose.model_validate(value).model_dump()
+        loan = get_store().loan_for(ctx["account_id"])
+        if loan is None or int(loan.loan_id) != validated["loan_id"]:
+            raise ValueError("Loan purpose must refer to this account's recorded loan")
+        change = {**change, "value": {**validated, "label": f"Loan purpose: {validated['purpose']}"}}
     if change.get("operation", "add") != "remove" and field == "goals" and "saved_amount" in value:
         import math
         amount = value["saved_amount"]

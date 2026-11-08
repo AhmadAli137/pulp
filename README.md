@@ -29,6 +29,8 @@ The primary navigation has four destinations: conversation, your financial pictu
 | Briefings & summaries | `/briefings` | Daily focus and seven-day review of saved updates, goals and next questions |
 | Preferences & data | `/settings` | Accessibility, service status, saved-context controls and data limitations |
 
+The financial story also explains borrowing context: recorded loan terms and status, evidence from complete months around origination, tentative alternative explanations, and motivations the person confirms. Loan purpose is never inferred as a fact, and correcting it replaces the tentative explanation.
+
 The profile interpretation layer explains **what the records show, why it may matter, what is unknown, and which decision it can inform**. It does not assume card spending is discretionary, a transfer is savings, or pension income means extra shifts are possible. Missing budgets, dates and spending flexibility lead to questions or conditional options.
 
 Reported balances are entered explicitly; unknown balances and goal savings stay unknown. Daily and weekly briefings are generated inside Pulp when opened, with no email or scheduled notifications. Goal savings inform questions; strategy projections still use historical cash flow and do not assume reported assets are liquid.
@@ -88,7 +90,7 @@ npm --prefix frontend run test:e2e
 python docs/agents/validate_examples.py
 ```
 
-Browser tests require installed Chrome (or the configured Playwright channel), a built frontend and a free port 8002. They use an isolated API, temporary context and disabled live AI credentials. The last code verification on November 8, 2026 passed **138 backend tests, 17 browser tests and the voice client regression test**. Counts are a dated snapshot, not a fixed acceptance target. CI runs a smaller named backend subset, voice regression and the frontend build; it does not run the full local browser suite. [Testing and verification](docs/testing.md).
+Browser tests require installed Chrome (or the configured Playwright channel), a built frontend and a free port 8002. They use an isolated API, temporary context and disabled live AI credentials. The last code verification on November 8, 2026 passed **144 backend tests, 18 browser tests and the voice client regression test**. Counts are a dated snapshot, not a fixed acceptance target. CI runs a smaller named backend subset, voice regression and the frontend build; it does not run the full local browser suite. [Testing and verification](docs/testing.md).
 
 ## Data and research
 

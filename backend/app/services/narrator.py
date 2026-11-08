@@ -109,5 +109,5 @@ def narrative_for(account_id: int, use_ai: bool = True) -> dict:
     from .decision_profile import build_decision_profile
     from .data_store import get_store
     from . import context_manager as cm
-    out["decision_profile"] = build_decision_profile(get_store().monthly_for(account_id), row, cm.summarize(cm.load_context(account_id)))
+    out["decision_profile"] = build_decision_profile(get_store().monthly_for(account_id), row, cm.summarize(cm.load_context(account_id)), get_store().loan_for(account_id))
     return out
