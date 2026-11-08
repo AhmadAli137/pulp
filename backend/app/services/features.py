@@ -10,6 +10,7 @@ talk about, which keeps the model from inventing facts.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from functools import lru_cache
 from typing import Callable
 
@@ -19,6 +20,7 @@ import pandas as pd
 from .data_store import DataStore, get_store
 from .financial_profiles import build_population_table, shock_population
 from .resilience_history import HISTORY_DOCS, history_table
+from .. import config
 
 AS_OF = pd.Timestamp("2025-12-31")
 
@@ -58,6 +60,13 @@ FEATURE_DOCS: dict[str, str] = {
     "district_unemployment": "district unemployment rate 2023 (%)", "n_standing_orders": "standing orders on the account",
     "so_unlabelled_amount": "monthly standing orders with no stated purpose (often savings or transfers to family)",
     **HISTORY_DOCS,
+    "payday_dom": "day of the month the main inflow usually lands (from transactions.csv)",
+    "payday_regular_share": "share of months where the main inflow landed within two days of that day",
+    "bill_dom": "day of the month labelled bills usually leave", "bills_before_pay_share": "share of months where the first bill left before that month's pay arrived",
+    "penalty_events": "penalty-interest postings for a negative balance", "penalty_total": "total penalty interest paid", "penalty_months": "months with penalty interest",
+    "recurring_partner_amount": "stable monthly transfer to one other account (>= 6 months, steady amount)", "recurring_partner_months": "months that transfer occurred",
+    "recurring_partner_purpose": "label on that transfer when the bank has one (loan payment, household bills, insurance); blank = unlabelled, often savings or support",
+    "n_partners_out": "distinct accounts money is sent to",
     "runway_layoff": "official runway under the 55% layoff (months; inf = no shortfall)", "survives6_layoff": "runway_layoff >= 6",
     "runway_combined": "official runway under layoff + bills +15%", "survives6_combined": "runway_combined >= 6",
 }
@@ -158,6 +167,21 @@ def _account_features(store: DataStore) -> pd.DataFrame:
     return out
 
 
+def _tx_features() -> pd.DataFrame | None:
+    """Per-account transaction signals built offline by scripts/build_tx_features.py (committed in data/derived)."""
+    for d in config.DERIVED_READ_DIRS:
+        p = Path(d) / "tx_features.csv"
+        if p.exists():
+            try:
+                t = pd.read_csv(p, index_col="account_id", dtype={"recurring_partner_purpose": str, "recurring_partner_bank": str})
+                t["recurring_partner_purpose"] = t["recurring_partner_purpose"].fillna("")
+                t["recurring_partner_bank"] = t["recurring_partner_bank"].fillna("")
+                return t
+            except Exception:
+                continue
+    return None
+
+
 def build_feature_table(store: DataStore | None = None) -> pd.DataFrame:
     store = store or get_store()
     ms = store.monthly
@@ -192,6 +216,12 @@ def build_feature_table(store: DataStore | None = None) -> pd.DataFrame:
 
     f = f.join(_per_account_trends(ms, pop))
     f = f.join(history_table(ms))
+    tx = _tx_features()
+    if tx is not None:
+        f = f.join(tx, how="left")
+        for c in ("penalty_events", "penalty_total", "penalty_months", "recurring_partner_amount", "recurring_partner_months", "n_partners_out"):
+            f[c] = f[c].fillna(0)
+        f["recurring_partner_purpose"] = f["recurring_partner_purpose"].fillna("")
 
     loans = store.loans.set_index("account_id")
     f["has_running_loan"] = f.index.isin(loans[loans.status.isin(["C", "D"])].index)
@@ -232,14 +262,38 @@ def _pct(x: float) -> str:
     return f"{x:.0%}"
 
 
+def _fnum(x) -> float:
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return 0.0
+    return v if np.isfinite(v) else 0.0
+
+
+def _has_days(r: pd.Series) -> bool:
+    return _fnum(r.get("bill_dom")) > 0 and _fnum(r.get("payday_dom")) > 0
+
+
+def _ord(x) -> str:
+    n = int(round(_fnum(x)))
+    suf = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suf}"
+
+
 FLAG_RULES: list[FlagRule] = [
+    FlagRule("penalty_interest", "Paying penalty interest for going under", "watch",
+             lambda r: bool(_fnum(r.get("penalty_events")) >= 3),
+             lambda r: f"penalty interest charged {int(_fnum(r.get('penalty_events')))} times across {int(_fnum(r.get('penalty_months')))} months, ${_fnum(r.get('penalty_total')):,.0f} in total"
+                       + (f"; bills leave around the {_ord(r.bill_dom)}, pay lands around the {_ord(r.payday_dom)}" if _has_days(r) else ""),
+             "the bank has charged you for dipping below zero more than a few times, usually a timing problem that a different bill date fixes"),
     FlagRule("thin_margin", "Spending close to income", "risk",
              lambda r: bool(r.spending_ratio >= 0.95),
              lambda r: f"typical spending is {_pct(r.spending_ratio)} of typical inflow (${r.S:,.0f} of ${r.I:,.0f})",
              "almost nothing is left over in a typical month, so any income dip becomes a shortfall fast"),
     FlagRule("timing_dips", "Goes negative on timing, not shortage", "watch",
              lambda r: bool(r.neg_months_share > 0 and r.timing_dip_share >= 0.5 and r.neg_months_share * r.months >= 3),
-             lambda r: f"{int(round(r.neg_months_share * r.months))} months had a negative-balance day, and in {_pct(r.timing_dip_share)} of them inflow still covered outflow",
+             lambda r: f"{int(round(r.neg_months_share * r.months))} months had a negative-balance day, and in {_pct(r.timing_dip_share)} of them inflow still covered outflow"
+                       + (f"; bills usually leave around the {_ord(r.bill_dom)} and pay lands around the {_ord(r.payday_dom)}" if _has_days(r) else ""),
              "the account dips below zero because bills land before money arrives, which is a timing habit rather than a lack of money"),
     FlagRule("fee_bleed", "Fees well above typical", "watch",
              lambda r: bool(r.fee_share >= 0.004),   # top ~7% of accounts; statement fees alone sit near 0.1%
@@ -251,7 +305,9 @@ FLAG_RULES: list[FlagRule] = [
              "spending has been drifting up faster than income, which quietly shrinks the margin each year"),
     FlagRule("savings_elsewhere", "Regular transfer to another bank", "info",
              lambda r: bool(r.regular_transfer_out),
-             lambda r: f"a steady unlabelled transfer out of about ${r.regular_transfer_out_amount:,.0f} most months",
+             lambda r: (f"a steady ${r.recurring_partner_amount:,.0f} a month goes to one account at another bank ({int(r.recurring_partner_months)} months, "
+                        + (f"labelled {r.recurring_partner_purpose}" if str(r.recurring_partner_purpose) else "no label, so likely savings or support") + ")")
+                       if _fnum(r.get("recurring_partner_amount")) > 0 else f"a steady unlabelled transfer out of about ${r.regular_transfer_out_amount:,.0f} most months",
              "a regular transfer leaves this account every month, so the real safety cushion is probably larger than the balance here shows"),
     FlagRule("pension_dependent", "Pension is the main income", "info",
              lambda r: bool(r.pension_share >= 0.5),

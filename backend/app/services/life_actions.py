@@ -100,11 +100,17 @@ def humanize_candidate(c: dict, m, row, req: dict, stay: dict | None) -> dict:
     return c
 
 
-def habit_actions(flags: list[dict], mix: dict) -> list[dict]:
+def habit_actions(flags: list[dict], mix: dict, row=None) -> list[dict]:
     out = []
     keys = {f["key"] for f in flags}
-    if "timing_dips" in keys:
-        out.append({"title": "Move your bill dates to just after payday", "how": "Your account dips below zero in months where the money was there; the bills just land first. One call to each biller fixes it.",
+    if "timing_dips" in keys or "penalty_interest" in keys:
+        days = ""
+        try:
+            if row is not None and float(row.get("bill_dom", 0) or 0) > 0 and float(row.get("payday_dom", 0) or 0) > 0:
+                days = f" Your bills usually leave around the {int(row['bill_dom'])}th and your pay lands around the {int(row['payday_dom'])}th."
+        except (TypeError, ValueError):
+            days = ""
+        out.append({"title": "Move your bill dates to just after payday", "how": "Your account dips below zero in months where the money was there; the bills just land first." + days + " One call to each biller fixes it.",
                     "horizon": "this month", "effect": "fewer overdraft days and no penalty interest", "source": "habit"})
     if "fee_bleed" in keys:
         out.append({"title": "Stop the fee leak", "how": f"Fees and penalty interest are about {_m(mix.get('fees', 0))} a month. Ask the bank for a no-fee package or keep a small cushion so the penalty interest stops.",
@@ -143,7 +149,7 @@ def life_actions(plan: dict, m, row, flags: list[dict]) -> dict:
         seen.add(c["action"])
         effect = f"shortfall risk {p0:.0%} → {float(c['prob_shortfall_under_stress']):.0%}" if p0 is not None else f"shortfall risk {float(c['prob_shortfall_under_stress']):.0%}"
         actions.append({"title": c["action"], "how": c.get("how", ""), "horizon": c.get("horizon", "this month"), "effect": effect, "source": c["source"]})
-    actions += habit_actions(flags, mix)[:2]
+    actions += habit_actions(flags, mix, row)[:2]
     actions.append(future_action(m, row))
     headline = "What you could actually do" if actions else "Nothing to change right now"
     return {"headline": headline, "actions": actions[:5]}

@@ -24,7 +24,13 @@ backend (FastAPI + pandas + numpy + Pydantic)
   services/council.py             Stage 3 council: fan-out grid + Google ADK Strategist/Challenger + validation; sync and streaming entry points
   services/explainer.py           scene script (habit, runway, two futures, lever) built in code; Explainer LlmAgent rewrites narration only
   services/director.py            the Director: owns the stage; deterministic storyboards for opening and twist cards, Director LlmAgent with engine tools for free text; captions number-checked
-  services/features.py            Stage 1 Feature Forge: ~58 behavioural signals per account from semantic roles; rule-based flags with evidence
+  services/features.py            Stage 1 Feature Forge: ~78 behavioural signals per account (monthly roles + observed income-drop history + transaction-level
+                                  payday/bill timing, penalty interest, recurring partner account); rule-based flags with evidence
+  services/resilience_history.py  observed income-drop episodes, spending response, recovery; ground-truth validation against loans that went bad
+  services/life_actions.py        engine levers -> decisions in life language (spend less on X, pause the transfer, extra hours, floor), habits, future
+  services/intake.py              first questions, profile-driven questions, restate + spoken yes/no confirmation, held twist
+  services/director.py            the Director: owns the stage; storyboards and the Director LlmAgent with engine tools
+  scripts/build_tx_features.py    offline: transactions.csv -> data/derived/tx_features.csv (committed)
   services/archetypes.py          Stage 1: k-means archetypes described in numbers (code), named by Gemini on ADK (or rules)
   services/narrator.py            Stage 1 Profile Narrator: grounded sentences per account (ADK LlmAgent, template fallback, cached)
   services/hunter.py              Stage 1 Pattern Hunter: ADK hypothesis loop with statistical tools + deterministic battery
@@ -82,6 +88,8 @@ Everything authoritative is deterministic Python; the model only converses, inte
 | GET | /api/research/archetypes | archetype clusters with statistics and names |
 | GET | /api/research/hunter | Pattern Hunter findings (ADK run) or the deterministic battery |
 | GET | /api/research/features?feature= | layoff survival by quantile of any feature |
+| GET | /api/research/validation | flags and the simulated layoff against loans that actually went bad |
+| GET | /api/agent/personas | who the agents are, what they read and write, their guardrails |
 | POST | /api/replan · GET /api/replan/{id}/diff | replan on demand; last diff |
 
 OpenAPI docs are served at `/docs`.
