@@ -27,6 +27,18 @@ async def lifespan(app: FastAPI):
     log.info("Loaded %d accounts from %s", len(store.account_ids), store.data_dir)
     get_population()
     log.info("Population table ready")
+
+    def _warm():  # Stage 1 artefacts in the background so the first stage turn is not the one that pays for them
+        try:
+            from .services.features import get_features
+            from .services.archetypes import get_archetypes
+            get_features(); get_archetypes()
+            log.info("Stage 1 features and archetypes ready")
+        except Exception as exc:  # pragma: no cover - warm-up is best effort
+            log.warning("Stage 1 warm-up failed: %s", exc)
+
+    import threading
+    threading.Thread(target=_warm, name="stage1-warmup", daemon=True).start()
     yield
 
 

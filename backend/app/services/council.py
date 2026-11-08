@@ -158,6 +158,14 @@ def _clamp_lever(m: OfficialMetrics, req: dict, lever: dict) -> tuple[StrategyAd
     extra = num("extra_income_per_month", 0.50 * I)
     capacity = max(0.0, I - S + freed + extra)
     contrib = num("goal_contribution_per_month", capacity)
+    raw_floor = lever.get("emergency_floor", 0.0)
+    try:
+        raw_floor = float(raw_floor or 0.0)
+    except (TypeError, ValueError):
+        raw_floor = 0.0
+    if 0 < raw_floor < 24:   # a model that answers in months of spending instead of dollars
+        notes.append(f"emergency_floor {raw_floor:g} read as months of spending")
+        lever = dict(lever, emergency_floor=round(raw_floor * S, 2))
     floor = num("emergency_floor", 2.0 * max(req["stress_need"], 1.0))
     if freed == 0 and extra == 0 and contrib == 0:
         return None, notes + ["lever has no effect after clamping"]
@@ -200,7 +208,7 @@ For every lever you propose, call score_strategy once with those exact dials so 
 Then reply with ONLY a JSON object, no prose:
 {{"levers": [{{"label": str, "freed_up_per_month": number, "goal_contribution_per_month": number,
   "emergency_floor": number, "extra_income_per_month": number, "why": str, "evidence": str}}]}}
-Dollar amounts are monthly and in Canadian dollars. Do not report scores yourself; the engine already has them."""
+All four dials are DOLLAR amounts (monthly for the first three, a balance level for emergency_floor), never months. Do not report scores yourself; the engine already has them."""
 
 CHALLENGER_INSTRUCTION = """You are the Challenger in PULP's planning council for one bank customer.
 You receive a frozen request as JSON with the official numbers, the shock, the confirmed goal, the confirmed life context

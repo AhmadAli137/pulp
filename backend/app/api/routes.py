@@ -15,6 +15,7 @@ from ..services import context_manager as cm
 from ..services.cohort_analysis import cohort_for, research_summary
 from ..services.council import council_available, run_council, run_council_stream
 from ..services.explainer import build_scenes, narrate
+from ..services.director import SHOCK_DECK, stage_stream
 from ..services.archetypes import flag_catalog, get_archetypes
 from ..services.hunter import get_findings
 from ..services.narrator import narrative_for
@@ -336,6 +337,34 @@ async def get_agent_run(account_id: int, income_fraction: float = Query(0.55, ge
             scenes, source = await run_in_threadpool(narrate, scenes, use_ai)
             yield sse("scenes", {"source": source, "scenes": scenes})
             yield sse("stage", {"name": "explain", "status": "done", "detail": f"{len(scenes)} scenes ready", "seconds": round(time.perf_counter() - t0, 2)})
+            yield sse("done", {"seconds": round(time.perf_counter() - t0, 2)})
+        except Exception as exc:  # noqa: BLE001
+            yield sse("error", {"message": f"{type(exc).__name__}: {exc}"[:400]})
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
+
+
+@router.get("/agent/deck")
+def get_deck():
+    """The twist deck: realistic Canadian shocks the stage can deal."""
+    return {"cards": [{k: c[k] for k in ("key", "title", "text", "r", "h", "duration")} | {"one_off": c.get("one_off", 0.0), "one_off_months": c.get("one_off_months")} for c in SHOCK_DECK]}
+
+
+@router.get("/agent/stage")
+async def get_agent_stage(account_id: int, message: str = Query("__intro__", max_length=2000), use_ai: bool = Query(True)):
+    """Server-sent events for one stage turn: agent events while the Director works, memory, then a storyboard of beats."""
+    _metrics_or_404(account_id)
+
+    def sse(event: str, data) -> str:
+        return "event: " + event + "\ndata: " + json.dumps(_clean(data), default=float) + "\n\n"
+
+    async def gen():
+        import time
+        t0 = time.perf_counter()
+        try:
+            async for etype, data in stage_stream(account_id, message, use_ai=use_ai):
+                yield sse(etype, data)
             yield sse("done", {"seconds": round(time.perf_counter() - t0, 2)})
         except Exception as exc:  # noqa: BLE001
             yield sse("error", {"message": f"{type(exc).__name__}: {exc}"[:400]})

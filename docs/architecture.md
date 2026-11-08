@@ -23,6 +23,7 @@ backend (FastAPI + pandas + numpy + Pydantic)
   services/gemini_agent.py        Gemini/Vultr tools + validated extraction; offline engine; question heuristic
   services/council.py             Stage 3 council: fan-out grid + Google ADK Strategist/Challenger + validation; sync and streaming entry points
   services/explainer.py           scene script (habit, runway, two futures, lever) built in code; Explainer LlmAgent rewrites narration only
+  services/director.py            the Director: owns the stage; deterministic storyboards for opening and twist cards, Director LlmAgent with engine tools for free text; captions number-checked
   services/features.py            Stage 1 Feature Forge: ~58 behavioural signals per account from semantic roles; rule-based flags with evidence
   services/archetypes.py          Stage 1: k-means archetypes described in numbers (code), named by Gemini on ADK (or rules)
   services/narrator.py            Stage 1 Profile Narrator: grounded sentences per account (ADK LlmAgent, template fallback, cached)
@@ -75,6 +76,8 @@ Everything authoritative is deterministic Python; the model only converses, inte
 | POST | /api/agent/plan | Stage 3 council: fan-out grid, Strategist + Challenger on Google ADK, validated ranking |
 | GET | /api/customers/{id}/insights | Stage 1 profile: flags with evidence, archetype, narrator sentences |
 | GET | /api/agent/run | server-sent events: insight, council stages and live agent events, plan, scenes, done |
+| GET | /api/agent/stage | the stage: one turn (opening, twist card, or free text) as agent events, memory and a storyboard of beats |
+| GET | /api/agent/deck | the twist deck of realistic Canadian shocks |
 | POST | /api/agent/explain | council plus Explainer scene script in one response |
 | GET | /api/research/archetypes | archetype clusters with statistics and names |
 | GET | /api/research/hunter | Pattern Hunter findings (ADK run) or the deterministic battery |
@@ -97,6 +100,20 @@ CSVs ─▶ features.build_feature_table (roles → ~58 signals, flags)      cod
 The model never sees raw rows: it receives cluster medians, tool results and flag evidence strings. `scripts/run_stage1.py`
 runs the batch offline and commits the artefacts; the API serves them and recomputes the deterministic parts when they
 are missing.
+
+## The stage and the Director (Google ADK)
+
+The home screen is a stage: one visual at a time, Pip narrating, a beat timeline, the input below. `director.py` decides
+what to show for each turn and streams it over `GET /api/agent/stage`:
+
+```
+__intro__  ─▶ opening storyboard (code): picture → river/cup/calendar/ribbon per flag → crowd → ask
+twist:<key>─▶ deal a card from SHOCK_DECK → council (its agent events stream live) → shuffle/cards → timeline → swarm → podium → dial → fork → math → ask
+free text  ─▶ memory (offline extraction, proposals) + Director LlmAgent with tools (get_profile, get_cohort, deal_or_set_shock,
+              run_council[with_agents], show_math) → beats: visual + source + caption; params attached by code; captions number-checked
+```
+
+Visual vocabulary: picture, cup, river, timeline, fork, calendar, dial, crowd, ribbon, cards, shuffle, swarm, podium, math, none.
 
 ## Planning council (Google ADK)
 
