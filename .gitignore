@@ -44,3 +44,7 @@ frontend/.shoot*.mjs
 data/derived/features.csv
 # Runtime Stage 1 cache (computed artefacts and narrative cache; the committed copies live in data/derived)
 backend/app/storage/derived/
+
+# temporary scripts and configs from local checks
+frontend/tmp-*.mjs
+frontend/vite.tmp-*.config.ts
