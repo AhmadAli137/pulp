@@ -154,6 +154,34 @@ def _amounts(text: str) -> list[float]:
     return vals
 
 
+PROFILE_ANSWER_PATTERNS = [
+    ("work_type", "for yourself", r"self[- ]?employed|for myself|my own business|freelanc|contractor|gig work|run my own"),
+    ("work_type", "for an employer", r"for an? (employer|company|firm|bank|hospital|school|government)|salaried|my employer|full[- ]time job|part[- ]time job|i work (at|for) "),
+    ("transfer_purpose", "savings", r"(that|it|the transfer|the money)('?s| is)? (my )?savings|goes (in)?to (my )?savings|tfsa|rrsp|saving(s)? account"),
+    ("transfer_purpose", "a payment", r"(that|it|the transfer)('?s| is) (a |my )?(payment|loan|car payment|rent|mortgage|child support|credit card)"),
+    ("household", "rent", r"i rent|renting|my landlord|my lease"),
+    ("household", "own", r"i own|my mortgage|own my (place|home|house|condo)"),
+    ("other_income", "yes", r"(also|plus|as well as|on top).*(income|pension|work|job)|side (gig|income|hustle)"),
+]
+
+
+def _profile_answers(text: str) -> list[ProposedChange]:
+    out: list[ProposedChange] = []
+    low = text.lower()
+    seen: set[str] = set()
+    for ctype, value, pat in PROFILE_ANSWER_PATTERNS:
+        if ctype in seen:
+            continue
+        if re.search(pat, low):
+            label = {"work_type": f"works {value}", "transfer_purpose": f"the monthly transfer is {value}", "household": f"{value}s their home",
+                     "other_income": "has other income besides the pension"}[ctype]
+            out.append(ProposedChange(field="constraints", operation="add", value={"type": ctype, "value": value, "label": label}))
+            seen.add(ctype)
+    if re.search(r"(kids?|children|dependents?|my (son|daughter|parents?|wife|husband|partner) depends?)", low):
+        out.append(ProposedChange(field="constraints", operation="add", value={"type": "dependents", "value": "yes", "label": "someone depends on their income"}))
+    return out
+
+
 def offline_extract(text: str, summary: dict) -> AgentExtraction:
     t = text.lower()
     changes: list[ProposedChange] = []
@@ -226,6 +254,7 @@ def offline_extract(text: str, summary: dict) -> AgentExtraction:
         intent = "update_event"
     elif "?" in text:
         intent = "question"
+    changes = list(changes) + [c for c in _profile_answers(text) if not any(x.field == "constraints" and x.value.get("type") == c.value.get("type") for x in changes)]
     return AgentExtraction(intent=intent, proposed_changes=changes, requires_confirmation=bool(changes),
                            rationale="Offline keyword extraction (no AI service).")
 

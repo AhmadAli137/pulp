@@ -20,6 +20,7 @@ import pandas as pd
 from .. import config
 from .adk_runtime import LlmAgent, adk_available, agent_output, run_agent
 from .features import FEATURE_DOCS, FLAG_RULES, flag_matrix, get_features
+from .resilience_history import default_validation
 
 ARTEFACT = "hunter_findings.json"
 MAX_TOOL_CALLS = 24
@@ -238,6 +239,26 @@ def baseline_battery(f: pd.DataFrame | None = None) -> dict:
                      "statement": f"Lowest quartile of {feat} ({lo['range']}) survives {lo['survive6_pct']:.0f}% of the time; highest quartile ({hi['range']}) {hi['survive6_pct']:.0f}%.",
                      "evidence": f"survival_by_quantile({feat}, layoff, 4)", "strength": "strong" if r["spread_pp"] >= 25 else "moderate",
                      "caveat": "Quartile spread; not adjusted for income.", "effect": r["spread_pp"]})
+    # ground truth: flags versus loans that actually went bad
+    try:
+        from .data_store import get_store
+        val = default_validation(f, get_store().loans, tb.fm)
+        if val.get("available"):
+            for d in val["by_flag"][:3]:
+                if abs(d["bad_rate_with_pct"] - d["bad_rate_without_pct"]) >= 5:
+                    label = next((fr.label for fr in FLAG_RULES if fr.key == d["flag"]), d["flag"])
+                    rows.append({"title": f"Loans went bad {d['lift']:.1f}x as often with '{label}'",
+                                 "statement": f"Among the {val['loans']} accounts with a loan, {d['bad_rate_with_pct']:.0f}% of the {d['n_with']} flagged '{label}' saw the loan go bad (status B or D) versus {d['bad_rate_without_pct']:.0f}% of the rest.",
+                                 "evidence": f"default_validation({d['flag']})", "strength": "strong" if d["lift"] >= 2 else "moderate",
+                                 "caveat": "Real outcomes, not simulation; small groups, and the loan status is a snapshot at end of 2025.", "effect": abs(d["bad_rate_with_pct"] - d["bad_rate_without_pct"]) * 2})
+            bs = val["by_survival"]
+            if bs.get("fails_layoff_bad_rate_pct") is not None and bs.get("survives_layoff_bad_rate_pct") is not None:
+                rows.append({"title": "Simulated layoff failure lines up with real loan trouble",
+                             "statement": f"Accounts that fail the simulated six-month layoff saw their loan go bad {bs['fails_layoff_bad_rate_pct']:.0f}% of the time ({bs['n_fail']} accounts) versus {bs['survives_layoff_bad_rate_pct']:.0f}% for those that survive it ({bs['n_survive']}).",
+                             "evidence": "default_validation(survives6_layoff)", "strength": "strong" if abs(bs["fails_layoff_bad_rate_pct"] - bs["survives_layoff_bad_rate_pct"]) >= 10 else "moderate",
+                             "caveat": "The runway formula uses the loan payment inside spending, so this is partly circular.", "effect": abs(bs["fails_layoff_bad_rate_pct"] - bs["survives_layoff_bad_rate_pct"]) * 2})
+    except Exception:
+        pass
     rows.sort(key=lambda d: -d["effect"])
     return {"mode": "baseline", "model": None, "ran_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "budget": None,
             "tool_calls_made": len(tb.calls), "tool_log": [], "findings": rows[:12], "summary": None, "best_finding": rows[0]["title"] if rows else None,

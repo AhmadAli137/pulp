@@ -18,6 +18,7 @@ import pandas as pd
 
 from .data_store import DataStore, get_store
 from .financial_profiles import build_population_table, shock_population
+from .resilience_history import HISTORY_DOCS, history_table
 
 AS_OF = pd.Timestamp("2025-12-31")
 
@@ -56,6 +57,7 @@ FEATURE_DOCS: dict[str, str] = {
     "district_salary": "district average monthly salary", "inflow_vs_district_salary": "I / district average salary",
     "district_unemployment": "district unemployment rate 2023 (%)", "n_standing_orders": "standing orders on the account",
     "so_unlabelled_amount": "monthly standing orders with no stated purpose (often savings or transfers to family)",
+    **HISTORY_DOCS,
     "runway_layoff": "official runway under the 55% layoff (months; inf = no shortfall)", "survives6_layoff": "runway_layoff >= 6",
     "runway_combined": "official runway under layoff + bills +15%", "survives6_combined": "runway_combined >= 6",
 }
@@ -189,6 +191,7 @@ def build_feature_table(store: DataStore | None = None) -> pd.DataFrame:
     f["inflow_regular_share"] = ((ms[ROLES["inflow"]] - med).abs() <= 0.2 * med).groupby(acct).mean()
 
     f = f.join(_per_account_trends(ms, pop))
+    f = f.join(history_table(ms))
 
     loans = store.loans.set_index("account_id")
     f["has_running_loan"] = f.index.isin(loans[loans.status.isin(["C", "D"])].index)
@@ -282,6 +285,23 @@ FLAG_RULES: list[FlagRule] = [
              lambda r: bool(r.neg_days == 0 and np.isfinite(r.runway_layoff) and r.runway_layoff < 6),
              lambda r: f"no negative-balance days on record, but on 55% income the buffer lasts {r.runway_layoff:.1f} months",
              "the record looks spotless, which hides that six months on EI would run the buffer out"),
+    FlagRule("weathered_before", "Has been through an income drop and stayed above zero", "info",
+             lambda r: bool(1 <= r.shock_episodes <= 4 and r.income_cv < 0.6 and not r.episode_dipped_negative and r.worst_income_drop >= 0.4),
+             lambda r: f"{int(r.shock_episodes)} time(s) inflow fell at least 40% (worst {_pct(r.worst_income_drop)}) and the balance never went negative",
+             "you have already lived through an income drop without going under, which says more about you than any simulation"),
+    FlagRule("cuts_when_hit", "Cuts spending fast when income drops", "info",
+             lambda r: bool(1 <= r.shock_episodes <= 6 and np.isfinite(r.spending_response) and r.spending_response >= 0.5),
+             lambda r: f"in past income drops spending fell about {_pct(min(1.0, r.spending_response))} as much as income did",
+             "when money got tight before, you pulled spending back quickly, a habit that shortens any shock"),
+    FlagRule("no_adjustment_when_hit", "Spending did not move when income dropped", "watch",
+             lambda r: bool(1 <= r.shock_episodes <= 4 and r.income_cv < 0.6 and np.isfinite(r.spending_response) and r.spending_response <= 0.1),
+             lambda r: f"in {int(r.shock_episodes)} past income drop(s) spending barely changed while inflow fell {_pct(r.worst_income_drop)}",
+             "last time income fell, spending stayed where it was and the cushion took the whole hit"),
+    FlagRule("slow_recovery", "Balance took a long time to recover after a drop", "watch",
+             lambda r: bool(r.shock_episodes >= 1 and r.recovery_months == r.recovery_months and r.recovery_months > 6),
+             lambda r: (f"after past income drops it took about {r.recovery_months:.0f} months for the balance to get back to where it was" if np.isfinite(r.recovery_months)
+                        else "after the last income drop the balance has not yet returned to where it was"),
+             "recovering from the last drop took a long time, so a second shock soon after would land on a thinner cushion"),
     FlagRule("deep_buffer", "Buffer covers many months of spending", "info",
              lambda r: bool(r.S > 0 and r.B / r.S >= 12),
              lambda r: f"buffer ${r.B:,.0f} is {r.B / r.S:.0f} months of typical spending",
@@ -325,7 +345,7 @@ def flag_matrix(features: pd.DataFrame) -> pd.DataFrame:
 def account_feature_summary(features: pd.DataFrame, account_id: int) -> dict:
     """The handful of numbers worth showing a person, with population percentiles."""
     r = features.loc[account_id]
-    keys = ["I", "S", "B", "spending_ratio", "income_cv", "pension_share", "cash_deposit_share", "fee_months_share", "neg_months_share", "timing_dip_share",
+    keys = ["I", "S", "B", "shock_episodes", "worst_income_drop", "spending_response", "recovery_months", "spending_ratio", "income_cv", "pension_share", "cash_deposit_share", "fee_months_share", "neg_months_share", "timing_dip_share",
             "lifestyle_creep", "balance_trend_pm", "bills_share", "card_wd_share", "cash_wd_share", "regular_transfer_out_amount",
             "loan_payment_share", "owner_age", "account_age_years", "inflow_vs_district_salary", "runway_layoff", "runway_combined"]
     out = {}

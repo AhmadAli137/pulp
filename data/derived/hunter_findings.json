@@ -158,6 +158,46 @@
  ],
  "findings": [
   {
+   "title": "Every borrower flagged 'Goes negative on timing, not shortage' saw the loan go bad",
+   "statement": "Real outcomes, not simulation: among the 682 accounts with a loan, 100% of the 19 flagged 'Goes negative on timing, not shortage' ended with the loan in trouble (status B or D) versus 9% of the other 663.",
+   "evidence": "default_validation(timing_dips) on loans.csv status",
+   "strength": "strong",
+   "caveat": "Small groups for some flags; loan status is a snapshot at end of 2025; flags and loan trouble share causes.",
+   "ground_truth": true
+  },
+  {
+   "title": "No borrower flagged 'Never negative, yet fails a layoff' saw the loan go bad",
+   "statement": "Real outcomes, not simulation: among the 682 accounts with a loan, 0% of the 389 flagged 'Never negative, yet fails a layoff' ended with the loan in trouble (status B or D) versus 26% of the other 293.",
+   "evidence": "default_validation(fragile_but_clean) on loans.csv status",
+   "strength": "strong",
+   "caveat": "Small groups for some flags; loan status is a snapshot at end of 2025; flags and loan trouble share causes.",
+   "ground_truth": true
+  },
+  {
+   "title": "Loans went bad 3.2x as often with 'Balance trending down'",
+   "statement": "Real outcomes, not simulation: among the 682 accounts with a loan, 28% of the 81 flagged 'Balance trending down' ended with the loan in trouble (status B or D) versus 9% of the other 601.",
+   "evidence": "default_validation(balance_sliding) on loans.csv status",
+   "strength": "strong",
+   "caveat": "Small groups for some flags; loan status is a snapshot at end of 2025; flags and loan trouble share causes.",
+   "ground_truth": true
+  },
+  {
+   "title": "Loans went bad 3.9x as often with 'Uneven income'",
+   "statement": "Real outcomes, not simulation: among the 682 accounts with a loan, 20% of the 264 flagged 'Uneven income' ended with the loan in trouble (status B or D) versus 5% of the other 418.",
+   "evidence": "default_validation(income_volatile) on loans.csv status",
+   "strength": "strong",
+   "caveat": "Small groups for some flags; loan status is a snapshot at end of 2025; flags and loan trouble share causes.",
+   "ground_truth": true
+  },
+  {
+   "title": "Failing the simulated layoff lines up with real loan trouble",
+   "statement": "Borrowers who fail the simulated six-month layoff saw the loan go bad 14% of the time (454 accounts) versus 5% for those who survive it (228).",
+   "evidence": "default_validation(survives6_layoff)",
+   "strength": "strong",
+   "caveat": "The runway formula counts the loan payment inside spending, so part of this is mechanical.",
+   "ground_truth": true
+  },
+  {
    "title": "Balance sliding flag strongly depresses layoff survival",
    "statement": "Accounts flagged for balance_sliding (n=493) have a six-month layoff survival rate of 34.7%, 33.5 percentage points lower than accounts without the flag (68.2%, n=4007).",
    "evidence": "compare_flag tool on flag 'balance_sliding' showing n=493 with survival 34.7% vs n=4007 without survival 68.2%.",
@@ -323,5 +363,96 @@
    "caveat": "Quartile spread; not adjusted for income.",
    "effect": 30.6
   }
- ]
+ ],
+ "validation": {
+  "available": true,
+  "loans": 682,
+  "bad": 76,
+  "bad_rate_pct": 11.1,
+  "by_flag": [
+   {
+    "flag": "timing_dips",
+    "n_with": 19,
+    "bad_rate_with_pct": 100.0,
+    "bad_rate_without_pct": 8.6,
+    "lift": 11.63
+   },
+   {
+    "flag": "fragile_but_clean",
+    "n_with": 389,
+    "bad_rate_with_pct": 0.0,
+    "bad_rate_without_pct": 25.9,
+    "lift": 0.0
+   },
+   {
+    "flag": "balance_sliding",
+    "n_with": 81,
+    "bad_rate_with_pct": 28.4,
+    "bad_rate_without_pct": 8.8,
+    "lift": 3.22
+   },
+   {
+    "flag": "income_volatile",
+    "n_with": 264,
+    "bad_rate_with_pct": 20.5,
+    "bad_rate_without_pct": 5.3,
+    "lift": 3.89
+   },
+   {
+    "flag": "cash_economy",
+    "n_with": 265,
+    "bad_rate_with_pct": 20.4,
+    "bad_rate_without_pct": 5.3,
+    "lift": 3.86
+   },
+   {
+    "flag": "weathered_before",
+    "n_with": 18,
+    "bad_rate_with_pct": 22.2,
+    "bad_rate_without_pct": 10.8,
+    "lift": 2.05
+   },
+   {
+    "flag": "cuts_when_hit",
+    "n_with": 45,
+    "bad_rate_with_pct": 20.0,
+    "bad_rate_without_pct": 10.5,
+    "lift": 1.9
+   },
+   {
+    "flag": "lifestyle_creep",
+    "n_with": 126,
+    "bad_rate_with_pct": 17.5,
+    "bad_rate_without_pct": 9.7,
+    "lift": 1.8
+   },
+   {
+    "flag": "thin_margin",
+    "n_with": 388,
+    "bad_rate_with_pct": 14.2,
+    "bad_rate_without_pct": 7.1,
+    "lift": 1.98
+   },
+   {
+    "flag": "savings_elsewhere",
+    "n_with": 230,
+    "bad_rate_with_pct": 8.3,
+    "bad_rate_without_pct": 12.6,
+    "lift": 0.66
+   },
+   {
+    "flag": "rent_pressure",
+    "n_with": 62,
+    "bad_rate_with_pct": 12.9,
+    "bad_rate_without_pct": 11.0,
+    "lift": 1.18
+   }
+  ],
+  "by_survival": {
+   "fails_layoff_bad_rate_pct": 14.3,
+   "survives_layoff_bad_rate_pct": 4.8,
+   "n_fail": 454,
+   "n_survive": 228
+  }
+ }
 }

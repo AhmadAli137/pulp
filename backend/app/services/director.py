@@ -26,6 +26,8 @@ from .council import run_council
 from .explainer import lever_scene, two_futures_scene
 from .features import flags_for, get_features
 from .life_actions import life_actions
+from .intake import (classify_reply, first_questions, get_pending_twist, is_cold, pending_proposals, pick_question, restate,
+                     set_pending_twist, wants_skip)
 from .financial_profiles import get_metrics
 from .narrator import narrative_for
 from .tangerine_metrics import compute_shock, horizon_verdict
@@ -504,16 +506,64 @@ def _fallback_beats(tools: _Tools, message: str) -> list[dict]:
     return beats
 
 
+async def _twist_turn(account_id: int, m, key: str, t0: float, use_ai: bool):
+    """Deal (or pick) a card, run the council with its events streaming, and tell the story."""
+    card = deal_card(key)
+    shock = card_shock(card, m.typical_spending)
+    yield "agent", {"t": 0.0, "agent": "director", "kind": "tool_call", "tool": "deal_or_set_shock", "args": {"card": card["key"]}}
+    shock_bits = f"income x{shock['r']:.2f}" + (f", bills +{shock['h']:.0%}" if shock["h"] else "") + (f", one-off ${shock['one_off']:,.0f}" if shock["one_off"] else "") + f", {shock['duration']} months"
+    yield "handoff", {"t": 0.0, "from": "director", "to": "engine", "title": f"Twist: {card['title']}", "items": [card["text"], shock_bits]}
+    plan = None
+    from .council import run_council_stream
+    async for et, data in run_council_stream(account_id, m, r=shock["r"], h=shock["h"], one_off=shock["one_off"], duration=shock["duration"], use_ai=use_ai):
+        if et == "plan":
+            plan = data
+        elif et in ("agent", "handoff"):
+            yield et, data
+        elif et == "stage":
+            yield "agent", {"t": data["seconds"], "agent": "engine", "kind": "text", "summary": data["detail"]}
+    if not plan:
+        yield "error", {"message": "council did not return a plan"}
+        return
+    beats = twist_storyboard(account_id, m, card, plan, dealt_randomly=(key == "random"))
+    cm.record_turn(account_id, "user", f"Twist card: {card['title']}", {"shock": shock})
+    yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats",
+                      "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
+    yield "storyboard", {"opening": False, "source": "deck+council", "beats": beats, "card": card}
+
+
+def _ask_beat(account_id: int, summary: dict, pending: list[dict], insights: dict | None, prefix: str = "") -> dict | None:
+    q = pick_question(summary, pending, insights)
+    if not q:
+        return None
+    cm.record_question(account_id, q["key"])
+    text = (prefix + " " if prefix else "") + q["text"]
+    return _beat("ask", "none", text, {"question_key": q["key"]}, 7)
+
+
 async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) -> AsyncIterator[tuple[str, dict]]:
-    """Yields ("agent", ev), ("memory", ...), ("storyboard", {...}) for one stage turn."""
+    """Yields ("agent", ev), ("handoff", ev), ("memory", ...), ("storyboard", {...}) for one stage turn.
+
+    Intake rules: a cold profile gets one or two questions before a twist runs; every turn ends with a question; what
+    PULP learned is said back and a spoken or typed yes confirms it.
+    """
     from starlette.concurrency import run_in_threadpool
 
     t0 = time.perf_counter()
     m = get_metrics(account_id)
     msg = (message or "").strip()
     tools = _Tools(account_id, m)
+    ctx = cm.load_context(account_id)
+    summary = cm.summarize(ctx)
+    pending = pending_proposals(ctx)
+    insights_cache: dict = {}
 
-    # 1. opening
+    def insights_fast() -> dict:
+        if "v" not in insights_cache:
+            insights_cache["v"] = narrative_for(account_id, use_ai=False)
+        return insights_cache["v"]
+
+    # 1. opening (only when asked for)
     if msg == "__intro__":
         insights = await run_in_threadpool(narrative_for, account_id, use_ai)
         yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "engine", "to": "narrator", "title": f"{len(insights['flags'])} flag(s) and the archetype",
@@ -522,60 +572,101 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
         yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "narrator", "to": "director", "title": insights["narrative"]["headline"],
                           "items": [f"[{i['flag']}] {i['text']}" for i in insights["narrative"]["insights"]] + [f"written by {insights['narrative']['source']}"]}
         beats = opening_storyboard(account_id, m, insights)
+        if is_cold(summary):
+            ask = _ask_beat(account_id, summary, pending, insights, prefix="That is what the numbers say. Now I'd like to know you a little, so anything we plan fits your life.")
+            if ask:
+                beats = [b for b in beats if b["id"] != "ask"] + [ask]
         yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats",
                           "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
         yield "storyboard", {"opening": True, "source": insights["narrative"]["source"], "beats": beats}
         return
 
-    # 2. twist cards (deterministic: must never fail in the demo)
+    # 2. twist cards: deterministic, but a cold profile is asked first
     if msg.startswith("twist:"):
         key = msg.split(":", 1)[1].strip() or "random"
         if key == "cards":
             yield "storyboard", {"opening": False, "source": "deck", "beats": [_beat("cards", "cards", "Pick a card, or let the deck choose.", cards_params(), 6)]}
             return
-        card = deal_card(key)
-        shock = card_shock(card, m.typical_spending)
-        yield "agent", {"t": 0.0, "agent": "director", "kind": "tool_call", "tool": "deal_or_set_shock", "args": {"card": card["key"]}}
-        shock_bits = f"income x{shock['r']:.2f}" + (f", bills +{shock['h']:.0%}" if shock["h"] else "") + (f", one-off ${shock['one_off']:,.0f}" if shock["one_off"] else "") + f", {shock['duration']} months"
-        yield "handoff", {"t": 0.0, "from": "director", "to": "engine", "title": f"Twist: {card['title']}", "items": [card["text"], shock_bits]}
-        plan_holder: dict = {}
-
-        async def council():
-            # stream the council's own agent events while it runs
-            from .council import run_council_stream
-            async for et, data in run_council_stream(account_id, m, r=shock["r"], h=shock["h"], one_off=shock["one_off"], duration=shock["duration"], use_ai=use_ai):
-                if et == "plan":
-                    plan_holder["plan"] = data
-                elif et == "agent":
-                    yield "agent", data
-                elif et == "handoff":
-                    yield "handoff", data
-                elif et == "stage":
-                    yield "agent", {"t": data["seconds"], "agent": "engine", "kind": "text", "summary": data["detail"]}
-
-        async for et, ev in council():
-            yield et, ev
-        plan = plan_holder.get("plan")
-        if not plan:
-            yield "error", {"message": "council did not return a plan"}
+        if is_cold(summary) and not wants_skip(msg):
+            card = deal_card(key)
+            set_pending_twist(account_id, card["key"] if key == "random" else key)
+            qs = first_questions(summary, insights_fast(), n=1)
+            beats = [_beat("card", "shuffle" if key == "random" else "cards",
+                           f"{card['title']}. {card['text']}", shuffle_params(card) if key == "random" else {"cards": [{"key": card["key"], "title": card["title"], "text": card["text"]}]}, 6)]
+            if qs:
+                cm.record_question(account_id, qs[0]["key"])
+                beats.append(_beat("ask", "none", f"Before I run this, I want to know you a little, so the plan fits your life and not just your numbers. {qs[0]['text']}",
+                                   {"question_key": qs[0]["key"], "pending_twist": card["key"]}, 8))
+            yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": "Holding the twist until I know you",
+                              "items": [f"pending twist: {card['title']}"] + ([f"asking: {qs[0]['text']}"] if qs else [])}
+            yield "storyboard", {"opening": False, "source": "intake", "beats": beats, "card": card, "needs_intake": True, "pending_twist": card["key"]}
             return
-        beats = twist_storyboard(account_id, m, card, plan, dealt_randomly=(key == "random"))
-        cm.record_turn(account_id, "user", f"Twist card: {card['title']}", {"shock": shock})
-        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats",
-                          "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
-        yield "storyboard", {"opening": False, "source": "deck+council", "beats": beats, "card": card}
+        async for et, ev in _twist_turn(account_id, m, key, t0, use_ai):
+            yield et, ev
+        set_pending_twist(account_id, None)
         return
 
-    # 3. free text: memory (offline extraction, instant) + the Director agent with tools
+    # 3. a spoken or typed yes / no answers what PULP said back last turn
+    kind, rest = classify_reply(msg)
+    if kind == "affirm" and pending:
+        applied = 0
+        for prop in pending:
+            try:
+                applied += len(cm.confirm(account_id, prop["id"], accept=True)["applied"])
+            except Exception:
+                pass
+        ctx = cm.load_context(account_id)
+        summary = cm.summarize(ctx)
+        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "companion", "to": "profile", "title": "Confirmed out loud, saved",
+                          "items": [restate(prop).replace(" Did I get that right?", "") for prop in pending] + [f"profile version {ctx.get('context_version')}"]}
+        yield "memory", {"proposal": None, "context": summary, "confirmed": applied, "next_question": None, "reply": None}
+        pt = get_pending_twist(ctx)
+        if pt and not rest:
+            yield "agent", {"t": round(time.perf_counter() - t0, 2), "agent": "director", "kind": "text", "summary": "Thanks. Now the twist you asked for."}
+            async for et, ev in _twist_turn(account_id, m, pt, t0, use_ai):
+                yield et, ev
+            set_pending_twist(account_id, None)
+            return
+        if not rest:
+            ask = _ask_beat(account_id, summary, [], insights_fast(), prefix="Got it, that's part of how I see you now.")
+            beats = [ask] if ask else [_beat("ask", "none", "Got it, that's part of how I see you now. What else is on your mind?", {}, 6)]
+            yield "storyboard", {"opening": False, "source": "intake", "beats": beats}
+            return
+        msg = rest
+        pending = []
+    elif kind == "negate" and pending:
+        for prop in pending:
+            try:
+                cm.confirm(account_id, prop["id"], accept=False)
+            except Exception:
+                pass
+        ctx = cm.load_context(account_id)
+        summary = cm.summarize(ctx)
+        yield "memory", {"proposal": None, "context": summary, "rejected": len(pending), "next_question": None, "reply": None}
+        if not rest:
+            yield "storyboard", {"opening": False, "source": "intake", "beats": [_beat("ask", "none", "Okay, scrap that. Tell me what I got wrong, in your own words.", {}, 6)]}
+            return
+        msg = rest
+        pending = []
+    elif wants_skip(msg) and get_pending_twist(ctx):
+        pt = get_pending_twist(ctx)
+        async for et, ev in _twist_turn(account_id, m, pt, t0, use_ai):
+            yield et, ev
+        set_pending_twist(account_id, None)
+        return
+
+    # 4. free text: memory (offline extraction, instant) + the Director agent with tools
+    proposal = None
     try:
         from .gemini_agent import chat as companion_chat
         mem = await run_in_threadpool(companion_chat, account_id, msg, True)
         ex = mem.get("extraction") or {}
         changes = ex.get("proposed_changes") or []
+        proposal = mem.get("proposal")
         yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "companion", "to": "director", "title": f"heard: {ex.get('intent', 'message')}",
                           "items": [f"proposes to remember {c.get('field')}: {json.dumps(c.get('value'), default=str)[:100]}" for c in changes[:3]]
                                    + ([f"follow-up: {ex['follow_up_question']}"] if ex.get("follow_up_question") else []) or ["nothing to remember from this"]}
-        yield "memory", {"proposal": mem.get("proposal"), "context": mem.get("context"), "next_question": mem.get("next_question"), "reply": mem.get("reply")}
+        yield "memory", {"proposal": proposal, "context": mem.get("context"), "next_question": mem.get("next_question"), "reply": mem.get("reply")}
     except Exception as exc:  # memory is optional for the stage
         mem = {"reply": None}
         yield "memory", {"proposal": None, "context": None, "next_question": None, "error": f"{type(exc).__name__}"[:80]}
@@ -585,7 +676,8 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
     if use_ai and adk_available():
         ctx_summary = cm.summarize(cm.load_context(account_id))
         payload = json.dumps({"message": msg, "confirmed_context": {k: ctx_summary.get(k, []) for k in ("goals", "concerns", "constraints", "preferences", "upcoming_events")},
-                              "official": {"I": m.typical_inflow, "S": m.typical_spending, "B": m.buffer, "baseline_runway": m.baseline_runway_label}}, default=float)
+                              "official": {"I": m.typical_inflow, "S": m.typical_spending, "B": m.buffer, "baseline_runway": m.baseline_runway_label},
+                              "note": "Do not end with a question; the stage adds the next question itself."}, default=float)
         agent = LlmAgent(name="director", model=config.GEMINI_MODEL, description="Chooses what the stage shows and writes Pulp's lines.",
                          instruction=DIRECTOR_INSTRUCTION.replace("{visuals}", ", ".join(VISUALS)),
                          tools=[tools.get_profile, tools.get_cohort, tools.deal_or_set_shock, tools.run_council, tools.show_math], output_key="director")
@@ -619,7 +711,22 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
         beats = _fallback_beats(tools, msg)
         if mem.get("reply") and beats and beats[0]["visual"] == "none":
             beats[0]["caption"] = str(mem["reply"])[:260]
+
+    # 5. close the turn: say back what was learned (a yes confirms it), or ask the next sharpest question
+    ctx = cm.load_context(account_id)
+    summary = cm.summarize(ctx)
+    pt = get_pending_twist(ctx)
+    if proposal:
+        text = restate(proposal)
+        if pt:
+            text = text.replace(" Did I get that right?", f" Say yes and I will run the {DECK_BY_KEY.get(pt, {}).get('title', 'twist').lower()} card right after.")
+        beats.append(_beat("confirm", "none", text, {"confirm_proposal": proposal["id"], "pending_twist": pt}, 7))
+    elif not beats or "?" not in beats[-1]["caption"]:
+        ask = _ask_beat(account_id, summary, pending_proposals(ctx), insights_fast())
+        if ask:
+            beats.append(ask)
     cm.record_turn(account_id, "assistant", " ".join(b["caption"] for b in beats)[:1000], {"stage": [b["visual"] for b in beats]})
     yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats ({'from the model' if source != 'template' else 'template'})",
                       "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
-    yield "storyboard", {"opening": False, "source": source, "beats": beats, "seconds": round(time.perf_counter() - t0, 2)}
+    yield "storyboard", {"opening": False, "source": source, "beats": beats, "seconds": round(time.perf_counter() - t0, 2),
+                         "pending_proposal": proposal["id"] if proposal else None, "pending_twist": pt}

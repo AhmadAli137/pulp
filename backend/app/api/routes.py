@@ -19,7 +19,8 @@ from ..services.director import PERSONAS, SHOCK_DECK, stage_stream
 from ..services.archetypes import flag_catalog, get_archetypes
 from ..services.hunter import get_findings
 from ..services.narrator import narrative_for
-from ..services.features import FEATURE_DOCS, get_features
+from ..services.features import FEATURE_DOCS, flag_matrix, get_features
+from ..services.resilience_history import default_validation
 from ..services.data_store import get_store
 from ..services.feedback_loop import replan, replanning_diff
 from ..services.financial_profiles import get_metrics, get_population, percentile_of
@@ -155,6 +156,13 @@ def get_research_archetypes():
 def get_research_hunter():
     """Pattern Hunter findings (the ADK hypothesis loop, run offline) or the deterministic battery."""
     return _clean(get_findings())
+
+
+@router.get("/research/validation")
+def get_research_validation():
+    """Ground truth: our flags and the simulated layoff against the loans that actually went bad."""
+    f = get_features()
+    return _clean(default_validation(f, get_store().loans, flag_matrix(f)))
 
 
 @router.get("/research/features")

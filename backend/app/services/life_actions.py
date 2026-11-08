@@ -58,18 +58,23 @@ def humanize_candidate(c: dict, m, row, req: dict, stay: dict | None) -> dict:
     parts: list[str] = []
     hows: list[str] = []
     horizon = "now"
-    if c["source"] == "strategist" and c["label"] and not c["label"].lower().startswith(("trim", "save ", "stay")):
+    kept = c["source"] == "strategist" and bool(c["label"]) and not c["label"].lower().startswith(("trim", "save ", "stay"))
+    if kept:   # the Strategist already phrased it as a decision; keep its words, add only the how
         parts.append(c["label"])
         hows.append(c.get("why") or "")
-    if freed > 0 and not parts:
-        a, h = _spend_less_action(freed, mix)
-        parts.append(a); hows.append(h); horizon = "this month"
-    elif freed > 0:
-        hows.append(f"It frees up about {_m(freed)} a month.")
-    if extra > 0:
-        parts.append(f"Bring in about {_m(extra)} more a month, say a weekend shift or extra hours")
-        horizon = "this month"
-    if contrib > 0 and goal.get("target_amount", 0) > 0:
+        if freed > 0:
+            hows.append(f"It frees up about {_m(freed)} a month.")
+        if extra > 0:
+            hows.append(f"It brings in about {_m(extra)} more a month.")
+        horizon = "this month" if (freed > 0 or extra > 0) else horizon
+    else:
+        if freed > 0:
+            a, h = _spend_less_action(freed, mix)
+            parts.append(a); hows.append(h); horizon = "this month"
+        if extra > 0:
+            parts.append(f"Bring in about {_m(extra)} more a month, say a weekend shift or extra hours")
+            horizon = "this month"
+    if contrib > 0 and goal.get("target_amount", 0) > 0 and not kept:
         parts.append(f"Move {_m(contrib)} a month into a separate pot for {goal['label'].lower()}")
         hows.append("Automatic, the day after pay lands, so you never see it as spendable.")
         horizon = "this year" if horizon == "now" else horizon
