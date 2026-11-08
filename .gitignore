@@ -42,3 +42,5 @@ frontend/.shoot*.mjs
 
 # Stage 1 feature cache (recomputed at startup; archetypes.json and hunter_findings.json ARE committed)
 data/derived/features.csv
+# Runtime Stage 1 cache (computed artefacts and narrative cache; the committed copies live in data/derived)
+backend/app/storage/derived/
