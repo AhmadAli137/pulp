@@ -5,7 +5,6 @@ import { HarvestIntro, introSeen, markIntroSeen } from './components/PulpMascot'
 import Stage from './pages/Stage'
 import ShockLab from './pages/ShockLab'
 import Twin from './pages/Twin'
-import Explore from './pages/Explore'
 import Goals from './pages/Goals'
 import Roadmap from './pages/Roadmap'
 import Insights from './pages/Insights'
@@ -33,7 +32,7 @@ export default function App() {
           <Route path="shock" element={<ShockLab />} />
           <Route path="briefings" element={<Briefings />} />
           <Route path="twin" element={<Twin />} />
-          <Route path="explore" element={<Explore />} />
+          <Route path="explore" element={<Navigate to="/shock" replace />} />
           <Route path="goals" element={<Goals />} />
           <Route path="roadmap" element={<Roadmap />} />
           <Route path="insights" element={<Insights />} />

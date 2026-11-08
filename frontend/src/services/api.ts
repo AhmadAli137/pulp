@@ -87,6 +87,7 @@ export interface SimResult {
 export interface SimBundle { scenario: SimResult; deterministic: SimResult; baseline: SimResult }
 export interface Branch { key: string; label: string; median_path: number[]; p10: number[]; p90: number[]; prob_below_zero_any: number; median_end_buffer: number; deterministic_end_buffer: number; deterministic_month_cash_runs_out: number | null }
 export interface Strategy {
+  action?: string; means?: string; needs_context?: string[]
   key: string; label: string; feasible: boolean; monthly_contribution: number; freed_up_per_month: number; emergency_floor: number
   prob_shortfall_under_stress: number; median_min_buffer: number; median_end_buffer: number; goal_progress_at_deadline: number
   goal_amount_at_deadline: number; months_to_goal_deterministic: number | null; goal_reached_share_mc: number | null

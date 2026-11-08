@@ -57,7 +57,7 @@ Frozen metrics + scenario + confirmed context + decision profile
 
 Strategist and Challenger are sequential in this workflow, not an ADK `ParallelAgent`. The grid can run without either model. Confirmed spending limits constrain grid and model candidates. `needs_context` and `feasibility` distinguish missing personal-fit information from a modeled result. Numeric ranking alone does not mean a person can carry out an option.
 
-`GET /api/agent/session/{account_id}` supplies the shared plan. Conversation and the planning route publish it; Goals and Roadmap consume it; Explore initializes from its scenario and levers. Confirming context reruns the same active scenario when one exists. Publication checks the context version; stale results are marked rather than silently treated as current.
+`GET /api/agent/session/{account_id}` supplies the shared plan. Conversation and the planning route publish it; Goals and Roadmap consume it; the shock page can compare practical options against its current inputs. The former Explore UI is retired and redirects to the shock page; simulation APIs remain available. Confirming context reruns the same active scenario when one exists. Publication checks the context version; stale results are marked rather than silently treated as current.
 
 ## API map
 

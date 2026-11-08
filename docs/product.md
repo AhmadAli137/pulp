@@ -12,7 +12,6 @@ The page names and destinations are centralized in [`workspace.tsx`](../frontend
 | `/twin` | Your financial picture | Recorded facts beside confirmed context; leads into insights |
 | `/insights` | Insights & evidence | Observations, life effects, unknowns and questions; leads into comparisons |
 | `/shock` | Prepare for a setback | Exact-input shock arithmetic and conditional planning options |
-| `/explore` | Compare possibilities | Historical simulations under explicit alternatives |
 | `/goals` | Goals & choices | Saved goal/preferences populate the form; shared plan and changes are visible |
 | `/roadmap` | Your next steps | Suggested actions with trade-offs and review conditions |
 | `/settings` | Preferences & data | Accessibility, connection status and saved-context controls |
@@ -38,7 +37,7 @@ The **Agents** toggle starts closed on each page mount. It shows actual observed
 
 ## Insights that lead somewhere
 
-`ProfileInsights` first shows evidence, its possible life effect, the decision it informs, and a question where context is missing. Supporting archetypes and research detail are expandable. A question links back to an editable conversation draft. Archetype guesses must remain identified as guesses.
+`ProfileInsights` first shows evidence, its possible life effect, the decision it informs, and a question where context is missing. Occupation guesses, archetype dashboards and research diagnostic controls are removed from the user interface. A question links back to an editable conversation draft. Keep source periods, uncertainty and links to the decision each observation informs.
 
 Use progressive detail: a practical question first, assumptions and source records available, full research and advanced controls retained. Do not add an agent simply to increase the count. A new role needs a defined input, useful output, failure behavior and evidence that it improves a user decision.
 
@@ -49,7 +48,7 @@ Every destination is checked at desktop and phone widths. Wide financial tables 
 
 ## Financial overview and briefings
 
-The financial picture starts with user-reported assets and liabilities, goal-progress rings and a proportional outflow allocation strip. Historical line charts are expandable. Balance comparisons use a shared scale; goal rings show unknown progress as a question mark rather than zero. All visual quantities have adjacent text. The design is implemented in `FinancialOverview.tsx` and its shared stylesheet.
+The financial picture starts with user-reported assets and liabilities, goal-progress rings and a proportional outflow allocation strip. The duplicate historical line charts and vulnerability grid have been removed from this page; scenario comparisons live on the shock page. Balance comparisons use a shared scale; goal rings show unknown progress as a question mark rather than zero. All visual quantities have adjacent text. The design is implemented in `FinancialOverview.tsx` and its shared stylesheet.
 
 A balance sheet is explicitly dated and partial until the user marks it complete. Goal savings are allocations of assets, not additional assets. Goal deadlines derive from the original goal creation date plus its stated duration; monthly pace is a remaining-gap calculation, not an affordability guarantee. Savings observations keep their own date when other goal details change.
 
@@ -67,3 +66,12 @@ Scenario and comparison responses with consecutive visual beats play in one inli
 The planning room foregrounds the original customer ? shock ? preparation and backup plan journey, with a direct `/shock` entry and expandable research finding. Conversation remains the default home experience. The shock page places baseline numbers, exact controls, verdict and both plans before optional personalized strategies and customer research. It omits the shared-plan banner above the calculation to avoid presenting an unrelated earlier plan as the selected shock result.
 
 Explicit twist requests bypass intake for fresh accounts. Follow-up questions personalize conditional options after results are available. Changed shock inputs hide the preceding verdict and plans until recalculation, preventing old results from appearing under a new duration. Expanded features remain available; this refocus does not integrate reported net worth into the historical simulation or establish a timed human judging outcome.
+
+
+## Feature pruning: understanding and decisions
+
+A primary feature must help a person understand their current position, compare a possible future, or decide on a next step. Four main destinations remain: conversation, current finances, scenarios and goals. Reviews, evidence and settings use a secondary disclosure in navigation. Daily/weekly briefings and the default-closed agent flow remain available as explicitly requested supporting tools.
+
+The Explore screen and its editable simulation path count are retired; `/explore` redirects to `/shock`. Duplicate shock controls, historical/vulnerability charts in the financial picture, research quartile/archetype/feature dashboards, occupation guesses, strategy scatter charts, plan version tables and repeated strategy cards in briefings are removed from the UI. The underlying analytical services remain for grounded calculations and research reproduction.
+
+Plan options now show practical action language, assumed monthly changes, modeled consequences and missing context. Model provenance, engine calls, scoring weights, objective formulas and challenger role labels are not user controls. Scenario mismatch or stale context hides earlier option results until comparison is refreshed. Goals distinguish reported progress from modeled future progress and link directly to next steps.

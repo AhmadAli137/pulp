@@ -4,7 +4,7 @@ import { useApp } from '../stores/useApp'
 import { api } from '../services/api'
 import { Spinner } from './ui'
 import CurrentPlan from './CurrentPlan'
-import { WORKSPACE, PageGuide, WorkspaceNav } from './workspace'
+import { WORKSPACE, PRIMARY_WORKSPACE, SUPPORTING_WORKSPACE, WorkspaceNav } from './workspace'
 import { PulpMark } from './PulpMascot'
 
 export default function Layout() {
@@ -39,11 +39,12 @@ export default function Layout() {
           </div>
         </div>
         <nav className="nav" aria-label="Main">
-          {WORKSPACE.map((n) => (
+          {PRIMARY_WORKSPACE.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
               <span className="ic" aria-hidden><n.icon size={17} /></span>{n.label}
             </NavLink>
           ))}
+          <details className="supporting-nav"><summary>Reviews, evidence & settings</summary>{SUPPORTING_WORKSPACE.map(n => <NavLink key={n.to} to={n.to}>{n.label}</NavLink>)}</details>
         </nav>
         <div className="foot"><span className="sidebar-seal">P / PERSONAL PERSPECTIVE</span>
           Planning informed by records.<br/>Decisions shaped around your life.<br/><Link to="/settings">About the data &amp; your controls</Link>
@@ -66,7 +67,7 @@ export default function Layout() {
           </form>
         </div>
         {profileError && <div className="err" role="alert" style={{ marginBottom: 16 }}>{profileError} Choose a demo account in the planning room to continue.</div>}
-        {loc.pathname !== '/shock' && <><PageGuide path={loc.pathname} /><CurrentPlan /></>}
+        {['/goals', '/roadmap'].includes(loc.pathname) && <CurrentPlan />}
         <Outlet />
       </main>
     </div>

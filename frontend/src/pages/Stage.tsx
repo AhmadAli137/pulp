@@ -13,7 +13,7 @@ import { API_BASE, api, type Beat, type Persona, type Proposal, type SampleAccou
 import { useApp } from '../stores/useApp'
 import CurrentPlan from '../components/CurrentPlan'
 import ResilienceEntry from '../components/ResilienceEntry'
-import { WORKSPACE, WorkspaceNav } from '../components/workspace'
+import { PRIMARY_WORKSPACE, SUPPORTING_WORKSPACE, WorkspaceNav } from '../components/workspace'
 import '../stage.css'
 
 
@@ -310,7 +310,8 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
         <button className="menu-scrim" aria-label="Close navigation" onClick={() => setMenu(false)} />
         <nav className="agent-menu" aria-label="Explore PULP">
           <div><span>THE BIGGER PICTURE</span><button aria-label="Close menu" onClick={() => setMenu(false)}><X size={16} /></button></div>
-          {WORKSPACE.filter(p => p.to !== '/').map(p => <button key={p.to} onClick={() => nav(p.to)}><p.icon size={17} />{p.label}<ArrowUpRight size={14} /></button>)}
+          {PRIMARY_WORKSPACE.filter(p => p.to !== '/').map(p => <button key={p.to} onClick={() => nav(p.to)}><p.icon size={17} />{p.label}<ArrowUpRight size={14} /></button>)}
+          <details className="supporting-nav"><summary>Reviews, evidence & settings</summary>{SUPPORTING_WORKSPACE.map(p => <button key={p.to} onClick={() => nav(p.to)}>{p.label}<ArrowUpRight size={14}/></button>)}</details>
           <p>Everything Pulp shows comes from these pages' numbers. They stay here when you want the detail.</p>
         </nav>
       </>)}

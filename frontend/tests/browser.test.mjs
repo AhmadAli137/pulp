@@ -68,8 +68,9 @@ test('mobile home fits and navigation reaches research', async t => {
   await p.getByRole('button', { name: 'Start voice conversation' }).waitFor()
   assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await p.getByRole('button', { name: 'Open navigation' }).click()
+  await p.getByText('Reviews, evidence & settings', { exact: true }).click()
   await p.getByRole('button', { name: 'Insights & evidence' }).click()
-  await p.getByText('Ever had a negative balance day', { exact: true }).waitFor()
+  await p.getByRole('region', { name: 'Insights for your decisions' }).waitFor()
 })
 
 test('microphone denial leaves text available', async t => {
@@ -205,7 +206,7 @@ test('everyday and bigger decisions start as contextual conversation', { timeout
 
 
 test('every workspace page shares navigation and fits desktop and mobile', { timeout: 120000 }, async t => {
-  const pages = [ ['/briefings', 'Briefings & summaries'], ['/twin', 'Your financial picture'], ['/insights', 'Insights & evidence'], ['/shock', 'Prepare for a setback'], ['/explore', 'Compare possibilities'], ['/goals', 'Goals & choices'], ['/roadmap', 'Your next steps'], ['/settings', 'Preferences & data'] ]
+  const pages = [ ['/briefings', 'Briefings & summaries'], ['/twin', 'Your financial picture'], ['/insights', 'Insights & evidence'], ['/shock', 'Prepare for a setback'], ['/goals', 'Goals & choices'], ['/roadmap', 'Your next steps'], ['/settings', 'Preferences & data'] ]
   for (const width of [1440, 390]) {
     const p = await pageFor(t, 20111, { viewport: { width, height: 960 } })
     for (const [path, title] of pages) {
@@ -327,5 +328,36 @@ test('resilience journey exposes the three challenge twists and both plans witho
   await p.getByRole('button', { name: 'Load', exact: true }).click()
   await p.getByRole('heading', { name: 'Account 20111', exact: true }).waitFor()
   await p.getByRole('heading', { name: 'Backup plan: if it happens', exact: false }).waitFor()
+  await p.getByText('Explore personalized strategies and trade-offs', { exact: true }).click()
+  await p.getByRole('button', { name: 'Compare practical options', exact: true }).click()
+  await p.getByText('Option 1', { exact: true }).waitFor()
+  assert.equal(await p.getByText('Grid only', { exact: true }).count(), 0)
+  await p.getByLabel('Duration', { exact: false }).fill('9')
+  await p.getByText('The scenario or your details changed. Compare options again to update the outcomes.', { exact: true }).waitFor()
+  assert.equal(await p.getByText('Option 1', { exact: true }).count(), 0)
   await p.screenshot({ path: '../.runtime/resilience-journey.png', fullPage: true })
+})
+
+
+test('primary navigation stays focused and retired exploration links reach the scenario tool', async t => {
+  const p = await pageFor(t)
+  await p.goto(base + '/twin')
+  const nav = p.getByRole('navigation', { name: 'Planning workspace' })
+  assert.equal(await nav.locator('a').count(), 4)
+  assert.deepEqual(await nav.locator('a').allTextContents(), ['Planning room', 'Prepare for a setback', 'Your financial picture', 'Goals & choices'])
+  await p.getByRole('heading', { name: 'What you own. What you owe.' }).waitFor()
+  assert.equal(await p.getByText('Financial vulnerability', { exact: true }).count(), 0)
+  await p.goto(base + '/explore')
+  await p.getByRole('heading', { name: 'Prepare for a setback', exact: true }).waitFor()
+  assert.ok(p.url().endsWith('/shock'))
+  assert.equal(await p.getByText('Simulation paths', { exact: true }).count(), 0)
+  await p.goto(base + '/insights')
+  await p.getByRole('region', { name: 'Insights for your decisions' }).waitFor()
+  assert.equal(await p.getByText('Behavioural archetypes', { exact: true }).count(), 0)
+  assert.equal(await p.getByText('Likely occupation', { exact: true }).count(), 0)
+  await p.goto(base + '/goals')
+  await p.getByRole('heading', { name: 'Your choices, side by side', exact: true }).waitFor()
+  assert.equal(await p.locator('.diffrow').count(), 0)
+  await p.getByRole('link', { name: 'Review your next steps', exact: true }).click()
+  await p.getByRole('heading', { name: 'Your next steps', exact: true }).waitFor()
 })

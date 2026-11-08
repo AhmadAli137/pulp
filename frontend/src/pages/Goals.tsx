@@ -3,13 +3,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Comparison, type Snapshot, type Diff } from '../services/api'
 import { useApp } from '../stores/useApp'
-import { GoalProgressChart, ReplanChart, StrategyChart } from '../charts'
-import { Card, Chip, DataTable, Empty, ErrorBox, Spinner, Tile, Tip, fmt } from '../components/ui'
+import { GoalProgressChart } from '../charts'
+import { Card, Chip, Empty, ErrorBox, Spinner, Tip, fmt } from '../components/ui'
 
 const GOAL_TYPES = ['emergency_fund', 'move_out', 'home_purchase', 'entrepreneurship', 'education', 'vehicle', 'travel', 'wedding', 'debt_payoff', 'retirement', 'family', 'other']
 
 export default function Goals() {
-  const { accountId, profile, activePlan, lastReplan, setLastReplan, refreshContext, accessible, context } = useApp()
+  const { accountId, profile, activePlan, lastReplan, setLastReplan, refreshContext, context } = useApp()
   const [cmp, setCmp] = useState<Comparison | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -24,7 +24,7 @@ export default function Goals() {
 
   const load = useCallback(async () => {
     if (!accountId) return
-    setBusy(true); setErr(null)
+    setBusy(true); setErr(null); setCmp(null); setHist(null)
     try {
       const [c, d] = await Promise.all([api.compare(accountId), api.replanDiff(accountId)])
       setCmp(c); setHist({ current: d.current, previous: d.previous, diff: d.diff })
@@ -53,7 +53,7 @@ export default function Goals() {
   }
 
   const rec = cmp?.strategies.find((s) => s.key === cmp.recommended)
-  const cur = hist?.current; const prev = hist?.previous; const diff = hist?.diff
+  const diff = hist?.diff
 
   return (
     <div className="stack">
@@ -70,13 +70,13 @@ export default function Goals() {
               <div className="field"><label>I could free up $/month <Tip text="A constraint you state. The data does not label discretionary spending, so PULP never guesses this." /></label><input type="number" min="0" value={form.free_up} onChange={(e) => setForm({ ...form, free_up: e.target.value })} /></div>
             </div>
             <div className="row between">
-              <span className="small muted">Confirming saves to your context (v{context?.context_version ?? 1}) and replans. Or <Link to="/companion">talk it through</Link>.</span>
+              <span className="small muted">Saving updates your goal and recalculates your choices. Or <Link to="/companion">talk it through</Link>.</span>
               <button className="btn primary" type="submit" disabled={busy}>{busy ? <Spinner /> : 'Save goal & review choices'}</button>
             </div>
           </form>
           <ErrorBox msg={err} />
         </Card>
-        <Card title="Goal progress" right={cmp && <Chip tone="gray">{cmp.goal.source === 'default' ? 'default goal' : 'confirmed goal'}</Chip>}>
+        <Card title="Where this plan could take you" right={cmp && <Chip tone="gray">{cmp.goal.source === 'default' ? 'default goal' : 'confirmed goal'}</Chip>}>
           {cmp && rec ? (<>
             <div className="row between" style={{ marginBottom: 6 }}>
               <div><div className="strong">{cmp.goal.label}</div><div className="small muted">{fmt.money(cmp.goal.target_amount)} in {cmp.goal.target_months} months · {cmp.goal.assumption}</div></div>
@@ -90,51 +90,24 @@ export default function Goals() {
       <Card title="Your choices, side by side" right={cmp && <span className="small muted">{cmp.stress_label} · capacity {fmt.money(cmp.capacity_per_month)}/mo</span>}>
         {cmp ? (<>
           <div className="grid cols-4" style={{ marginBottom: 12 }}>
-            {cmp.strategies.map((s) => (
+            {cmp.strategies.slice(0, 3).map((s) => (
               <div key={s.key} className={`tile${s.key === cmp.recommended ? ' accent' : ''}`} style={{ opacity: s.feasible ? 1 : 0.6 }}>
-                <div className="label">{s.label}{s.key === cmp.recommended && <Chip tone="gold">recommended</Chip>}</div>
+                <div className="label">{s.action ?? s.label}{s.key === cmp.recommended && <Chip tone="gold">Option to discuss</Chip>}</div>
+                {s.means && <p>{s.means}</p>}
+                {s.needs_context?.map(q => <p key={q}>{q}</p>)}
                 <div className="value">{s.feasible ? fmt.pct(s.prob_shortfall_under_stress) : 'n/a'}</div>
-                <div className="sub">{s.feasible ? <>paths hitting zero under stress · goal {fmt.pct(s.goal_progress_at_deadline)} by deadline{s.months_to_goal_deterministic ? ` · reached month ${Math.round(s.months_to_goal_deterministic)}` : ''} · {fmt.money(s.monthly_contribution)}/mo</> : s.infeasible_reason}</div>
+                <div className="sub">{s.feasible ? <>of simulated paths run short under this scenario · goal {fmt.pct(s.goal_progress_at_deadline)} by deadline{s.months_to_goal_deterministic ? ` · reached month ${Math.round(s.months_to_goal_deterministic)}` : ''} · {fmt.money(s.monthly_contribution)}/mo</> : s.infeasible_reason}</div>
               </div>
             ))}
           </div>
-          <StrategyChart strategies={cmp.strategies} recommended={cmp.recommended} />
-          <p className="callout green" style={{ marginTop: 10 }}><strong>Why:</strong> {cmp.why} {cmp.weights.reasons.join(' ')}</p>
-          <p className="tiny muted" style={{ marginTop: 6 }}>{cmp.capacity_assumption} Emergency target {fmt.money(cmp.emergency_target)} = six months of the selected stress gap. Scores: {fmt.pct(cmp.weights.resilience)} resilience + {fmt.pct(cmp.weights.goal)} goal progress.</p>
-          {accessible && <DataTable headers={['Strategy', 'Feasible', 'Shortfall share', 'Goal by deadline', 'Months to goal', 'Contribution', 'Score']} rows={cmp.strategies.map((s) => [s.label, s.feasible ? 'yes' : 'no', fmt.pct(s.prob_shortfall_under_stress), fmt.pct(s.goal_progress_at_deadline), s.months_to_goal_deterministic ?? '—', fmt.money(s.monthly_contribution), s.score.toFixed(2)])} />}
+
+          <p className="callout green" style={{ marginTop: 10 }}><strong>Trade-off:</strong> {cmp.why}</p>
+          <p className="small muted">{cmp.capacity_assumption} These are modeled outcomes, not forecasts. Recorded goal savings are shown separately above.</p>
         </>) : <Empty>{busy ? <Spinner /> : 'No comparison yet.'}</Empty>}
       </Card>
 
-      <Card title="How your plan has changed" right={<Chip tone={diff?.materially_changed ? 'gold' : 'gray'}>{!cur ? 'no plan yet' : !prev ? 'first plan' : diff?.materially_changed ? 'strategy changed' : 'no material change'}</Chip>}>
-        {!cur ? <p className="small muted">Confirm a goal (above or in the companion) to create the first plan; the next confirmed change produces a comparison here.</p> : (
-          <div className="stack">
-            {diff && <ul style={{ margin: 0, paddingLeft: 18 }} className="small">{diff.reasons.map((r) => <li key={r}>{r}</li>)}</ul>}
-            <div>
-              <div className="diffrow strong"><span>Measure</span><span>Previous plan</span><span>Current plan</span></div>
-              {([
-                ['Goal', prev?.goal.label, cur.goal.label],
-                ['Goal target', prev ? fmt.money(prev.goal.target_amount) : undefined, fmt.money(cur.goal.target_amount)],
-                ['Goal timeline', prev ? `${prev.goal.target_months} months` : undefined, `${cur.goal.target_months} months`],
-                ['Emergency-fund target', prev ? fmt.money(prev.emergency_target) : undefined, fmt.money(cur.emergency_target)],
-                ['Stress scenario', prev?.stress_label, cur.stress_label],
-                ['Recommended strategy', prev?.recommended_label, cur.recommended_label],
-                ['Monthly contribution', prev ? fmt.money(prev.monthly_contribution) : undefined, fmt.money(cur.monthly_contribution)],
-                ['Modeled shortfall frequency', prev ? fmt.pct(prev.prob_shortfall_under_stress) : undefined, fmt.pct(cur.prob_shortfall_under_stress)],
-                ['Months to goal', prev ? (prev.months_to_goal ? Math.round(prev.months_to_goal) : 'not within horizon') : undefined, cur.months_to_goal ? Math.round(cur.months_to_goal) : 'not within horizon'],
-                ['Weights (resilience / goal)', prev ? `${fmt.pct(prev.weights.resilience)} / ${fmt.pct(prev.weights.goal)}` : undefined, `${fmt.pct(cur.weights.resilience)} / ${fmt.pct(cur.weights.goal)}`],
-              ] as [string, string | number | undefined, string | number][]).map(([k, o, n]) => (
-                <div key={k} className="diffrow"><span className="muted">{k}</span><span className={o !== undefined && String(o) !== String(n) ? 'old' : ''}>{o ?? '—'}</span><span className={o !== undefined && String(o) !== String(n) ? 'new' : ''}>{n}</span></div>
-              ))}
-            </div>
-            <ReplanChart before={prev ? { buffer: prev.buffer_median_path, goal: prev.goal_median_path } : null} after={{ buffer: cur.buffer_median_path, goal: cur.goal_median_path }} />
-            <div className="grid cols-3">
-              <Tile label="Version" value={`v${cur.context_version}`} sub={cur.trigger ?? ''} />
-              <Tile label="Resilience change" value={prev ? `${fmt.pct(prev.prob_shortfall_under_stress)} → ${fmt.pct(cur.prob_shortfall_under_stress)}` : fmt.pct(cur.prob_shortfall_under_stress)} sub="share of stress paths hitting zero" />
-              <Tile label="Official runway" value={profile.baseline_runway_label} sub="unchanged by preferences, by design" />
-            </div>
-          </div>
-        )}
-      </Card>
+      {diff?.materially_changed && <Card title="What changed in your plan"><ul>{diff.reasons.map(r => <li key={r}>{r}</li>)}</ul></Card>}
+      <section className="financial-section"><h2>Choose your next step</h2><p>Discuss which option fits your essential costs, then use the action plan to decide what to do first.</p><Link to="/roadmap">Review your next steps</Link><p><Link to="/?prompt=Help%20me%20compare%20my%20plan%20options%20and%20choose%20one%20realistic%20next%20step.">Talk through the trade-offs</Link></p></section>
     </div>
   )
 }

@@ -16,13 +16,14 @@ The research finding is available from the opening journey, with its matched-pai
 
 ## What is available
 
+The primary navigation has four destinations: conversation, your financial picture, scenarios, and goals. Next steps, briefings, evidence and settings are secondary. The former `/explore` screen redirects to `/shock`; its simulation controls and duplicate charts have been removed from the UI.
+
 | Destination | Route | Purpose |
 |---|---|---|
 | Planning room | `/` | Talk or type; discuss small and big decisions; confirm personal details; open optional visuals and the agent flow |
 | Your financial picture | `/twin` | Track reported assets and liabilities, actual goal savings, and historical spending allocation |
 | Insights & evidence | `/insights` | Connect observed patterns to life implications, unanswered questions and research |
 | Prepare for a setback | `/shock` | Enter a specific change in income, bills or upfront costs; review the official calculation and planning options |
-| Compare possibilities | `/explore` | Change explicit assumptions and inspect simulated paths |
 | Goals & choices | `/goals` | Review the saved goal, compare strategies and see what changed |
 | Your next steps | `/roadmap` | Review suggested actions, trade-offs and assumptions by timeframe |
 | Briefings & summaries | `/briefings` | Daily focus and seven-day review of saved updates, goals and next questions |
@@ -73,7 +74,7 @@ The backend serves `frontend/dist` when present. Production runs this applicatio
 3. Typed SSE requests and Gemini Live's `conversation_turn` tool both call `director.stage_stream`.
 4. New personal details become proposals. Confirmation applies them with a context-version check.
 5. The council scores a grid, optionally gets Strategist proposals, validates and re-scores them, then lets the Challenger review the actual candidates before final ranking.
-6. A versioned active plan is shared by conversation, goals, roadmap and the scenario explorer.
+6. A versioned active plan is shared by conversation, goals, roadmap and scenario comparisons.
 
 The system mixes deterministic components and model roles; it is not eight independent agents running on every message. [Current agent inventory and unfinished blueprint work](docs/agents/README.md).
 
@@ -87,7 +88,7 @@ npm --prefix frontend run test:e2e
 python docs/agents/validate_examples.py
 ```
 
-Browser tests require installed Chrome (or the configured Playwright channel), a built frontend and a free port 8002. They use an isolated API, temporary context and disabled live AI credentials. The last code verification on November 8, 2026 passed **138 backend tests, 16 browser tests and the voice client regression test**. Counts are a dated snapshot, not a fixed acceptance target. CI runs a smaller named backend subset, voice regression and the frontend build; it does not run the full local browser suite. [Testing and verification](docs/testing.md).
+Browser tests require installed Chrome (or the configured Playwright channel), a built frontend and a free port 8002. They use an isolated API, temporary context and disabled live AI credentials. The last code verification on November 8, 2026 passed **138 backend tests, 17 browser tests and the voice client regression test**. Counts are a dated snapshot, not a fixed acceptance target. CI runs a smaller named backend subset, voice regression and the frontend build; it does not run the full local browser suite. [Testing and verification](docs/testing.md).
 
 ## Data and research
 

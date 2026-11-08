@@ -14,7 +14,7 @@ npm --prefix frontend run test:e2e
 python docs/agents/validate_examples.py
 ```
 
-The last application-code verification on November 8, 2026 passed 138 backend tests, 16 browser tests and one voice-client test. Re-run the relevant commands for a new code change; do not preserve these counts as if they were a permanent contract.
+The last application-code verification on November 8, 2026 passed 138 backend tests, 17 browser tests and one voice-client test. Re-run the relevant commands for a new code change; do not preserve these counts as if they were a permanent contract.
 
 ## Isolation and requirements
 
