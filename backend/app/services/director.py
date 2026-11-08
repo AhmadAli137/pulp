@@ -59,8 +59,9 @@ PERSONAS: list[dict] = [
 ]
 
 # ----------------------------------------------------------------------------- the shock deck (Canadian, realistic)
-# Sources: EI regular benefits replace 55% of insurable earnings (canada.ca); CMHC rent growth; StatCan CPI shelter;
-# repair costs are typical ranges, deliberately conservative. one_off_months means a multiple of typical spending S.
+# Sources: EI regular, sickness and parental benefits replace 55% of insurable earnings (canada.ca). The rent, bills,
+# repair, dental, vet and reduced-hours amounts are illustrative round figures, not values from a published table.
+# one_off_months means a multiple of typical spending S.
 SHOCK_DECK: list[dict] = [
     {"key": "layoff", "title": "Laid off", "text": "You lose your job. EI pays 55% of your usual income for 6 months.", "r": 0.55, "h": 0.0, "one_off": 0.0, "duration": 6},
     {"key": "furnace", "title": "The furnace dies", "text": "The furnace dies in January. The repair costs a full month of your typical spending.", "r": 1.0, "h": 0.0, "one_off_months": 1.0, "duration": 6},
