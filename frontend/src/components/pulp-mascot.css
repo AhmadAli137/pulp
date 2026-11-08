@@ -32,12 +32,14 @@
 /* One continuous harvest in 1.5 s: reach, pick, carry, squeeze, pour, fill, then the wordmark, which is still for
    the last 360 ms. Every beat of the original film plays in order, compressed proportionally; beats that would be
    shorter than ~120 ms are merged (the squeeze and its rebound are one motion). 1% = 15 ms. */
+/* The opening, 1.7 s: no orchard or picking; the hands squeeze the fruit over the glass at the original film's pace
+   (squeeze ~480 ms, pour ~600 ms), the film steps back and the wordmark rests for the last ~360 ms. */
 .harvest-intro{position:fixed;inset:0;background:#faf9f6;z-index:100;display:flex;flex-direction:column;animation:intro-arrive .2s ease-out}
 .intro-corner{display:flex;align-items:center;gap:12px;padding:32px 42px;font-size:10px;color:#9da78c}
 .harvest-center{position:relative;flex:1;display:grid;place-items:center;min-height:0}
 .harvest-film{width:min(600px,100vw);max-height:70vh;overflow:visible;animation:film-out var(--harvest-duration) cubic-bezier(.4,0,.2,1) both}
-.orchard-scene{animation:orchard-out var(--harvest-duration) cubic-bezier(.4,0,.2,1) both;transform-origin:210px 230px}
-.picking-hand{animation:hand-pick var(--harvest-duration) cubic-bezier(.25,.7,.3,1) both;transform-origin:402px 90px}
+.orchard-scene{display:none;animation:orchard-out var(--harvest-duration) cubic-bezier(.4,0,.2,1) both;transform-origin:210px 230px}
+.picking-hand{display:none;animation:hand-pick var(--harvest-duration) cubic-bezier(.25,.7,.3,1) both;transform-origin:402px 90px}
 .picked-fruit{animation:fruit-pick var(--harvest-duration) cubic-bezier(.45,0,.25,1) both;transform-origin:350px 137px}
 .squeeze-hands{animation:hands-show var(--harvest-duration) cubic-bezier(.4,0,.2,1) both}
 .left-squeeze{animation:left-squeeze var(--harvest-duration) cubic-bezier(.45,0,.25,1) both}
@@ -54,32 +56,26 @@
 .intro-wordmark p{font-size:16px;color:#8c9c7a;margin-top:16px}
 .harvest-captions{position:absolute;bottom:8%;left:0;right:0;text-align:center;font-family:Manrope,sans-serif;color:#81936d;font-size:16px}
 .harvest-captions span{position:absolute;inset:0}
-/* one short caption, legible for about 450 ms during the pick; the second is left out at this speed */
-.harvest-captions span:first-child{animation:caption-one var(--harvest-duration) cubic-bezier(.4,0,.2,1) both}
-.harvest-captions span:last-child{display:none}
+/* the short version tells the story without captions */
+.harvest-captions{display:none}
 .intro-bottom{padding:28px 42px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .intro-bottom>span{font-size:8px;letter-spacing:1.8px;color:#a2ae94}
 .intro-bottom button{border:1px solid #dde3d3;border-radius:20px;background:transparent;padding:10px 16px;color:#81936c;font-size:11px}
 .intro-bottom button:hover{background:#f0f3e8}
 @keyframes intro-arrive{from{opacity:0}to{opacity:1}}
 /* orchard: visible while the hand picks, then slides away (270 ms) */
-@keyframes orchard-out{0%,16%{opacity:1;transform:translateX(0)}34%,100%{opacity:0;transform:translateX(-70px)}}
-/* hand: arrives and grips (240 ms), holds (75 ms), leaves with the fruit (180 ms) */
-@keyframes hand-pick{0%{opacity:0;transform:translate(80px,-40px)}8%{opacity:1}16%,21%{opacity:1;transform:translate(-19px,20px) rotate(-8deg)}33%,100%{opacity:0;transform:translate(-40px,0)}}
-/* fruit: pulled (135 ms), carried to the press (150 ms), squeezed in one motion with its rebound (165 ms), pressed
-   flat (135 ms), then gone (120 ms) */
-@keyframes fruit-pick{0%,16%{transform:translate(0,0) rotate(0);opacity:1}25%{transform:translate(-8px,17px) rotate(-18deg)}35%{transform:translate(-50px,35px) rotate(0) scale(1)}46%{transform:translate(-50px,35px) scale(.74,1.06)}55%{transform:translate(-50px,35px) scale(.48,1.05);opacity:1}63%,100%{transform:translate(-50px,35px) scale(.4,.8);opacity:0}}
-@keyframes hands-show{0%,27%{opacity:0}36%,55%{opacity:1}63%,100%{opacity:0}}
-@keyframes left-squeeze{0%,35%{transform:translateX(0)}46%{transform:translateX(24px)}55%,100%{transform:translateX(33px)}}
-@keyframes right-squeeze{0%,35%{transform:translateX(0)}46%{transform:translateX(-24px)}55%,100%{transform:translateX(-33px)}}
-/* glass rises in (165 ms) before the squeeze, fills while the juice pours (300 ms) */
-@keyframes glass-show{0%,23%{opacity:0;transform:translateY(20px)}34%,100%{opacity:1;transform:translateY(0)}}
-@keyframes glass-fill{0%,39%{transform:scaleY(0)}59%,100%{transform:scaleY(1)}}
-@keyframes juice-flow{0%,38%{opacity:0;transform:scaleY(0)}46%,55%{opacity:1;transform:scaleY(1)}63%,100%{opacity:0;transform:scaleY(.5)}}
+@keyframes orchard-out{0%,100%{opacity:0}}
+@keyframes hand-pick{0%,100%{opacity:0}}
+@keyframes fruit-pick{0%{transform:translate(-50px,35px) scale(1);opacity:0}6%{opacity:1;transform:translate(-50px,35px) scale(1)}10%{transform:translate(-50px,35px) scale(1)}24%{transform:translate(-50px,35px) scale(.74,1.06)}38%{transform:translate(-50px,35px) scale(.48,1.05);opacity:1}48%,100%{transform:translate(-50px,35px) scale(.4,.8);opacity:0}}
+@keyframes hands-show{0%{opacity:0}7%,56%{opacity:1}66%,100%{opacity:0}}
+@keyframes left-squeeze{0%,10%{transform:translateX(0)}24%{transform:translateX(24px)}38%,100%{transform:translateX(33px)}}
+@keyframes right-squeeze{0%,10%{transform:translateX(0)}24%{transform:translateX(-24px)}38%,100%{transform:translateX(-33px)}}
+@keyframes glass-show{0%{opacity:0;transform:translateY(16px)}9%,100%{opacity:1;transform:translateY(0)}}
+@keyframes glass-fill{0%,17%{transform:scaleY(0)}54%,100%{transform:scaleY(1)}}
+@keyframes juice-flow{0%,14%{opacity:0;transform:scaleY(0)}22%,48%{opacity:1;transform:scaleY(1)}57%,100%{opacity:0;transform:scaleY(.5)}}
 @keyframes pulp-fall{from{transform:translateY(-12px)}to{transform:translateY(18px)}}
-/* the film steps back (135 ms) as the wordmark rises (210 ms) and then stays still from 76% (the last 360 ms) */
-@keyframes film-out{0%,60%{opacity:1;transform:scale(1)}69%,100%{opacity:0;transform:scale(.96)}}
-@keyframes wordmark-in{0%,62%{opacity:0;transform:translateY(12px)}76%,100%{opacity:1;transform:translateY(0)}}
+@keyframes film-out{0%,57%{opacity:1;transform:scale(1)}69%,100%{opacity:0;transform:scale(.97)}}
+@keyframes wordmark-in{0%,60%{opacity:0;transform:translateY(10px)}79%,100%{opacity:1;transform:translateY(0)}}
 @keyframes caption-one{0%{opacity:0}5%,33%{opacity:1}41%,100%{opacity:0}}
 .harvest-intro.reduced .harvest-film,.harvest-intro.reduced .harvest-captions{display:none}
 .harvest-intro.reduced .intro-wordmark{animation:none;opacity:1}

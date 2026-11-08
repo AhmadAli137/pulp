@@ -80,7 +80,7 @@ export function SqueezeLoader({ label = 'Squeezing your records…', className =
 }
 
 const INTRO_KEY = 'pulp-intro-seen'
-const INTRO_DURATION_MS = 1500
+const INTRO_DURATION_MS = 1700
 export function introSeen(): boolean { try { return sessionStorage.getItem(INTRO_KEY) === '1' } catch { return false } }
 export function markIntroSeen() { try { sessionStorage.setItem(INTRO_KEY, '1') } catch { /* ignore */ } }
 export function clearIntroSeen() { try { sessionStorage.removeItem(INTRO_KEY) } catch { /* ignore */ } }
@@ -103,7 +103,7 @@ export function HarvestIntro({ onDone }: { onDone: () => void }) {
       style={{ '--harvest-duration': `${INTRO_DURATION_MS}ms` } as CSSProperties}>
       <span className="intro-corner"><PulpMark size={23} /> A little care goes a long way.</span>
       <div className="harvest-center">
-        <svg className="harvest-film" viewBox="0 0 600 390" role="img" aria-label="A tangerine is picked from a tree, gently squeezed, and pours juice and pulp into a glass.">
+        <svg className="harvest-film" viewBox="0 0 600 390" role="img" aria-label="A tangerine is gently squeezed and pours juice and pulp into a glass.">
           <defs><clipPath id="glass-inside"><path d="M260 226h80l-9 100q-31 10-62 0Z" /></clipPath><linearGradient id="juice-color" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#ffc464" /><stop offset="1" stopColor="#f29035" /></linearGradient></defs>
           <g className="orchard-scene">
             <ellipse cx="199" cy="343" rx="137" ry="9" fill="#dedcca" opacity=".35" />
