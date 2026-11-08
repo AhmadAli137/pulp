@@ -39,7 +39,7 @@ export function PulpMark({ size = 28 }: { size?: number }) {
 }
 
 const INTRO_KEY = 'pulp-intro-seen'
-const INTRO_DURATION_MS = 2000
+const INTRO_DURATION_MS = 1000
 export function introSeen(): boolean { try { return sessionStorage.getItem(INTRO_KEY) === '1' } catch { return false } }
 export function markIntroSeen() { try { sessionStorage.setItem(INTRO_KEY, '1') } catch { /* ignore */ } }
 export function clearIntroSeen() { try { sessionStorage.removeItem(INTRO_KEY) } catch { /* ignore */ } }
