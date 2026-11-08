@@ -46,3 +46,20 @@ def test_challenger_receives_validated_strategist_candidates(monkeypatch):
     result = council.run_council(1, _metrics(), r=.7, h=0, one_off=0, use_ai=True, top_n=100)
     assert calls == ['strategist', 'challenger']
     assert next(c for c in result['ranked'] if c['label'] == 'User-specific option')['flags']
+
+
+def test_shared_intake_uses_json_schema_without_generating_a_second_reply(monkeypatch):
+    from types import SimpleNamespace
+    from app.services import gemini_agent as g
+    configs = []
+    def generate(**kw):
+        configs.append(kw["config"])
+        return SimpleNamespace(text=json.dumps({"intent": "update_constraint", "proposed_changes": [
+            {"field": "constraints", "operation": "add", "value": {"type": "can_free_up_per_month", "amount": 0}}]}))
+    monkeypatch.setattr(g, '_gemini_client', lambda: SimpleNamespace(models=SimpleNamespace(generate_content=generate)))
+    summary = cm.summarize(cm.empty_context(1))
+    _, extraction, _ = g.gemini_turn(1, "I cannot reduce spending", summary, [], extract_only=True)
+    assert len(configs) == 1
+    assert configs[0].response_schema is None
+    assert configs[0].response_json_schema
+    assert extraction.proposed_changes[0].value["amount"] == 0

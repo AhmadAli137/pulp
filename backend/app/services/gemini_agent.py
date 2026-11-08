@@ -402,7 +402,7 @@ def _gemini_client():
     return genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": 45_000})
 
 
-def gemini_turn(account_id: int, text: str, summary: dict, history: list[dict]) -> tuple[str, AgentExtraction, list[dict]]:
+def gemini_turn(account_id: int, text: str, summary: dict, history: list[dict], *, extract_only: bool = False) -> tuple[str, AgentExtraction, list[dict]]:
     from google.genai import types
     client = _gemini_client()
     sys_prompt = SYSTEM_PROMPT.format(account_id=account_id, context=json.dumps({k: summary[k] for k in ("goals", "concerns", "constraints", "preferences", "upcoming_events")}),
@@ -411,26 +411,28 @@ def gemini_turn(account_id: int, text: str, summary: dict, history: list[dict]) 
     for h in history[-10:]:
         contents.append(types.Content(role="user" if h["role"] == "user" else "model", parts=[types.Part(text=h["text"])]))
     contents.append(types.Content(role="user", parts=[types.Part(text=text)]))
-    chat_cfg = types.GenerateContentConfig(system_instruction=sys_prompt, tools=TOOLS, temperature=0.4,
-                                           automatic_function_calling=types.AutomaticFunctionCallingConfig(maximum_remote_calls=4))
-    resp = client.models.generate_content(model=GEMINI_MODEL, contents=contents, config=chat_cfg)
-    reply = (resp.text or "").strip()
-    tool_log = []
-    try:
-        hist = getattr(resp, "automatic_function_calling_history", None) or []
-        for c in hist:
-            for p in (c.parts or []):
-                if getattr(p, "function_call", None):
-                    tool_log.append({"tool": p.function_call.name, "args": dict(p.function_call.args or {})})
-                if getattr(p, "function_response", None):
-                    r = p.function_response.response
-                    tool_log.append({"tool": p.function_response.name, "result": json.loads(json.dumps(r, default=str))[:1] if isinstance(r, list) else {k: r[k] for k in list(r)[:6]} if isinstance(r, dict) else str(r)[:200]})
-    except Exception:  # pragma: no cover
-        pass
+    reply, tool_log = "", []
+    if not extract_only:
+        chat_cfg = types.GenerateContentConfig(system_instruction=sys_prompt, tools=TOOLS, temperature=0.4,
+                                               automatic_function_calling=types.AutomaticFunctionCallingConfig(maximum_remote_calls=4))
+        resp = client.models.generate_content(model=GEMINI_MODEL, contents=contents, config=chat_cfg)
+        reply = (resp.text or "").strip()
+        tool_log = []
+        try:
+            hist = getattr(resp, "automatic_function_calling_history", None) or []
+            for c in hist:
+                for p in (c.parts or []):
+                    if getattr(p, "function_call", None):
+                        tool_log.append({"tool": p.function_call.name, "args": dict(p.function_call.args or {})})
+                    if getattr(p, "function_response", None):
+                        r = p.function_response.response
+                        tool_log.append({"tool": p.function_response.name, "result": json.loads(json.dumps(r, default=str))[:1] if isinstance(r, list) else {k: r[k] for k in list(r)[:6]} if isinstance(r, dict) else str(r)[:200]})
+        except Exception:  # pragma: no cover
+            pass
 
     ex_prompt = EXTRACT_PROMPT.format(goal_types=list(GOAL_LABELS.keys()), concern_types=["income_loss", "irregular_income", "rising_costs", "rent_increase", "debt", "unexpected_expense", "other"],
                                       context=json.dumps({k: summary[k] for k in ("goals", "concerns", "constraints", "preferences")}), message=text)
-    ex_cfg = types.GenerateContentConfig(response_mime_type="application/json", response_schema=AgentExtraction, temperature=0.0)
+    ex_cfg = types.GenerateContentConfig(response_mime_type="application/json", response_json_schema=AgentExtraction.model_json_schema(), temperature=0.0)
     extraction = AgentExtraction()
     for attempt in range(2):
         try:
@@ -484,7 +486,7 @@ def chat(account_id: int, text: str, prefer_offline: bool = False, record_histor
     provider = "offline" if prefer_offline else active_provider()
     if provider == "gemini":
         try:
-            reply, extraction, tools_used = gemini_turn(account_id, text, summary, ctx["conversation"][:-1])
+            reply, extraction, tools_used = gemini_turn(account_id, text, summary, ctx["conversation"][:-1], extract_only=not record_history)
             mode = "gemini"
         except Exception as e:  # any API failure degrades gracefully
             log.warning("Gemini unavailable, using offline engine: %s", e)
