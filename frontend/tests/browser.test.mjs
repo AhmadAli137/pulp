@@ -120,3 +120,55 @@ test('saved council result is shared by goals and roadmap after navigation and r
   await p.goto(`${base}/roadmap`); await p.reload()
   await p.getByRole('region', { name: 'Current shared plan' }).waitFor()
 })
+
+
+test('scenario cards fit desktop and mobile, and can expand', async t => {
+  for (const width of [1280, 390]) {
+    const p = await pageFor(t, 20111, { viewport: { width, height: 900 } }); await p.goto(base)
+    await p.getByRole('button', { name: 'Try a life scenario' }).click()
+    const grid = p.locator('.thread-figure-canvas > .scenario-card-grid').last()
+    await grid.waitFor()
+    assert.ok(await grid.locator('button').count() >= 3)
+    assert.ok(await grid.evaluate(el => [...el.children].every(c => {
+      const r = c.getBoundingClientRect(), g = el.getBoundingClientRect()
+      return r.left >= g.left - 1 && r.right <= g.right + 1 && r.bottom <= g.bottom + 1 && c.scrollHeight <= c.clientHeight + 1
+    })))
+    assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    await grid.scrollIntoViewIfNeeded()
+    await p.waitForTimeout(500)
+    await p.screenshot({ path: `../.runtime/cards-${width}.png`, fullPage: true })
+    await p.getByRole('button', { name: 'Expand visual' }).last().click()
+    await p.getByRole('dialog', { name: 'Expanded visual' }).waitFor()
+    await p.getByRole('button', { name: 'Close expanded visual' }).click()
+  }
+})
+
+test('agent flow defaults closed and shows observed handoffs; questions stand out', async t => {
+  const p = await pageFor(t)
+  await p.addInitScript(() => localStorage.setItem('pulp.backstage', '1'))
+  const events = [
+    ['agent', { agent: 'engine', kind: 'text', summary: 'Calculated the monthly buffer', t: .2 }],
+    ['handoff', { from: 'engine', to: 'director', title: 'Buffer ready', items: ['Monthly buffer: $400'], t: .3 }],
+    ['storyboard', { beats: [{ id: 'question', visual: 'none', caption: 'We can work with that. Which expense would you protect first?', params: {}, duration_s: 0 }] }],
+    ['done', {}]
+  ]
+  await p.route('**/api/agent/stage?*', route => route.fulfill({ contentType: 'text/event-stream', body: events.map(([event,data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join('') }))
+  await p.goto(base)
+  assert.equal(await p.getByRole('dialog', { name: 'Follow the thinking.' }).count(), 0)
+  await p.getByRole('textbox', { name: 'Message', exact: true }).fill('Help me decide')
+  await p.getByRole('button', { name: 'Send', exact: true }).click()
+  const question = p.locator('.pulp-question p').filter({ hasText: 'Which expense' })
+  await question.waitFor()
+  assert.ok(await question.evaluate(el => parseFloat(getComputedStyle(el).fontSize) >= 25))
+  await p.getByRole('button', { name: 'Show agent flow' }).click()
+  const flow = p.getByRole('dialog', { name: 'Follow the thinking.' })
+  await flow.getByText('Calculated the monthly buffer', { exact: true }).waitFor()
+  await flow.getByText('Buffer ready', { exact: true }).waitFor()
+  await flow.getByText('What was passed along').click()
+  await flow.getByText('Monthly buffer: $400', { exact: true }).waitFor()
+  await p.screenshot({ path: '../.runtime/agent-flow.png', fullPage: true })
+  await p.keyboard.press('Escape')
+  assert.equal(await flow.count(), 0)
+  await p.reload()
+  assert.equal(await flow.count(), 0)
+})

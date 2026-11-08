@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PulpMark, Tangerine, clearIntroSeen } from '../components/PulpMascot'
 import Backstage, { splitKeys, type FeedItem } from '../components/stage/Backstage'
-import { highlightNumbers } from '../components/stage/shared'
+import PulpText from '../components/stage/PulpText'
 import ThreadFigure from '../components/stage/ThreadFigure'
 import { startVoice, type VoiceSession } from '../services/voice'
 import { API_BASE, api, type Beat, type Persona, type Proposal, type SampleAccount, type StageAgentEvent, type StageHandoffEvent, type StageMemoryEvent, type Storyboard } from '../services/api'
@@ -53,7 +53,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
   const [confirming, setConfirming] = useState<string | null>(null)
   const [glanceOpen, setGlanceOpen] = useState(false)
   const [mute, setMute] = useState(() => readFlag('pulp.mute'))
-  const [backstage, setBackstage] = useState(() => readFlag('pulp.backstage'))
+  const [backstage, setBackstage] = useState(false)
   const [personas, setPersonas] = useState<Persona[]>([])
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [active, setActive] = useState<Set<string>>(new Set())
@@ -69,7 +69,6 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
   const id = profile?.account_id ?? null
 
   useEffect(() => { muteRef.current = mute; try { localStorage.setItem('pulp.mute', mute ? '1' : '0') } catch { /* ignore */ } if (mute && 'speechSynthesis' in window) window.speechSynthesis.cancel() }, [mute])
-  useEffect(() => { try { localStorage.setItem('pulp.backstage', backstage ? '1' : '0') } catch { /* ignore */ } }, [backstage])
   useEffect(() => {
     api.samples().then((s) => setSamples(s.accounts)).catch(() => undefined)
     api.health().then((h) => setGemini(h.ai_provider !== 'offline', h.ai_label)).catch(() => setGemini(false))
@@ -131,12 +130,21 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
         if (m.type === 'visual') setThread((t) => [...t, { id: nid('v'), kind: 'pulp', text: m.beat.caption, beat: m.beat }])
         if (m.type === 'context_proposal') enqueue([{ kind: 'proposal', proposal: m.proposal }])
         if (m.type === 'pipeline_event') {
-          const who = String(m.data.agent ?? m.data.from ?? 'companion')
-          light(splitKeys(who))
-          pushFeed({ id: nid('voice-event'), turn: turn.current, kind: 'agent', agent: who, t: Number(m.data.t ?? 0), text: String(m.data.summary ?? m.data.title ?? m.data.tool ?? 'Working on your plan') })
+          if (m.event === 'handoff') {
+            const d = m.data as unknown as StageHandoffEvent
+            light([...splitKeys(d.from), ...splitKeys(d.to)])
+            pushFeed({ id: nid('voice-handoff'), turn: turn.current, kind: 'handoff', from: d.from, to: d.to, title: d.title, items: d.items ?? [], t: d.t ?? 0 })
+          } else {
+            const who = String(m.data.agent ?? 'companion')
+            light(splitKeys(who))
+            pushFeed({ id: nid('voice-event'), turn: turn.current, kind: 'agent', agent: who, t: Number(m.data.t ?? 0), text: String(m.data.summary ?? m.data.tool ?? 'Working on your plan') })
+          }
         }
         if (m.type === 'state_changed') void useApp.getState().refreshSession().catch(() => setNotice('Could not refresh your plan.'))
-        if (m.type === 'status') setStatus(m.message || null)
+        if (m.type === 'status') {
+          if (m.message) { ++turn.current; setActive(new Set()); pushFeed({ id: nid('voice-turn'), turn: turn.current, kind: 'divider', label: 'Voice conversation' }) }
+          setStatus(m.message || null)
+        }
         if (m.type === 'error') setNotice(m.message)
         if (m.type === 'closed') { setVoice(false); setVoiceReady(false) }
       })
@@ -190,6 +198,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
           light([d.agent, 'engine'])
         } else if (d.agent === 'engine' && d.summary) {
           setStatus(d.summary); light(['engine'])
+          pushFeed({ id: `a-${t}-${n++}`, turn: t, kind: 'agent', agent: 'engine', t: d.t, text: d.summary })
         } else if (d.kind === 'tool_result' && d.tool) {
           pushFeed({ id: `a-${t}-${n++}`, turn: t, kind: 'agent', agent: d.agent, t: d.t, text: `reads the ${d.tool.replaceAll('_', ' ')} result` })
         } else if (d.kind === 'text' && d.agent !== 'engine') {
@@ -278,7 +287,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
           <span className="agent-brand-caption">a little clarity, for whatever’s next</span>
         </div>
         <div className="stage-header-actions">
-          <button className={`stage-backstage-toggle ${backstage ? 'on' : ''}`} aria-pressed={backstage} onClick={() => setBackstage((v) => !v)} title="See the agents and what they pass along"><Users size={15} />Agents{active.size > 0 && <i className="stage-live-dot" />}</button>
+          <button className={`stage-backstage-toggle ${backstage ? 'on' : ''}`} aria-pressed={backstage} aria-expanded={backstage} aria-controls="agent-flow" aria-label="Show agent flow" onClick={() => setBackstage((v) => !v)} title="Follow the live agent flow"><Users size={15} />Agents{active.size > 0 && <i className="stage-live-dot" />}</button>
           <button className="agent-icon-button" aria-label={mute ? 'Unmute Pulp' : 'Mute Pulp'} title={mute ? 'Unmute Pulp' : 'Mute Pulp'} onClick={() => { voiceStop.current?.setMuted(!mute); setMute(!mute) }}>{mute ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
           <button className="account-trigger" aria-expanded={selector} onClick={() => setSelector((v) => !v)}><span className="demo-dot" />Demo account <b>{profile ? '#' + id : '…'}</b><ChevronDown size={13} /></button>
           <button className="agent-icon-button intro-replay" title="Replay the PULP introduction" aria-label="Replay introduction" onClick={replayIntro}><RotateCcw size={16} /></button>
@@ -356,13 +365,13 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
                   <div key={m.id} className={`msg pulp ${m.beat && m.beat.visual !== 'none' ? 'has-figure' : ''}`}>
                     <span className="msg-avatar" aria-hidden="true"><Tangerine mood="idle" /></span>
                     <div className="msg-body">
-                      <p>{highlightNumbers(m.text)}</p>
+                      <PulpText text={m.text} />
                       {m.beat && <ThreadFigure beat={m.beat} onReplay={() => replay(m.text)} onAction={send} />}
                     </div>
                   </div>
                 )
               })}
-              {voice && (live.user || live.assistant) && <div className="msg-body" aria-live="polite">{live.user && <p>You: {live.user}</p>}{live.assistant && <p>Pulp: {live.assistant}</p>}</div>}
+              {voice && (live.user || live.assistant) && <div className="msg-body" aria-live="polite">{live.user && <p>You: {live.user}</p>}{live.assistant && <PulpText text={live.assistant} />}</div>}
               {status && <p className="thread-status" role="status"><span className="stage-status-dot" />{status}</p>}
               {notice && <p className="thread-notice" role="status">{notice}</p>}
               <div ref={endRef} />

@@ -1,29 +1,14 @@
-import { motion } from 'framer-motion'
 import type { CardsParams } from '../../services/api'
-import { useMotionScale } from './shared'
-import { TwistCardBack, TwistCardFace } from './TwistCard'
+import { cardIcon } from './TwistCard'
+import { ArrowUpRight } from 'lucide-react'
 
-/* The judge's twist cards, fanned out on the table. Hover lifts a card; clicking sends `twist:<key>` to the stage.
-   The random card is the patterned back of the deck. */
 export default function CardsVisual({ p, onAction }: { p: CardsParams; onAction?: (message: string) => void }) {
-  const scale = useMotionScale()
-  const n = p.cards.length
-  return (
-    <div className="stage-cards" role="group" aria-label="Twist cards">
-      <div className="shuffle-table" />
-      {p.cards.map((c, i) => {
-        const rot = (i - (n - 1) / 2) * 6
-        const lift = Math.abs(i - (n - 1) / 2) * 14
-        return (
-          <motion.button key={c.key} className="stage-card-btn" onClick={() => onAction?.(`twist:${c.key}`)} aria-label={`${c.title}: ${c.text}`}
-            initial={scale ? { y: 40, opacity: 0, rotate: 0 } : false} animate={{ y: lift, opacity: 1, rotate: rot }} whileHover={{ y: lift - 12, rotate: 0, scale: 1.02, zIndex: 20 }}
-            transition={{ delay: 0.12 * i, duration: 0.5, ease: 'easeOut' }} style={{ transformOrigin: 'bottom center' }}>
-            {c.key === 'random'
-              ? <TwistCardBack style={{ width: 'min(220px, 21vw)' }} label="Shuffle the deck" />
-              : <TwistCardFace title={c.title} text={c.text} cardKey={c.key} style={{ width: 'min(220px, 21vw)' }} scale={0.9} />}
-          </motion.button>
-        )
-      })}
-    </div>
-  )
+  return <div className="scenario-card-grid" role="group" aria-label="Twist cards">
+    {p.cards.map(c => <button type="button" key={c.key} className={`scenario-choice ${c.key === 'random' ? 'surprise' : ''}`} onClick={() => onAction?.(`twist:${c.key}`)} aria-label={`${c.title}: ${c.text}`}>
+      <span className="scenario-choice-icon" aria-hidden="true">{cardIcon(c.key, 32)}</span>
+      <span className="scenario-choice-kicker">{c.key === 'random' ? 'A little uncertainty' : 'Life scenario'}</span>
+      <strong>{c.title}</strong><span className="scenario-choice-copy">{c.text}</span>
+      <span className="scenario-choice-action">Explore this <ArrowUpRight size={15} /></span>
+    </button>)}
+  </div>
 }
