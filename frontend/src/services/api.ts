@@ -189,12 +189,12 @@ export interface Roadmap { account_id: number; this_week: RoadmapAction[]; this_
 
 // ------------------------------------------------------------------ agent run (SSE) and scenes
 export interface RunwayParams { duration_months: number; buffer_start: number; income_before: number; income_after: number; spending_after: number; monthly_gap: number; runs_out_month: number | null; runway_label: string; verdict: string }
-export interface FuturePath { label: string; prob_shortfall: number; buffer_path: number[]; months_to_goal: number | null }
+export interface FuturePath { label: string; prob_shortfall: number; buffer_path: number[]; months_to_goal: number | null; action?: string; means?: string; horizon?: 'now' | 'this month' | 'this year' | 'later' }
 export interface LeverDial { freed_up_per_month: number; goal_contribution_per_month: number; emergency_floor: number; extra_income_per_month: number }
 export interface TwoFuturesParams { goal: { label: string; target_amount: number; target_months: number }; stay: FuturePath; plan: FuturePath & { levers: LeverDial } }
 export type HabitKind = 'timing' | 'fee' | 'creep' | 'transfer' | 'margin' | 'volatile' | 'loan' | 'none'
 export interface HabitParams { flag: string; label: string; kind: HabitKind; evidence: string; numbers: Record<string, number> }
-export interface LeverParams { lever_label: string; dial: LeverDial; before: { prob_shortfall: number; median_min_buffer: number }; after: { prob_shortfall: number; median_min_buffer: number }; typical_spending: number }
+export interface LeverParams { lever_label: string; dial: LeverDial; before: { prob_shortfall: number; median_min_buffer: number }; after: { prob_shortfall: number; median_min_buffer: number }; typical_spending: number; action?: string; means?: string; horizon?: 'now' | 'this month' | 'this year' | 'later' }
 export type Scene = { id: string; title: string; narration: string } & (
   | { type: 'runway'; params: RunwayParams }
   | { type: 'two_futures'; params: TwoFuturesParams }
@@ -213,7 +213,12 @@ export type RunEvent =
   | { type: 'error'; data: { message: string } }
 export interface HunterReplayStep { index: number; tool: string; args: Record<string, unknown>; finding?: HunterFinding }
 // ------------------------------------------------------------------ narrated stage (Director storyboard)
-export type VisualKind = 'picture' | 'cup' | 'river' | 'timeline' | 'fork' | 'calendar' | 'dial' | 'crowd' | 'ribbon' | 'cards' | 'math' | 'shuffle' | 'swarm' | 'podium' | 'none'
+export type VisualKind = 'picture' | 'cup' | 'river' | 'timeline' | 'fork' | 'calendar' | 'dial' | 'crowd' | 'ribbon' | 'cards' | 'math' | 'shuffle' | 'swarm' | 'podium' | 'actions' | 'none'
+export type Horizon = 'now' | 'this month' | 'this year' | 'later'
+/* Human fields the backend attaches to plan candidates: an imperative decision, what it does, and when. */
+export interface HumanPlan { action?: string; means?: string; horizon?: Horizon }
+export interface ActionItem { title: string; how: string; horizon: Horizon; effect: string; source: 'grid' | 'strategist' | 'habit' | 'future' }
+export interface ActionsParams { headline: string; actions: ActionItem[] }
 export interface PictureParams { inflow: number; outflow: number; buffer: number; months_of_spending: number; runway_label: string; headline?: string }
 export interface CupParams { buffer: number; outflow: number; months_of_spending: number; label: string }
 export interface RiverParams { inflow: number; outflow: number; surplus: number; parts_in: Record<string, number>; parts_out: Record<string, number> }
@@ -224,9 +229,9 @@ export interface RibbonParams { months: number; spending_drift_pm: number; incom
 export interface CardsParams { cards: { key: 'layoff' | 'furnace' | 'combined' | 'random'; title: string; text: string }[] }
 export interface MathParams { lines: string[] }
 export interface ShuffleParams { deck: string[]; dealt: { key: string; title: string; text: string } }
-export interface SwarmCandidate { label: string; source: 'grid' | 'strategist'; score: number; prob_shortfall: number; buffer_path: number[]; best: boolean; flags: number }
+export interface SwarmCandidate extends HumanPlan { label: string; source: 'grid' | 'strategist'; score: number; prob_shortfall: number; buffer_path: number[]; best: boolean; flags: number }
 export interface SwarmParams { horizon_months: number; grid_size: number; candidates: SwarmCandidate[]; objective: string; weights: { resilience: number; goal: number } }
-export interface PodiumEntry { rank: number; label: string; source: string; score: number; prob_shortfall: number; goal_progress: number; levers: LeverDial; flags: { risk: string; severity: string; because: string }[]; why: string }
+export interface PodiumEntry extends HumanPlan { rank: number; label: string; source: string; score: number; prob_shortfall: number; goal_progress: number; levers: LeverDial; flags: { risk: string; severity: string; because: string }[]; why: string }
 export interface PodiumParams { top: PodiumEntry[]; objective: string; weights: { resilience: number; goal: number }; stay: { label: string; prob_shortfall: number; score: number } | null }
 export type Beat = { id: string; caption: string; duration_s: number; emphasis?: string } & (
   | { visual: 'picture'; params: PictureParams }
@@ -243,10 +248,13 @@ export type Beat = { id: string; caption: string; duration_s: number; emphasis?:
   | { visual: 'shuffle'; params: ShuffleParams }
   | { visual: 'swarm'; params: SwarmParams }
   | { visual: 'podium'; params: PodiumParams }
+  | { visual: 'actions'; params: ActionsParams }
   | { visual: 'none'; params: Record<string, never> })
 export interface Storyboard { opening: boolean; source: string; beats: Beat[]; card?: unknown }
 export interface StageAgentEvent { t: number; agent: string; kind: 'tool_call' | 'tool_result' | 'text'; tool?: string; args?: Record<string, unknown>; summary?: string }
 export interface StageMemoryEvent { proposal: Proposal | null; context: ContextSummary; next_question: { key: string; text: string } | null; reply?: string | null }
+export interface StageHandoffEvent { t: number; from: string; to: string; title: string; items: string[] }
+export interface Persona { key: string; name: string; kind: 'ai' | 'code' | 'memory'; runs_on: string; role: string; reads: string[]; writes: string[]; guardrail: string }
 export const API_BASE = BASE
 
 // ------------------------------------------------------------------ calls
@@ -272,6 +280,7 @@ export const api = {
   confirm: (id: number, proposal_id: string, accept = true) => post<{ proposal: Proposal; applied: unknown[]; summary: ContextSummary; replan: ReplanResult | null }>('/api/context/confirm', { account_id: id, proposal_id, accept, replan: true }),
   edit: (id: number, change: { field: string; operation: string; value: Record<string, unknown>; target_id?: string }, replan = false) => post<{ applied: unknown; summary: ContextSummary; replan: ReplanResult | null }>('/api/context/edit', { account_id: id, change, replan }),
   chat: (id: number, message: string) => post<ChatResponse>('/api/agent/chat', { account_id: id, message }),
+  personas: () => get<{ personas: Persona[] }>('/api/agent/personas'),
   plan: (body: { account_id: number; income_fraction: number; bills_increase: number; one_off_cost: number; shock_duration: number; use_ai: boolean }) => post<PlanResult>('/api/agent/plan', body),
   replan: (id: number, reason = 'manual replan') => post<ReplanResult>('/api/replan', { account_id: id, reason }),
   replanDiff: (id: number) => get<{ has_previous: boolean; current: Snapshot | null; previous: Snapshot | null; diff: Diff | null; note?: string }>(`/api/replan/${id}/diff`),

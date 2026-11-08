@@ -1,4 +1,5 @@
 import type { Beat } from '../../services/api'
+import ActionsVisual from './ActionsVisual'
 import CalendarVisual from './CalendarVisual'
 import CardsVisual from './CardsVisual'
 import CrowdVisual from './CrowdVisual'
@@ -32,18 +33,19 @@ export default function Visual({ beat, onAction }: { beat: Beat; onAction?: (mes
     case 'shuffle': return <ShuffleVisual p={beat.params} />
     case 'swarm': return <SwarmVisual p={beat.params} />
     case 'podium': return <PodiumVisual p={beat.params} />
+    case 'actions': return <ActionsVisual p={beat.params} />
     default: return <NoneVisual />
   }
 }
 
-export type PipExpression = 'calm' | 'worried' | 'happy' | 'thinking'
+export type PulpExpression = 'calm' | 'worried' | 'happy' | 'thinking'
 
-export function expressionFor(beat: Beat | null, busy: boolean): PipExpression {
+export function expressionFor(beat: Beat | null, busy: boolean): PulpExpression {
   if (busy) return 'thinking'
   if (!beat) return 'calm'
   if (beat.visual === 'timeline' && beat.params.runs_out_month != null) return 'worried'
   if (beat.visual === 'calendar' || beat.visual === 'ribbon') return 'worried'
-  if (beat.visual === 'dial' || beat.visual === 'fork' || beat.visual === 'podium') return 'happy'
+  if (beat.visual === 'dial' || beat.visual === 'fork' || beat.visual === 'podium' || beat.visual === 'actions') return 'happy'
   if (beat.visual === 'swarm' || beat.visual === 'shuffle') return 'thinking'
   if (beat.emphasis === 'worried' || beat.emphasis === 'happy') return beat.emphasis
   return 'calm'

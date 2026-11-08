@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
 import type { CrowdParams } from '../../services/api'
-import { FOREST, Frame, GRAY, Label, ORANGE, pct, useCountUp, useMotionScale } from './shared'
+import { Big, Frame, Label, MUTED, ORANGE, pct, useCountUp, useMotionScale } from './shared'
 
 const DOTS = 600
 
@@ -15,7 +15,7 @@ export default function CrowdVisual({ p }: { p: CrowdParams }) {
     const cols = 40
     return Array.from({ length: DOTS }, (_, i) => {
       const c = i % cols, r = Math.floor(i / cols)
-      return { x: 90 + c * 21 + (rnd() - 0.5) * 8, y: 70 + r * 22 + (rnd() - 0.5) * 8, order: rnd() }
+      return { x: 90 + c * 21 + (rnd() - 0.5) * 8, y: 60 + r * 22 + (rnd() - 0.5) * 8, order: rnd(), dx: (rnd() - 0.5) * 400, dy: (rnd() - 0.5) * 300 }
     })
   }, [])
   const litIdx = useMemo(() => [...dots.keys()].sort((a, b) => dots[a].order - dots[b].order).slice(0, lit), [dots, lit])
@@ -26,17 +26,18 @@ export default function CrowdVisual({ p }: { p: CrowdParams }) {
     <Frame label={`${p.n_total} accounts; ${p.archetype.name} is ${pct(p.archetype.share)} of them`}>
       {dots.map((d, i) => {
         const on = litSet.has(i)
+        const me = i === you
         return (
-          <motion.circle key={i} cx={d.x} cy={d.y} r={i === you ? 9 : 5.5} fill={on ? ORANGE : '#D9DDCF'}
-            className={i === you ? 'stage-you' : ''}
-            initial={scale ? { opacity: 0, scale: 0 } : false} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 * d.order + (on ? 0.5 : 0), duration: 0.35 }} />
+          <motion.circle key={i} cx={d.x} cy={d.y} r={me ? 10 : on ? 6.5 : 5} fill={on ? (me ? '#FFD7B5' : ORANGE) : 'rgba(251,246,238,0.22)'}
+            className={me ? 'stage-you' : ''} filter={me ? 'url(#glow)' : undefined}
+            initial={scale ? { opacity: 0, x: d.dx, y: d.dy } : false} animate={{ opacity: 1, x: 0, y: 0 }} transition={{ delay: 0.5 * d.order + (on ? 0.6 : 0), type: 'spring', stiffness: 90, damping: 16 }} />
         )
       })}
-      <g transform="translate(90, 440)">
-        <Label x={0} y={0} size={13} color={GRAY}>{p.n_total.toLocaleString()} accounts at this bank · each dot is about {Math.round(p.n_total / DOTS)} of them</Label>
-        <Label x={0} y={40} size={26} color={FOREST} weight={800}>{Math.round(count).toLocaleString()} are “{p.archetype.name}”</Label>
-        <Label x={0} y={70} size={15} color={GRAY}>{pct(p.archetype.share)} of the bank · {Math.round(p.archetype.survive6_layoff_pct)}% of them would last six months on 55% income</Label>
-        <Label x={0} y={100} size={15} color={ORANGE} weight={700}>the pulsing dot is you{p.you.runway_layoff != null ? ` · ${p.you.runway_layoff.toFixed(1)} months of runway` : p.you.survives6_layoff ? ' · you make it' : ''}</Label>
+      <g transform="translate(90, 436)">
+        <Label x={0} y={0} size={13} color={MUTED}>{p.n_total.toLocaleString()} accounts at this bank · each dot is about {Math.round(p.n_total / DOTS)} of them</Label>
+        <Big x={0} y={42} size={30}>{Math.round(count).toLocaleString()} are “{p.archetype.name}”</Big>
+        <Label x={0} y={72} size={15} color={MUTED}>{pct(p.archetype.share)} of the bank · {Math.round(p.archetype.survive6_layoff_pct)}% of them would last six months on 55% income</Label>
+        <Label x={0} y={102} size={16} color={ORANGE} weight={800}>the bright pulsing dot is you{p.you.runway_layoff != null ? ` · ${p.you.runway_layoff.toFixed(1)} months of runway` : p.you.survives6_layoff ? ' · you make it' : ''}</Label>
       </g>
     </Frame>
   )

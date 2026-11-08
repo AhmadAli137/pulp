@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
 import type { RibbonParams } from '../../services/api'
-import { DANGER, EMERALD, FOREST, Frame, GRAY, Label, ORANGE, money, useMotionScale } from './shared'
+import { Big, Frame, INK, Label, MINT, MUTED, ORANGE, ROSE, money, useMotionScale } from './shared'
 
 /* Two ribbons across the months: income and spending. When spending drifts up faster than income, they converge. */
 export default function RibbonVisual({ p }: { p: RibbonParams }) {
   const scale = useMotionScale()
   const n = Math.max(6, Math.min(36, p.months))
-  const x0 = 100, x1 = 900, yTop = 90, yBot = 420
+  const x0 = 100, x1 = 900, yTop = 90, yBot = 410
   const inc = Array.from({ length: n }, (_, i) => p.inflow * (1 + p.income_drift_pm * (i - n + 1)))
   const spd = Array.from({ length: n }, (_, i) => p.outflow * (1 + p.spending_drift_pm * (i - n + 1)))
   const all = [...inc, ...spd]
@@ -18,18 +18,18 @@ export default function RibbonVisual({ p }: { p: RibbonParams }) {
   const creep = p.spending_drift_pm - p.income_drift_pm
   return (
     <Frame label={`Spending drifting ${(p.spending_drift_pm * 100).toFixed(1)}% a month, income ${(p.income_drift_pm * 100).toFixed(1)}%`}>
-      <motion.path d={path(inc)} fill="none" stroke={EMERALD} strokeWidth={16} strokeLinecap="round" opacity={0.8} initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 2 }} />
-      <motion.path d={path(spd)} fill="none" stroke={ORANGE} strokeWidth={16} strokeLinecap="round" opacity={0.85} initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 2, delay: 0.3 }} />
-      <Label x={x0} y={Y(inc[0]) - 18} size={14} color={EMERALD} weight={700}>income</Label>
-      <Label x={x0} y={Y(spd[0]) + 32} size={14} color={ORANGE} weight={700}>spending</Label>
-      <Label x={x0} y={456} size={13} color={GRAY}>{n} months ago</Label>
-      <Label x={x1} y={456} size={13} color={GRAY} anchor="end">now</Label>
-      <Label x={x1 + 4} y={Y(inc[n - 1]) + 5} size={13} color={EMERALD} weight={600}>{money(inc[n - 1])}</Label>
-      <Label x={x1 + 4} y={Y(spd[n - 1]) + 5} size={13} color={ORANGE} weight={600}>{money(spd[n - 1])}</Label>
-      <Label x={500} y={500} size={18} color={creep > 0 ? DANGER : FOREST} anchor="middle" weight={700}>
+      <motion.path d={path(inc)} fill="none" stroke={MINT} strokeWidth={18} strokeLinecap="round" opacity={0.9} filter="url(#glow-soft)" initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 2 }} />
+      <motion.path d={path(spd)} fill="none" stroke="url(#juice)" strokeWidth={18} strokeLinecap="round" filter="url(#glow-soft)" initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 2, delay: 0.3 }} />
+      <Label x={x0} y={Y(inc[0]) - 20} size={15} color={MINT} weight={800}>income</Label>
+      <Label x={x0} y={Y(spd[0]) + 36} size={15} color={ORANGE} weight={800}>spending</Label>
+      <Label x={x0} y={448} size={13} color={MUTED}>{n} months ago</Label>
+      <Label x={x1} y={448} size={13} color={MUTED} anchor="end">now</Label>
+      <Label x={x1 + 6} y={Y(inc[n - 1]) + 5} size={14} color={MINT} weight={700}>{money(inc[n - 1])}</Label>
+      <Label x={x1 + 6} y={Y(spd[n - 1]) + 5} size={14} color={ORANGE} weight={700}>{money(spd[n - 1])}</Label>
+      <Big x={500} y={500} size={22} color={creep > 0 ? ROSE : INK} anchor="middle">
         {creep > 0 ? `the gap between them went from ${money(gapThen)} to ${money(gapNow)} a month` : `the gap is holding at about ${money(gapNow)} a month`}
-      </Label>
-      <Label x={500} y={528} size={14} color={GRAY} anchor="middle">spending moves {(p.spending_drift_pm * 100).toFixed(1)}% of a typical month each month; income {(p.income_drift_pm * 100).toFixed(1)}%</Label>
+      </Big>
+      <Label x={500} y={530} size={14} color={MUTED} anchor="middle">spending moves {(p.spending_drift_pm * 100).toFixed(1)}% of a typical month each month; income {(p.income_drift_pm * 100).toFixed(1)}%</Label>
     </Frame>
   )
 }
