@@ -54,7 +54,7 @@ export default function RunwayScene({ p, durationMs = 5000 }: { p: RunwayParams;
           <rect x={0} y={102} height={12} rx={3} fill="var(--orange)" width={barW * (p.spending_after / incomeMax)} />
           <text x={barW + 8} y={112} fontSize={11} fill="var(--gray)">{fmt.money(p.spending_after)}</text>
           <text x={0} y={146} fontSize={12} fontWeight={600} fill={p.monthly_gap > 0 ? 'var(--danger)' : 'var(--emerald)'}>{p.monthly_gap > 0 ? `gap ${fmt.money(p.monthly_gap)} a month` : 'no monthly gap'}</text>
-          <text x={0} y={170} fontSize={12} fill="var(--charcoal)">{p.runs_out_month != null ? `cup runs dry in month ${Math.ceil(p.runs_out_month)} of ${months}` : `lasts the ${months} months`}</text>
+          <text x={0} y={170} fontSize={12} fill="var(--charcoal)">{p.runs_out_month != null ? `cup runs dry after ${p.runs_out_month.toFixed(1)} of ${months} months` : `lasts the ${months} months`}</text>
           <text x={0} y={190} fontSize={11} fill="var(--gray)">official runway {p.runway_label} · {p.verdict}</text>
         </g>
       </svg>

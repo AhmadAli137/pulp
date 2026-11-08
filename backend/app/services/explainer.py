@@ -63,7 +63,7 @@ def habit_scene(insights: dict) -> dict:
     elif kind == "transfer":
         numbers = {"amount": fv("regular_transfer_out_amount")}
     elif kind == "margin":
-        numbers = {"spending_ratio": fv("spending_ratio")}
+        numbers = {"spending_ratio": fv("spending_ratio"), "I": fv("I"), "S": fv("S")}
     elif kind == "volatile":
         numbers = {"income_cv": fv("income_cv")}
     elif kind == "loan":

@@ -325,7 +325,7 @@ def flag_matrix(features: pd.DataFrame) -> pd.DataFrame:
 def account_feature_summary(features: pd.DataFrame, account_id: int) -> dict:
     """The handful of numbers worth showing a person, with population percentiles."""
     r = features.loc[account_id]
-    keys = ["spending_ratio", "income_cv", "pension_share", "cash_deposit_share", "fee_months_share", "neg_months_share", "timing_dip_share",
+    keys = ["I", "S", "B", "spending_ratio", "income_cv", "pension_share", "cash_deposit_share", "fee_months_share", "neg_months_share", "timing_dip_share",
             "lifestyle_creep", "balance_trend_pm", "bills_share", "card_wd_share", "cash_wd_share", "regular_transfer_out_amount",
             "loan_payment_share", "owner_age", "account_age_years", "inflow_vs_district_salary", "runway_layoff", "runway_combined"]
     out = {}
