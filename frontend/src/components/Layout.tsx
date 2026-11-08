@@ -1,13 +1,14 @@
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
-import { ChevronDown, LogOut } from 'lucide-react'
+import { ChevronDown, LogOut, MessageCircle } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { readSavedAccount, useApp } from '../stores/useApp'
 import { PulpMark } from './PulpMascot'
+import PulpPanel from './pulp/PulpPanel'
 import { SUPPORTING_WORKSPACE, WORKSPACE, WorkspaceNav } from './workspace'
 import './banking.css'
 
 export default function Layout({ onReplayIntro }: { onReplayIntro: () => void }) {
-  const { accountId, loadAccount, loadingProfile, profileError, clearAccount } = useApp()
+  const { accountId, loadAccount, loadingProfile, profileError, clearAccount, openPulp, closePulp } = useApp()
   const [draft, setDraft] = useState(accountId ? String(accountId) : '')
   const [inputError, setInputError] = useState('')
   const signOutDialog = useRef<HTMLDialogElement>(null)
@@ -45,6 +46,7 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
 
   const signOut = () => {
     signOutDialog.current?.close()
+    closePulp()
     clearAccount()
     setDraft('')
     setInputError('')
@@ -72,6 +74,11 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
                 {loadingProfile ? 'Loading…' : 'Load account'}
               </button>
             </form>
+            {accountId && (
+              <button className="bank-button bank-ask-pulp" type="button" onClick={() => openPulp()}>
+                <MessageCircle size={16} aria-hidden="true" /> Ask Pulp
+              </button>
+            )}
             {(accountId || loadingProfile) && (
               <button className="bank-signout" type="button" onClick={() => signOutDialog.current?.showModal()}>
                 <LogOut size={16} aria-hidden="true" /> Sign out of demo
@@ -106,6 +113,7 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
           <Outlet context={onReplayIntro} key={accountId ?? 'signed-out'} />
         </Suspense>
       </main>
+      <PulpPanel />
       <dialog ref={signOutDialog} className="bank-dialog" aria-labelledby="sign-out-title" aria-describedby="sign-out-message">
         <h2 id="sign-out-title">Sign out of demo?</h2>
         <p id="sign-out-message">This clears the account from this browser’s session. You can choose it again later.</p>

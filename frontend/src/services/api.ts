@@ -73,7 +73,7 @@ export interface ShockReport {
   account_id: number; baseline: ShockResult; shocked: ShockResult; verdict: Verdict; change_in_monthly_cash_flow: number
   upfront_cost: number; remaining_buffer: number; cash_path: ShockCashPoint[]
   explanation: { primary_driver: string; drivers: string[]; summary: string; contributions: Record<string, number> }
-  goal_plan: GoalPlan; backup_plan: BackupPlan; tipping_point: TippingPoint; assumptions: string[]
+  goal_plan: GoalPlan; backup_plan: BackupPlan; tipping_point: TippingPoint; assumptions: string[]; warnings?: string[]
   applied_inputs: { income_fraction: number; bills_increase: number; one_off_cost: number; horizon_months: number; preset: string | null }
   ei_note: string
 }
@@ -271,6 +271,14 @@ export interface Storyboard { opening: boolean; source: string; beats: Beat[]; c
 export interface StageAgentEvent { t: number; agent: string; kind: 'tool_call' | 'tool_result' | 'text'; tool?: string; args?: Record<string, unknown>; summary?: string }
 export interface StageMemoryEvent { proposal: Proposal | null; context: ContextSummary; next_question: { key: string; text: string } | null; reply?: string | null }
 export interface StageHandoffEvent { t: number; from: string; to: string; title: string; items: string[] }
+/** A twist card from the deck: the shock in the judges' terms (r, h, one-off in dollars or months of spending). */
+export interface DeckCard { key: string; title: string; text: string; r: number; h: number; duration: number; one_off: number; one_off_months: number | null }
+/** Our flags and the simulated layoff checked against loans that actually went bad (status B or D). */
+export interface Validation {
+  available: boolean; loans?: number; bad?: number; bad_rate_pct?: number
+  by_flag?: { flag: string; n_with: number; bad_rate_with_pct: number; bad_rate_without_pct: number; lift: number }[]
+  by_survival?: { fails_layoff_bad_rate_pct: number | null; survives_layoff_bad_rate_pct: number | null; n_fail: number; n_survive: number }
+}
 export interface Persona { key: string; name: string; kind: 'ai' | 'code' | 'memory'; runs_on: string; role: string; reads: string[]; writes: string[]; guardrail: string }
 export const API_BASE = BASE
 
@@ -302,6 +310,8 @@ export const api = {
   edit: (id: number, change: { field: string; operation: string; value: Record<string, unknown>; target_id?: string }, replan = false) => post<{ applied: unknown; summary: ContextSummary; replan: ReplanResult | null }>('/api/context/edit', { account_id: id, change, replan }),
   chat: (id: number, message: string) => post<ChatResponse>('/api/agent/chat', { account_id: id, message }),
   personas: () => get<{ personas: Persona[] }>('/api/agent/personas'),
+  deck: () => get<{ cards: DeckCard[] }>('/api/agent/deck'),
+  validation: () => get<Validation>('/api/research/validation'),
   plan: (body: { account_id: number; income_fraction: number; bills_increase: number; one_off_cost: number; shock_duration: number; use_ai: boolean }) => post<PlanResult>('/api/agent/plan', body),
   replan: (id: number, reason = 'manual replan') => post<ReplanResult>('/api/replan', { account_id: id, reason }),
   replanDiff: (id: number) => get<{ has_previous: boolean; current: Snapshot | null; previous: Snapshot | null; diff: Diff | null; note?: string }>(`/api/replan/${id}/diff`),

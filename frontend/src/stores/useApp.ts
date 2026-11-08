@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api, ApiError, type Profile, type ShockInputs, type ShockReport, type ContextSummary, type ReplanResult, type PlanResult } from '../services/api'
+import { api, ApiError, type DeckCard, type Profile, type ShockInputs, type ShockReport, type ContextSummary, type ReplanResult, type PlanResult } from '../services/api'
 
 export const PRESETS: Record<string, { label: string; hint: string; inputs: Partial<ShockInputs>; oneOffMonths?: number }> = {
   baseline: { label: 'Baseline', hint: 'No shock', inputs: { income_fraction: 1, bills_increase: 0, one_off_cost: 0, horizon_months: 6 } },
@@ -37,6 +37,14 @@ interface AppState {
   setLastReplan: (r: ReplanResult | null) => void
   setAccessible: (v: boolean) => void
   setGemini: (v: boolean, label?: string) => void
+  /** The Pulp side panel (conversation, voice and agents). A seed is sent as the first message when it opens. */
+  pulpOpen: boolean
+  pulpSeed: string | null
+  openPulp: (seed?: string) => void
+  closePulp: () => void
+  takePulpSeed: () => string | null
+  /** Put a twist card's shock into the official calculator and run it. */
+  applyCard: (card: DeckCard) => void
 }
 
 const ACCOUNT_KEY = 'pulp.account'
@@ -151,4 +159,15 @@ export const useApp = create<AppState>((set, get) => ({
   },
   setAccessible: (v) => { try { localStorage.setItem('pulp.accessible', v ? '1' : '0') } catch { /* ignore */ } set({ accessible: v }) },
   setGemini: (v, label) => set({ geminiConfigured: v, aiLabel: label ?? (v ? 'Gemini companion' : 'offline companion') }),
+  pulpOpen: false,
+  pulpSeed: null,
+  openPulp: (seed) => set({ pulpOpen: true, pulpSeed: seed ?? null }),
+  closePulp: () => set({ pulpOpen: false }),
+  takePulpSeed: () => { const seed = get().pulpSeed; if (seed) set({ pulpSeed: null }); return seed },
+  applyCard: (card) => {
+    const S = get().profile?.typical_spending ?? 0
+    const one_off = card.one_off_months != null ? card.one_off_months * S : card.one_off
+    set({ shockInputs: { income_fraction: card.r, bills_increase: card.h, one_off_cost: one_off, horizon_months: card.duration }, activePreset: card.key in PRESETS ? card.key : null })
+    void get().runShock()
+  },
 }))

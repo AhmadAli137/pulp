@@ -30,7 +30,7 @@ frontend/.npm-cache/
 frontend/node_modules/
 
 # parallel checkouts from another tool and the event PDF
-pulp/
+/pulp/
 pulp2/
 *.pdf
 frontend/test-results/
