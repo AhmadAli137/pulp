@@ -86,9 +86,11 @@ async def voice(ws: WebSocket, account_id: int):
                                         async for event, data in stage_stream(account_id, str(args.get('message', ''))[:2000]):
                                             if event == 'storyboard':
                                                 reply.extend(b['caption'] for b in data.get('beats', []))
-                                                for beat in data.get('beats', []):
-                                                    if beat['visual'] != 'none':
-                                                        await ws.send_json(dict(type='visual', beat=beat))
+                                                visuals = [b for b in data.get('beats', []) if b['visual'] != 'none']
+                                                if len(visuals) > 1:
+                                                    await ws.send_json(dict(type='walkthrough', beats=visuals))
+                                                elif visuals:
+                                                    await ws.send_json(dict(type='visual', beat=visuals[0]))
                                             elif event == 'memory' and data.get('proposal'):
                                                 await ws.send_json(dict(type='context_proposal', proposal=data['proposal']))
                                             elif event in ('agent', 'handoff'):

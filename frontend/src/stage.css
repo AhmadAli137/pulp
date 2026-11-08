@@ -142,3 +142,6 @@
 @media(prefers-reduced-motion:reduce){.stage-home *{animation:none!important;transition:none!important}.stage-liquid{transition:none!important}}
 
 @media(max-width:600px){.stage-mic span{display:none}.stage-mic{width:36px;padding:0}}
+
+/* Short visual stories share the thread without holding up the conversation. */
+.animated-walkthrough{min-width:0;width:100%;margin:16px 0;padding:clamp(12px,2vw,24px);border:1px solid #dcded2;border-radius:18px;background:#fdfcf8}.walkthrough-heading{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:12px;color:#52685e}.walkthrough-controls{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.walkthrough-controls button{padding:9px 12px;border:1px solid #cbd4c7;border-radius:8px;background:#f1f3eb;color:#183e35;font:inherit;font-size:12px;cursor:pointer}.walkthrough-controls button:disabled{opacity:.45;cursor:default}.animated-walkthrough details{font-size:14px;line-height:1.7}.animated-walkthrough summary{cursor:pointer;color:#875c35}.animated-walkthrough .thread-figure{margin:16px 0}

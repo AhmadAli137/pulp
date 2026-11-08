@@ -289,7 +289,12 @@ def twist_storyboard(account_id: int, m, card: dict, plan: dict, *, dealt_random
     best = (plan.get("ranked") or [{}])[0]
     next_question = (best.get("needs_context") or ["Which option fits your life, and what would you want to keep unchanged?"])[0]
     beats.append(_beat("ask2", "none", next_question, {}, 5))
-    return [b for b in beats if b["visual"] in ("timeline", "fork", "none") or b["id"] == "actions"][:4]
+    # A short story: reveal (for a random draw), impact, alternatives, next action.
+    # Preserve scene order and the final question without replaying every diagnostic.
+    keep = {"timeline", "fork", "actions", "none"}
+    if dealt_randomly:
+        keep.add("shuffle")
+    return [b for b in beats if b["visual"] in keep]
 
 
 # ----------------------------------------------------------------------------- caption safety
@@ -338,7 +343,7 @@ Rules: normally ONE concise conversational beat with visual="none". Use 2 to 3 b
 shock mitigation or life-decision comparisons that need explanation. At most 3 tool calls (get_profile is cheap; run_council is fast by default, pass with_agents=true only
 when the person asks what they should do). Every number in a caption must come from a tool result. Conversation is the default. Use a visual only when explicitly requested or when a shock timeline or
 comparison makes a financial decision materially easier to understand. Never decorate a routine answer, greeting,
-clarification or acknowledgement with charts. Keep supporting visuals alongside the explanation, not a slideshow.
+clarification or acknowledgement with charts. For a meaningful scenario or comparison, keep a short animated sequence of 2 to 4 connected visuals alongside the conversation. Do not reduce an explicitly requested walkthrough to text alone. Ordinary replies remain text-only.
 Use none for ordinary conversation, timeline for a shock, fork or podium for comparisons, actions for mitigation,
 and math only when explicitly asked. Ask at most one question only when needed to proceed; do not prolong a completed answer.
 For a life decision, first read get_profile and its decision_profile. Translate an observation into what it

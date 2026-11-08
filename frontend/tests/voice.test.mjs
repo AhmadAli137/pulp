@@ -56,6 +56,9 @@ test('live voice handles early ready, streams audio, forwards visuals, and relea
   const visual = { type: 'visual', beat: { visual: 'picture', caption: '', params: {} } }
   socket.onmessage({ data: JSON.stringify(visual) })
   assert.deepEqual(messages.at(-1), visual)
+  const walkthrough = { type: 'walkthrough', beats: [visual.beat, { ...visual.beat, id: 'second' }] }
+  socket.onmessage({ data: JSON.stringify(walkthrough) })
+  assert.deepEqual(messages.at(-1), walkthrough)
   stop(); stop()
   assert.equal(stopped, 1)
   assert.equal(closed, 2)

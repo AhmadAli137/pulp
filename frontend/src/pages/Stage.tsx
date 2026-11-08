@@ -7,6 +7,7 @@ import { PulpMark, Tangerine, clearIntroSeen } from '../components/PulpMascot'
 import Backstage, { splitKeys, type FeedItem } from '../components/stage/Backstage'
 import PulpText from '../components/stage/PulpText'
 import ThreadFigure from '../components/stage/ThreadFigure'
+import AnimatedWalkthrough from '../components/stage/AnimatedWalkthrough'
 import { startVoice, type VoiceSession } from '../services/voice'
 import { API_BASE, api, type Beat, type Persona, type Proposal, type SampleAccount, type StageAgentEvent, type StageHandoffEvent, type StageMemoryEvent, type Storyboard } from '../services/api'
 import { useApp } from '../stores/useApp'
@@ -21,11 +22,12 @@ const GREETING = 'What would you like to feel more prepared for?'
 const SUGGESTIONS: [string, string, typeof Sparkles][] = [['What should I know about my money?', '__intro__', Sparkles], ['Try a life scenario', 'twist:cards', Dice5], ['A small everyday decision', 'decision:small', Wallet], ['A bigger life decision', 'decision:big', Compass]]
 
 type Msg =
+  | { id: string; kind: 'walkthrough'; beats: Beat[]; autoplay?: boolean }
   | { id: string; kind: 'user'; text: string }
   | { id: string; kind: 'pulp'; text: string; beat?: Beat }
   | { id: string; kind: 'proposal'; proposal: Proposal }
   | { id: string; kind: 'glance' }
-type QueueItem = { kind: 'beat'; beat: Beat } | { kind: 'proposal'; proposal: Proposal } | { kind: 'text'; text: string }
+type QueueItem = { kind: 'walkthrough'; beats: Beat[] } | { kind: 'beat'; beat: Beat } | { kind: 'proposal'; proposal: Proposal } | { kind: 'text'; text: string }
 
 const readFlag = (key: string) => { try { return localStorage.getItem(key) === '1' } catch { return false } }
 const turnLabel = (m: string) => m === 'decision:small' ? 'Help me with an everyday decision.' : m === 'decision:big' ? 'Help me with a bigger life decision.' : m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Twist cards' : m === 'twist:random' ? 'Shuffle the deck' : m.startsWith('twist:') ? `Twist: ${m.slice(6).replaceAll('_', ' ')}` : m.length > 70 ? m.slice(0, 69) + '…' : m
@@ -92,6 +94,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
     let done = false
     const next = () => { if (done) return; done = true; pumping.current = false; if (pumpTimer.current) { clearTimeout(pumpTimer.current); pumpTimer.current = null } pump() }
     if (item.kind === 'proposal') { setThread((t) => [...t, { id: nid('p'), kind: 'proposal', proposal: item.proposal }]); pumpTimer.current = window.setTimeout(next, 300); return }
+    if (item.kind === 'walkthrough') { setThread(t => [...t, { id: nid('sequence'), kind: 'walkthrough', beats: item.beats }]); pumpTimer.current = window.setTimeout(next, 0); return }
     const text = item.kind === 'text' ? item.text : item.beat.caption
     setThread((t) => [...t, { id: nid('m'), kind: 'pulp', text, beat: item.kind === 'beat' ? item.beat : undefined }])
     pumpTimer.current = window.setTimeout(next, 0)
@@ -130,6 +133,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
             ...(text.assistant ? [{ id: nid('m'), kind: 'pulp' as const, text: text.assistant }] : [])])
           liveText.current = { user: '', assistant: '' }; setLive(liveText.current)
         }
+        if (m.type === 'walkthrough') setThread(t => [...t, { id: nid('voice-sequence'), kind: 'walkthrough', beats: m.beats, autoplay: false }])
         if (m.type === 'visual') setThread((t) => [...t, { id: nid('v'), kind: 'pulp', text: m.beat.caption, beat: m.beat }])
         if (m.type === 'context_proposal') enqueue([{ kind: 'proposal', proposal: m.proposal }])
         if (m.type === 'pipeline_event') {
@@ -232,7 +236,12 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
       try {
         const d = JSON.parse((e as MessageEvent).data) as Storyboard
         const items: QueueItem[] = (d.beats ?? []).map((b) => ({ kind: 'beat', beat: { ...b, id: nid(b.id) } }))
-        enqueue(items)
+        const grouped: QueueItem[] = []
+        let scenes: Beat[] = []
+        const flush = () => { if (scenes.length > 1) grouped.push({ kind: 'walkthrough', beats: scenes }); else if (scenes.length) grouped.push({ kind: 'beat', beat: scenes[0] }); scenes = [] }
+        for (const item of items) { if (item.kind === 'beat' && item.beat.visual !== 'none') scenes.push(item.beat); else { flush(); grouped.push(item) } }
+        flush()
+        enqueue(grouped)
         setStatus(null)
       } catch { /* ignore */ }
     })
@@ -365,6 +374,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
                     </div>
                   </div>
                 )
+                if (m.kind === 'walkthrough') return <div key={m.id} className="msg pulp has-figure"><span className="msg-avatar" aria-hidden="true"><Tangerine mood="idle" /></span><div className="msg-body"><AnimatedWalkthrough beats={m.beats} onAction={send} autoplay={m.autoplay} /></div></div>
                 return (
                   <div key={m.id} className={`msg pulp ${m.beat && m.beat.visual !== 'none' ? 'has-figure' : ''}`}>
                     <span className="msg-avatar" aria-hidden="true"><Tangerine mood="idle" /></span>

@@ -39,10 +39,10 @@ def test_twist_storyboard_has_the_story_arc():
     plan = run_council(1, m, r=0.55, h=0.0, one_off=0.0, duration=6, horizon=24, n_paths=100, use_ai=False)
     beats = D.twist_storyboard(1, m, D.deal_card("layoff"), plan, dealt_randomly=True)
     visuals = [b["visual"] for b in beats]
-    assert visuals[0] == "timeline"
+    assert visuals[:2] == ["shuffle", "timeline"]
     assert "fork" in visuals and visuals[-1] == "none"
     assert "math" not in visuals and "swarm" not in visuals
-    assert len(beats) <= 4
+    assert len(beats) <= 5
     for b in beats:
         assert b["caption"] and b["duration_s"] > 0
 

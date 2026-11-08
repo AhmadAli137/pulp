@@ -6,6 +6,7 @@ import type { Beat, Proposal } from './api'
 export type VoiceSession = (() => void) & { sendText: (text: string) => boolean; setMuted: (muted: boolean) => void }
 
 export type VoiceMessage =
+  | { type: 'walkthrough'; beats: Beat[] }
   | { type: 'pipeline_event'; event: 'agent' | 'handoff'; data: Record<string, unknown> }
   | { type: 'context_proposal'; proposal: Proposal }
   | { type: 'state_changed' }
