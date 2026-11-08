@@ -1,0 +1,15 @@
+# Production Caddyfile for askpulp.com. Select it on the server with CADDYFILE=./deploy/Caddyfile.askpulp in /opt/pulp/.env.
+# askpulp.com is the canonical host; www and the .ca names redirect to it; the sslip.io name keeps working as an alias.
+askpulp.com, 137.220.54.238.sslip.io {
+	encode zstd gzip
+	reverse_proxy app:8000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+www.askpulp.com, askpulp.ca, www.askpulp.ca {
+	redir https://askpulp.com{uri} permanent
+}

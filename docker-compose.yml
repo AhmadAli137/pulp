@@ -26,7 +26,7 @@ services:
     environment:
       - DOMAIN=${DOMAIN:-localhost}
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CADDYFILE:-./deploy/Caddyfile}:/etc/caddy/Caddyfile:ro   # set CADDYFILE=./deploy/Caddyfile.askpulp in .env for the real domain
       - caddy_data:/data
       - caddy_config:/config
 
