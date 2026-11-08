@@ -15,7 +15,7 @@ from ..services import context_manager as cm
 from ..services.cohort_analysis import cohort_for, research_summary
 from ..services.council import council_available, run_council, run_council_stream
 from ..services.explainer import build_scenes, narrate
-from ..services.director import SHOCK_DECK, stage_stream
+from ..services.director import PERSONAS, SHOCK_DECK, stage_stream
 from ..services.archetypes import flag_catalog, get_archetypes
 from ..services.hunter import get_findings
 from ..services.narrator import narrative_for
@@ -349,6 +349,12 @@ async def get_agent_run(account_id: int, income_fraction: float = Query(0.55, ge
 def get_deck():
     """The twist deck: realistic Canadian shocks the stage can deal."""
     return {"cards": [{k: c[k] for k in ("key", "title", "text", "r", "h", "duration")} | {"one_off": c.get("one_off", 0.0), "one_off_months": c.get("one_off_months")} for c in SHOCK_DECK]}
+
+
+@router.get("/agent/personas")
+def get_personas():
+    """Who the agents are: role, what they read and write, and the guardrail on each, for the backstage view."""
+    return {"personas": PERSONAS}
 
 
 @router.get("/agent/stage")

@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Beat } from '../../services/api'
-import { styleUtterance } from '../../services/ttsVoice'
+import { speakStyled } from '../../services/ttsVoice'
 import Visual from './Visual'
 
 const MAX_MS = 14000
@@ -33,12 +33,10 @@ export default function BeatPlayer({ beats, index, onIndex, playing, onPlaying, 
     timers.current.push(window.setTimeout(() => { timedDone.current = true; advance() }, dur))
     timers.current.push(window.setTimeout(() => { spokenDone.current = true; timedDone.current = true; advance() }, MAX_MS))
     if (tts && !mute && beat.caption) {
-      try {
-        const u = styleUtterance(new SpeechSynthesisUtterance(beat.caption))
-        u.onend = () => { spokenDone.current = true; advance() }
-        u.onerror = () => { spokenDone.current = true; advance() }
-        window.speechSynthesis.speak(u)
-      } catch { spokenDone.current = true }
+      void speakStyled(beat.caption, {
+        onend: () => { spokenDone.current = true; advance() },
+        onerror: () => { spokenDone.current = true; advance() },
+      }).catch(() => { spokenDone.current = true; advance() })
     } else {
       spokenDone.current = true
     }

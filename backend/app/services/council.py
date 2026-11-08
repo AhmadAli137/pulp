@@ -402,6 +402,14 @@ async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h
     await run_in_threadpool(run.fan_out)
     yield stage("fan_out", "done", f"Scored {len(run.candidates)} candidates in {run.t_grid:.1f} s", candidates=len(run.candidates),
                 best_grid=run.candidates[0]["label"] if run.candidates else None)
+    req = run.req
+    ctx_bits = ", ".join(f"{k} {len(v)}" for k, v in req["confirmed_context"].items() if v)
+    yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "engine", "to": "strategist, challenger", "title": "Frozen request",
+                      "items": [f"I {req['metrics']['I']:,.0f} / S {req['metrics']['S']:,.0f} / B {req['metrics']['B']:,.0f}", req["shock"]["label"],
+                                f"goal: {req['goal']['label']} ({req['goal']['target_months']} months)",
+                                f"weights: safety {req['weights']['resilience']:.0%} / goal {req['weights']['goal']:.0%}",
+                                ("confirmed context: " + ctx_bits) if ctx_bits else "confirmed context: none yet",
+                                (f"grid: {len(run.candidates)} candidates, best '{run.candidates[0]['label']}'" if run.candidates else "grid: empty")]}
     if run.use_ai:
         yield stage("council", "start", "Strategist and Challenger review the same frozen request in parallel")
         try:
@@ -415,9 +423,28 @@ async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h
             run.mode = "offline"
             yield stage("council", "done", f"Agents unavailable ({type(exc).__name__}); continuing with the grid")
         else:
-            n_lev = len((run.strategist_out or {}).get("levers") or [])
-            n_fl = len((run.challenger_out or {}).get("flags") or [])
+            levers = [l for l in ((run.strategist_out or {}).get("levers") or []) if isinstance(l, dict)]
+            flags = [f for f in ((run.challenger_out or {}).get("flags") or []) if isinstance(f, dict)]
+            questions = [q for q in ((run.challenger_out or {}).get("questions") or []) if isinstance(q, str)]
+            n_lev, n_fl = len(levers), len(flags)
             yield stage("council", "done", f"Strategist proposed {n_lev} lever(s); Challenger raised {n_fl} flag(s)", levers=n_lev, flags=n_fl)
+
+            def _dials(l: dict) -> str:
+                parts = []
+                for k, lab in (("freed_up_per_month", "free up"), ("goal_contribution_per_month", "save"), ("emergency_floor", "floor"), ("extra_income_per_month", "extra income")):
+                    try:
+                        v = float(l.get(k) or 0)
+                    except (TypeError, ValueError):
+                        v = 0.0
+                    if v:
+                        parts.append(f"{lab} ${v:,.0f}")
+                return ", ".join(parts) or "no dials"
+
+            yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "strategist", "to": "validator", "title": f"{n_lev} lever(s) proposed",
+                              "items": [f"{l.get('label', 'lever')}: {_dials(l)}" + (f" / why: {str(l.get('why', ''))[:140]}" if l.get("why") else "") for l in levers] or ["no lever this time"]}
+            yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "challenger", "to": "ranker", "title": f"{n_fl} flag(s), {len(questions)} question(s)",
+                              "items": [f"{f.get('severity', 'medium')} on '{f.get('candidate', '?')}': {f.get('risk', '')}" + (f" / {str(f.get('because', ''))[:120]}" if f.get("because") else "") for f in flags]
+                                       + [f"ask next: {q}" for q in questions[:3]] or ["nothing to flag"]}
         yield stage("validate", "start", "Clamping and re-scoring every proposed lever; attaching flags")
         await run_in_threadpool(run.validate)
         yield stage("validate", "done", f"{len(run.validation_notes)} lever(s) dropped; {len(run.unmatched_flags)} flag(s) unmatched")
@@ -426,4 +453,9 @@ async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h
     yield stage("rank", "start", "Ranking by the objective with flag penalties")
     result = run.rank()
     yield stage("rank", "done", f"Recommended: {result['recommended']}", recommended=result["recommended"])
+    top = result["ranked"][:3]
+    yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "ranker", "to": "director", "title": f"Ranked {len(result['ranked'])} plans",
+                      "items": [f"#{i + 1} {c['label']} / P(shortfall) {c['prob_shortfall_under_stress']:.0%} / score {c['adjusted_score']:.2f}"
+                                + (f" / {len(c['flags'])} flag" if c["flags"] else "") for i, c in enumerate(top)]
+                               + ([f"dropped: {n}" for n in run.validation_notes[:2]] if run.validation_notes else [])}
     yield "plan", result

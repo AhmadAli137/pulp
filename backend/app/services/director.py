@@ -29,6 +29,31 @@ from .financial_profiles import get_metrics
 from .narrator import narrative_for
 from .tangerine_metrics import compute_shock, horizon_verdict
 
+# ----------------------------------------------------------------------------- personas (what the backstage shows)
+PERSONAS: list[dict] = [
+    {"key": "companion", "name": "Companion", "kind": "memory", "runs_on": "offline extractor (Gemini when configured)",
+     "role": "Listens to what you say and turns it into things PULP may remember: goals, worries, constraints. Nothing is saved until you confirm.",
+     "reads": ["your message", "what you already confirmed"], "writes": ["a proposal you can confirm or reject"], "guardrail": "cannot write memory; only proposes"},
+    {"key": "narrator", "name": "Profile Narrator", "kind": "ai", "runs_on": "Gemini on Google ADK",
+     "role": "Reads the flags the engine raised on your account and writes the three or four sentences worth hearing.",
+     "reads": ["official numbers", "flags with evidence", "archetype"], "writes": ["headline", "one sentence per flag"], "guardrail": "may only talk about the flags it was given; every sentence names its flag"},
+    {"key": "director", "name": "Director", "kind": "ai", "runs_on": "Gemini on Google ADK",
+     "role": "Decides what the stage shows for each turn and writes what Pip says. Calls the engine when it needs numbers.",
+     "reads": ["your message", "confirmed context", "engine tools"], "writes": ["beats: a visual, a source, a caption"], "guardrail": "numbers come from tools; captions are checked against the data behind each visual"},
+    {"key": "engine", "name": "Engine", "kind": "code", "runs_on": "Python (pandas, numpy)",
+     "role": "The sponsor formula, the Monte Carlo simulator and the lever grid. The only source of numbers.",
+     "reads": ["monthly_summary.csv and the other files", "the shock", "levers"], "writes": ["frozen request", "scored candidates", "runway, shortfall probability"], "guardrail": "deterministic; tested against the judges' definitions"},
+    {"key": "strategist", "name": "Strategist", "kind": "ai", "runs_on": "Gemini on Google ADK",
+     "role": "Invents levers the grid cannot: pause a transfer you mentioned, a side income, deferring a goal. Asks the engine to score each.",
+     "reads": ["frozen request", "best grid candidates", "confirmed context"], "writes": ["levers with a why"], "guardrail": "every lever is clamped and re-scored by code; its own numbers are ignored"},
+    {"key": "challenger", "name": "Challenger", "kind": "ai", "runs_on": "Gemini on Google ADK",
+     "role": "Asks whether you would actually do each plan, against what you said about your life.",
+     "reads": ["frozen request", "candidates", "confirmed context"], "writes": ["flags with a severity", "questions the companion should ask next"], "guardrail": "cannot touch memory or scores; flags only demote"},
+    {"key": "validator", "name": "Validator and Ranker", "kind": "code", "runs_on": "Python",
+     "role": "Clamps every proposed lever into the admissible box, re-scores it, attaches flags and ranks all plans by one objective.",
+     "reads": ["levers", "flags", "candidates"], "writes": ["ranked plans with the objective shown"], "guardrail": "deterministic; the objective is printed with every result"},
+]
+
 # ----------------------------------------------------------------------------- the shock deck (Canadian, realistic)
 # Sources: EI regular benefits replace 55% of insurable earnings (canada.ca); CMHC rent growth; StatCan CPI shelter;
 # repair costs are typical ranges, deliberately conservative. one_off_months means a multiple of typical spending S.
@@ -464,7 +489,14 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
     # 1. opening
     if msg == "__intro__":
         insights = await run_in_threadpool(narrative_for, account_id, use_ai)
+        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "engine", "to": "narrator", "title": f"{len(insights['flags'])} flag(s) and the archetype",
+                          "items": [f"{f['label']}: {f['evidence']}" for f in insights["flags"][:5]]
+                                   + ([f"archetype: {insights['archetype']['name']} ({insights['archetype']['share']:.0%} of accounts)"] if insights.get("archetype") else [])}
+        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "narrator", "to": "director", "title": insights["narrative"]["headline"],
+                          "items": [f"[{i['flag']}] {i['text']}" for i in insights["narrative"]["insights"]] + [f"written by {insights['narrative']['source']}"]}
         beats = opening_storyboard(account_id, m, insights)
+        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats",
+                          "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
         yield "storyboard", {"opening": True, "source": insights["narrative"]["source"], "beats": beats}
         return
 
@@ -477,6 +509,8 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
         card = deal_card(key)
         shock = card_shock(card, m.typical_spending)
         yield "agent", {"t": 0.0, "agent": "director", "kind": "tool_call", "tool": "deal_or_set_shock", "args": {"card": card["key"]}}
+        shock_bits = f"income x{shock['r']:.2f}" + (f", bills +{shock['h']:.0%}" if shock["h"] else "") + (f", one-off ${shock['one_off']:,.0f}" if shock["one_off"] else "") + f", {shock['duration']} months"
+        yield "handoff", {"t": 0.0, "from": "director", "to": "engine", "title": f"Twist: {card['title']}", "items": [card["text"], shock_bits]}
         plan_holder: dict = {}
 
         async def council():
@@ -486,18 +520,22 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
                 if et == "plan":
                     plan_holder["plan"] = data
                 elif et == "agent":
-                    yield data
+                    yield "agent", data
+                elif et == "handoff":
+                    yield "handoff", data
                 elif et == "stage":
-                    yield {"t": data["seconds"], "agent": "engine", "kind": "text", "summary": data["detail"]}
+                    yield "agent", {"t": data["seconds"], "agent": "engine", "kind": "text", "summary": data["detail"]}
 
-        async for ev in council():
-            yield "agent", ev
+        async for et, ev in council():
+            yield et, ev
         plan = plan_holder.get("plan")
         if not plan:
             yield "error", {"message": "council did not return a plan"}
             return
         beats = twist_storyboard(account_id, m, card, plan, dealt_randomly=(key == "random"))
         cm.record_turn(account_id, "user", f"Twist card: {card['title']}", {"shock": shock})
+        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats",
+                          "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
         yield "storyboard", {"opening": False, "source": "deck+council", "beats": beats, "card": card}
         return
 
@@ -505,6 +543,11 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
     try:
         from .gemini_agent import chat as companion_chat
         mem = await run_in_threadpool(companion_chat, account_id, msg, True)
+        ex = mem.get("extraction") or {}
+        changes = ex.get("proposed_changes") or []
+        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "companion", "to": "director", "title": f"heard: {ex.get('intent', 'message')}",
+                          "items": [f"proposes to remember {c.get('field')}: {json.dumps(c.get('value'), default=str)[:100]}" for c in changes[:3]]
+                                   + ([f"follow-up: {ex['follow_up_question']}"] if ex.get("follow_up_question") else []) or ["nothing to remember from this"]}
         yield "memory", {"proposal": mem.get("proposal"), "context": mem.get("context"), "next_question": mem.get("next_question"), "reply": mem.get("reply")}
     except Exception as exc:  # memory is optional for the stage
         mem = {"reply": None}
@@ -550,4 +593,6 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
         if mem.get("reply") and beats and beats[0]["visual"] == "none":
             beats[0]["caption"] = str(mem["reply"])[:260]
     cm.record_turn(account_id, "assistant", " ".join(b["caption"] for b in beats)[:1000], {"stage": [b["visual"] for b in beats]})
+    yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats ({'from the model' if source != 'template' else 'template'})",
+                      "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
     yield "storyboard", {"opening": False, "source": source, "beats": beats, "seconds": round(time.perf_counter() - t0, 2)}
