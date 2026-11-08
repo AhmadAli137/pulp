@@ -162,6 +162,7 @@ export interface Archetype {
   share: number; size: number; survive6_layoff_pct: number; naming_source: string
 }
 export interface Insights {
+  decision_profile?: { period: { from: string; to: string; months: number }; observations: { key: string; evidence: string; life_effect: string; question: string; unlocks: string; needs_answer: boolean; priority: number }[] }
   account_id: number; flags: InsightFlag[]; archetype: Archetype | null
   features: Record<string, { value: number | boolean | null; percentile?: number | null; doc?: string }>
   narrative: { headline: string; insights: { text: string; flag: string }[]; source: string }

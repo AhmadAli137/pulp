@@ -29,11 +29,11 @@ export default function Roadmap() {
   const groups: [string, RoadmapAction[]][] = [['This week', rm.this_week], ['This month', rm.this_month], ['Next three months', rm.next_three_months], ['Next year', rm.next_year], ['Long term', rm.long_term]]
   return (
     <div className="stack">
-      <Card dark title="Where this roadmap comes from">
+      <Card dark title="The direction behind your next steps">
         <div className="grid cols-3">
           <div><div className="muted small">Goal</div><div className="strong">{rm.summary.goal.label}</div><div className="small muted">{fmt.money(rm.summary.goal.target_amount)} in {rm.summary.goal.target_months} months</div></div>
-          <div><div className="muted small">Recommended strategy</div><div className="strong">{rm.summary.recommended}</div><div className="small muted">capacity {fmt.money(rm.summary.capacity_per_month)}/mo</div></div>
-          <div><div className="muted small">Current scenario</div><div className="small">{rm.summary.layoff_verdict}</div></div>
+          <div><div className="muted small">Option under review</div><div className="strong">{rm.summary.recommended}</div><div className="small muted">capacity {fmt.money(rm.summary.capacity_per_month)}/mo</div></div>
+          <div><div className="muted small">What we are preparing for</div><div className="small">{rm.summary.layoff_verdict}</div></div>
         </div>
         <p className="small muted" style={{ marginTop: 10 }}>{rm.summary.goal_plan_note} Nothing is executed automatically; every action is a suggestion for you to decide on.</p>
       </Card>

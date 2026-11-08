@@ -68,7 +68,7 @@ test('mobile home fits and navigation reaches research', async t => {
   await p.getByRole('button', { name: 'Start voice conversation' }).waitFor()
   assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await p.getByRole('button', { name: 'Open navigation' }).click()
-  await p.getByRole('button', { name: 'Research & insights' }).click()
+  await p.getByRole('button', { name: 'Insights & evidence' }).click()
   await p.getByText('Ever had a negative balance day', { exact: true }).waitFor()
 })
 
@@ -196,4 +196,31 @@ test('everyday and bigger decisions start as contextual conversation', { timeout
   await p.getByRole('button', { name: 'A small everyday decision' }).click()
   await p.getByText(/We can compare: (change a bill date|add a monthly expense)/).waitFor()
   assert.equal(await p.locator('.thread-figure').count(), 0)
+})
+
+
+test('every workspace page shares navigation and fits desktop and mobile', { timeout: 120000 }, async t => {
+  const pages = [ ['/twin', 'Your financial picture'], ['/insights', 'Insights & evidence'], ['/shock', 'Prepare for a setback'], ['/explore', 'Compare possibilities'], ['/goals', 'Goals & choices'], ['/roadmap', 'Your next steps'], ['/settings', 'Preferences & data'] ]
+  for (const width of [1440, 390]) {
+    const p = await pageFor(t, 20111, { viewport: { width, height: 960 } })
+    for (const [path, title] of pages) {
+      await p.goto(base + path)
+      await p.getByRole('heading', { name: title, exact: true }).waitFor()
+      await p.getByRole('navigation', { name: 'Planning workspace' }).waitFor()
+      await p.waitForTimeout(700)
+      assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `overflow: ${path} at ${width}: ${await p.evaluate(() => [...document.querySelectorAll('body *')].filter(e => e.getBoundingClientRect().right > innerWidth + 2 && getComputedStyle(e).position !== 'fixed').slice(0,12).map(e => e.className).join(', '))}`)
+      await p.screenshot({ path: `../.runtime/workspace-${path.slice(1)}-${width}.png` })
+    }
+  }
+})
+
+test('insight questions lead back to the same conversation as a draft', { timeout: 45000 }, async t => {
+  const p = await pageFor(t, 20111); await p.goto(base + '/insights')
+  const evidence = p.getByRole('region', { name: 'Insights for your decisions' })
+  await evidence.waitFor()
+  const link = evidence.locator('a').first()
+  await link.click()
+  const input = p.getByRole('textbox', { name: 'Message', exact: true })
+  await input.waitFor()
+  assert.match(await input.inputValue(), /Help me answer this using my records/)
 })

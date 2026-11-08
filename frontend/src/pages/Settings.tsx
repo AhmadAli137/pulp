@@ -19,22 +19,22 @@ export default function Settings() {
 
   return (
     <div className="grid cols-2">
-      <Card title="Services">
+      <Card title="Connection & availability">
         <KV rows={[
           ['API', health ? <Chip>connected</Chip> : <Chip tone="danger">unreachable</Chip>],
           ['Accounts loaded', health ? health.accounts.toLocaleString() : '—'],
           ['Data folder', health?.data_dir ?? '—'],
           ['AI provider', health ? <Chip tone={health.ai_provider === 'offline' ? 'gray' : ''}>{health.ai_label}{health.ai_model ? ` · ${health.ai_model}` : ''}</Chip> : '—'],
-          ['Voice', 'Gemini Live ? one voice for conversation and planning'],
+          ['Voice', 'One continuous voice for conversation and planning'],
         ]} />
-        <p className="tiny muted" style={{ marginTop: 10 }}>Put GEMINI_API_KEY or VULTR_INFERENCE_API_KEY in the repo's .env and restart the backend (AI_PROVIDER picks between them). Keys are never sent to the browser.</p>
+        <p className="tiny muted" style={{ marginTop: 10 }}>Voice starts only when you choose Talk to Pulp. You can keep typing during the same conversation.</p>
       </Card>
       <Card title="Accessibility">
         <label className="row small"><input type="checkbox" checked={accessible} onChange={(e) => setAccessible(e.target.checked)} /> Always show results as tables beside charts (no colour needed to read a verdict)</label>
         <p className="tiny muted" style={{ marginTop: 8 }}>Verdicts also carry a text mark (✓, !, =) and a sentence, and every chart has a data table when this is on.</p>
       </Card>
       <Card title="Your data">
-        <p className="small">PULP stores only what you confirm in the companion, as a JSON file on the backend for this anonymized account. You can review it on My Financial Twin, delete individual items there, or delete everything here.</p>
+        <p className="small">Pulp keeps your conversation and the personal details you confirm for this demo account. Review or remove individual details in Your financial picture, or clear your saved context here.</p>
         <div className="row" style={{ marginTop: 10 }}>
           <button className="btn danger" onClick={reset} disabled={!accountId}>Delete personal context</button>
           <button className="btn" onClick={clearAccount} disabled={!accountId}>Unload account</button>

@@ -50,7 +50,7 @@ export default function CouncilPanel() {
             <div className="small">{res.why}</div>
             <div className="tiny muted">Objective: {res.objective.formula} Â· weights {fmt.pct(res.objective.weights.resilience)} safety / {fmt.pct(res.objective.weights.goal)} goal</div>
           </div>
-          <table className="table">
+          <div className="table-scroll" tabIndex={0} role="region" aria-label="Planning options comparison"><table className="table">
             <thead><tr><th>#</th><th>Strategy</th><th>From</th><th>Monthly levers</th><th>P(shortfall)</th><th>Goal by deadline</th><th>Spending cut</th><th>Score</th><th>Challenger</th></tr></thead>
             <tbody>
               {res.ranked.map((c, i) => (
@@ -80,7 +80,7 @@ export default function CouncilPanel() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           {res.challenger?.questions && res.challenger.questions.length > 0 && (
             <div>
               <div className="t small">Challenger wants the companion to ask next</div>

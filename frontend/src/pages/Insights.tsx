@@ -46,7 +46,7 @@ export default function Insights() {
         <div className="hero">
           <div className="row" style={{ marginBottom: 8 }}><Chip tone="gold">Discovery · {res.accounts_eligible_positive_inflow?.toLocaleString()} accounts · simulated outcomes</Chip></div>
           <h1 style={{ fontSize: 22 }}>{res.headline}</h1>
-          <p className="small" style={{ marginTop: 10 }}>Rank correlation of runway with the cash buffer: {fmt.num(pop.spearman_buffer_vs_runway_layoff, 2)}. With spending ÷ income: {fmt.num(pop.spearman_spendratio_vs_runway_layoff, 2)}. Reproduce with backend/scripts/analyze_population.py.</p>
+          <p className="small" style={{ marginTop: 10 }}>Rank correlation of runway with the cash buffer: {fmt.num(pop.spearman_buffer_vs_runway_layoff, 2)}. With spending ÷ income: {fmt.num(pop.spearman_spendratio_vs_runway_layoff, 2)}. These comparisons describe this dataset; they do not predict an individual outcome.</p>
         </div>
         <div className="grid cols-2">
           <Card title={<>Who lasts six months on 55% income? <Tip text="Accounts split into quartiles two ways. Grey: by cash buffer B. Green: by spending-to-income ratio S/I. Survival = unrounded runway of at least 6 months." /></>}>
@@ -97,7 +97,7 @@ export default function Insights() {
             title={<>{arch.k} groups across {arch.n_accounts.toLocaleString()} accounts <Tip text={arch.method} /></>}
             right={<Chip tone={arch.naming_source.startsWith('google-adk') ? 'gold' : 'gray'}>{arch.naming_source.startsWith('google-adk') ? 'named by Gemini on Google ADK' : 'named by rules'}</Chip>}
           >
-            <table className="data arch-table">
+            <div className="table-scroll" tabIndex={0} role="region" aria-label="Account group comparison"><table className="data arch-table">
               <thead><tr><th>Archetype</th><th className="num">Share</th><th className="num">Lasts 6 mo, layoff</th><th className="num">Layoff + bills</th><th>Likely life stage / occupation (a guess)</th><th>What sets it apart</th></tr></thead>
               <tbody>
                 {arch.clusters.map((c) => (
@@ -111,7 +111,7 @@ export default function Insights() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
             <p className="tiny muted" style={{ marginTop: 8 }}>Clusters and every number are computed in code; the model only wrote the names and the hedged guesses from those numbers.</p>
           </Card>
         )}

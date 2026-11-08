@@ -4,6 +4,7 @@ import './styles.css'
 import './agent.css'
 import App from './App'
 import './refinement.css'
+import './workspace.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

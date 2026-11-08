@@ -53,10 +53,10 @@ export default function Twin() {
   return (
     <div className="stack">
       <div className="grid cols-2">
-        <Card title={<span className="obs">Observed banking facts</span>} right={<Chip>from monthly_summary.csv</Chip>}>
+        <Card title={<span className="obs">From your account records</span>} right={<Chip>Recorded history</Chip>}>
           <KV rows={[
-            ['Typical inflow I', fmt.money(profile.typical_inflow)], ['Typical spending S', fmt.money(profile.typical_spending)],
-            ['Fixed costs F', fmt.money(profile.typical_fixed_costs)], ['Household bills H', fmt.money(profile.household_bills)],
+            ['Money coming in each month', fmt.money(profile.typical_inflow)], ['Money going out each month', fmt.money(profile.typical_spending)],
+            ['Regular commitments', fmt.money(profile.typical_fixed_costs)], ['Household bills', fmt.money(profile.household_bills)],
             ['Insurance (median)', fmt.money(profile.typical_insurance)], ['Loan payments (median)', fmt.money(profile.typical_loan_payments)],
             ['Buffer B', fmt.money(profile.buffer)], ['Active loan payment P', fmt.money(profile.active_loan_payment)],
             ['Income variability (CV)', fmt.num(profile.income_cv, 2)], ['Spending ÷ income', fmt.pct(profile.spending_ratio)],

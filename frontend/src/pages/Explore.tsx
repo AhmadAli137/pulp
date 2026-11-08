@@ -94,9 +94,9 @@ export default function Explore() {
         </>
       )}
 
-      <Card title="Branching financial paths" right={<span className="small muted">Click a branch for its numbers · 24 months · stated assumptions</span>}>
+      <Card title="Choose a possibility to compare" right={<span className="small muted">Click a branch for its numbers · 24 months · stated assumptions</span>}>
         {branches.length === 0 ? <Empty><Spinner /></Empty> : (
-          <div className="grid" style={{ gridTemplateColumns: '240px 1fr' }}>
+          <div className="grid branch-layout">
             <div className="stack">
               <div className="branch" style={{ background: 'var(--forest)', color: '#fff', cursor: 'default' }}><div className="t">TODAY</div><div className="m" style={{ color: 'rgba(255,255,255,0.7)' }}>buffer {fmt.money(profile.buffer)}</div></div>
               {branches.map((b) => (
@@ -122,8 +122,8 @@ export default function Explore() {
       </Card>
 
       <div className="section">
-        <h2>Official shock calculator</h2>
-        <p className="small muted" style={{ marginBottom: 12 }}>The sponsor formula, kept visible beside the simulation. Simulation never changes these numbers.</p>
+        <h2>Check the immediate effect</h2>
+        <p className="small muted" style={{ marginBottom: 12 }}>Review how the same change affects money coming in, essential costs and your available buffer.</p>
         <ShockPanel />
       </div>
     </div>

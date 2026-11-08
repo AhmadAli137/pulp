@@ -5,7 +5,7 @@ import {
 import type { Branch, HistoryRow, Strategy } from '../services/api'
 import { fmt } from '../components/ui'
 
-export const C = { forest: '#183B2D', emerald: '#2F7A5B', mint: '#E8EDDE', gold: '#F97316', gray: '#8C9286', danger: '#C2410C', line: '#E9ECE4', charcoal: '#252920' }
+export const C = { forest: '#183E35', emerald: '#376B57', mint: '#E8EDDE', gold: '#AC7445', gray: '#8C9286', danger: '#C2410C', line: '#E9ECE4', charcoal: '#252920' }
 const money = (v: number) => (Math.abs(v) >= 1000 ? `$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `$${Math.round(v)}`)
 const tipStyle = { borderRadius: 10, border: `1px solid ${C.line}`, fontSize: 12, boxShadow: '0 8px 24px rgba(22,63,53,0.08)' }
 

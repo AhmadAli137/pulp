@@ -85,7 +85,7 @@ export function KV({ rows }: { rows: [string, ReactNode][] }) {
 
 export function DataTable({ headers, rows, caption, highlight }: { headers: string[]; rows: (ReactNode | number | string)[][]; caption?: string; highlight?: number }) {
   return (
-    <table className="data">
+    <div className="table-scroll" tabIndex={0} role="region" aria-label={caption || "Financial comparison table"}><table className="data">
       {caption && <caption className="sr-only">{caption}</caption>}
       <thead>
         <tr>{headers.map((h, i) => <th key={h} className={i > 0 ? 'num' : ''}>{h}</th>)}</tr>
@@ -97,6 +97,6 @@ export function DataTable({ headers, rows, caption, highlight }: { headers: stri
           </tr>
         ))}
       </tbody>
-    </table>
+    </table></div>
   )
 }

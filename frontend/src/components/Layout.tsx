@@ -1,39 +1,18 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../stores/useApp'
 import { api } from '../services/api'
 import { Spinner } from './ui'
 import CurrentPlan from './CurrentPlan'
-import { MessageCircle, Activity, Fingerprint, GitBranch, Target, Map, ChartNoAxesCombined, Settings } from 'lucide-react'
-
-const NAV = [
-  { to: '/', label: 'Conversation', ic: MessageCircle },
-  { to: '/shock', label: 'Shock Lab', ic: Activity },
-  { to: '/twin', label: 'My Financial Twin', ic: Fingerprint },
-  { to: '/explore', label: 'Explore Futures', ic: GitBranch },
-  { to: '/goals', label: 'My Goals', ic: Target },
-  { to: '/roadmap', label: 'Financial Roadmap', ic: Map },
-  { to: '/insights', label: 'Insights', ic: ChartNoAxesCombined },
-  { to: '/settings', label: 'Settings', ic: Settings },
-]
-
-const TITLES: Record<string, [string, string]> = {
-  '/': ['Home', 'Ask Pulp anything about this account'],
-  '/shock': ['Shock Lab', 'Know the customer, take a shock, make a plan'],
-  '/twin': ['My Financial Twin', 'Observed banking facts beside confirmed life context'],
-  '/explore': ['Explore Futures', 'Simulated paths under the shocks you choose'],
-  '/goals': ['My Goals', 'Strategies compared, before and after new information'],
-  '/roadmap': ['Financial Roadmap', 'What to do this week, this month, this year'],
-  '/insights': ['Insights', 'What the whole dataset says, and where this account sits'],
-  '/companion': ['AI Companion', 'Tell PULP what you are living for'],
-  '/settings': ['Settings', 'Services, data, accessibility'],
-}
+import { WORKSPACE, PageGuide, WorkspaceNav } from './workspace'
+import { PulpMark } from './PulpMascot'
 
 export default function Layout() {
-  const { accountId, loadAccount, loadingProfile, profileError, setGemini, aiLabel } = useApp()
+  const { accountId, loadAccount, loadingProfile, profileError, setGemini } = useApp()
   const [draft, setDraft] = useState(accountId ? String(accountId) : '')
   const loc = useLocation()
-  const [title, subtitle] = TITLES[loc.pathname] ?? ['PULP', '']
+  const page = WORKSPACE.find(x => x.to === loc.pathname)
+  const title = page?.label ?? 'Pulp'; const subtitle = page?.subtitle ?? ''
 
   useEffect(() => {
     api.health().then((h) => setGemini(h.ai_provider !== 'offline', h.ai_label)).catch(() => setGemini(false))
@@ -53,41 +32,41 @@ export default function Layout() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="logo" aria-hidden>
-            <svg width="22" height="22" viewBox="0 0 64 64"><path d="M14 46 C 26 46, 26 18, 38 18 M14 46 C 26 46, 30 32, 50 30" stroke="#F8F9F6" strokeWidth="6" fill="none" strokeLinecap="round" /><circle cx="50" cy="30" r="7" fill="#F97316" /></svg>
-          </div>
+          <PulpMark size={36} />
           <div>
             <div className="name">PULP<span className="dot">.</span></div>
-            <div className="tag">Planning Under Life's Pressures</div>
+            <div className="tag">A considered financial life</div>
           </div>
         </div>
         <nav className="nav" aria-label="Main">
-          {NAV.map((n) => (
+          {WORKSPACE.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
-              <span className="ic" aria-hidden><n.ic size={17} /></span>{n.label}
+              <span className="ic" aria-hidden><n.icon size={17} /></span>{n.label}
             </NavLink>
           ))}
         </nav>
-        <div className="foot">
-          Tangerine track · Sheridan Datathon 2026<br />
-          Prepare for what comes next.<br />Data: PKDD'99 Financial dataset (anonymized). Amounts in CAD.<br />
-          AI: {aiLabel}
+        <div className="foot"><span className="sidebar-seal">P / PERSONAL PERSPECTIVE</span>
+          Planning informed by records.<br/>Decisions shaped around your life.<br/><Link to="/settings">About the data &amp; your controls</Link>
         </div>
       </aside>
-      <main className="main">
+      <main className="main" data-page={loc.pathname.slice(1)}>
+        <WorkspaceNav />
         <div className="topbar">
+
           <div className="title">
+            <span className="editorial-label">Pulp / Your planning workspace</span>
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>
           <form className="acct-pill" onSubmit={submit} aria-label="Select account">
             <span className="dot" aria-hidden />
-            <label htmlFor="acct" className="small muted">Account</label>
-            <input id="acct" inputMode="numeric" placeholder="account_id" value={draft} onChange={(e) => setDraft(e.target.value)} />
+            <label htmlFor="acct" className="small muted">Demo account</label>
+            <input id="acct" inputMode="numeric" placeholder="Account number" value={draft} onChange={(e) => setDraft(e.target.value)} />
             <button className="btn primary sm" type="submit" disabled={loadingProfile}>{loadingProfile ? <Spinner /> : 'Load'}</button>
           </form>
         </div>
-        {profileError && <div className="err" role="alert" style={{ marginBottom: 16 }}>{profileError} Account IDs are integers from accounts.csv; try a sample from the Overview page.</div>}
+        {profileError && <div className="err" role="alert" style={{ marginBottom: 16 }}>{profileError} Choose a demo account in the planning room to continue.</div>}
+        <PageGuide path={loc.pathname} />
         <CurrentPlan />
         <Outlet />
       </main>

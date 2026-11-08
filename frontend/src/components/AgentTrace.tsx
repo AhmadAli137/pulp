@@ -73,7 +73,7 @@ export function normalizeHunterReplay(doc: HunterDoc): TraceEvent[] {
 
 export default function AgentTrace({ events, lanes, live, dataNames, stepMs = 600, title }: { events: TraceEvent[]; lanes: TraceLane[]; live: boolean; dataNames: string[]; stepMs?: number; title?: string }) {
   const [visible, setVisible] = useState(live ? events.length : 0)
-  const [playing, setPlaying] = useState(!live)
+  const [playing, setPlaying] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   useEffect(() => { if (live) setVisible(events.length) }, [live, events.length])
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function AgentTrace({ events, lanes, live, dataNames, stepMs = 60
     const id = window.setTimeout(() => setVisible((v) => Math.min(events.length, v + 1)), stepMs)
     return () => window.clearTimeout(id)
   }, [live, playing, visible, events.length, stepMs])
-  useEffect(() => { endRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }, [visible])
+  useEffect(() => { const grid = endRef.current?.closest('.trace-grid'); if (grid && (live || playing)) grid.scrollTo({ top: grid.scrollHeight, behavior: 'smooth' }) }, [visible, live, playing])
 
   const shown = events.slice(0, visible)
   const touched = new Set<string>()

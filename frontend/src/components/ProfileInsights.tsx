@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowUpRight } from 'lucide-react'
 import { api, type Insights } from '../services/api'
 import { useApp } from '../stores/useApp'
 import { Card, Chip, Spinner, fmt } from './ui'
@@ -25,14 +27,22 @@ export default function ProfileInsights({ compact = false }: { compact?: boolean
 
   const labelOf = (key: string) => data.flags.find((f) => f.key === key)?.label
   const sev = (s: string) => (s === 'risk' ? 'danger' : s === 'watch' ? 'gold' : 'gray') as 'danger' | 'gold' | 'gray'
-  const fromModel = data.narrative.source.startsWith('google-adk')
   const a = data.archetype
 
   return (
     <Card
-      title={data.narrative.headline}
-      right={<Chip tone={fromModel ? 'gold' : 'gray'}>{fromModel ? 'Gemini on Google ADK' : 'rule-based'}</Chip>}
+      title="What your records can help you decide"
+      right={<Chip tone="gray">Observed patterns</Chip>}
     >
+      {data.decision_profile && <section className="evidence-editorial" aria-label="Insights for your decisions">
+        <p className="evidence-dateline">Recent account view through {data.decision_profile.period.to}. Confirm what has changed since.</p>
+        {[...data.decision_profile.observations].sort((a,b) => b.priority-a.priority).slice(0, compact ? 1 : 3).map((o, index) => <article className="evidence-story" key={o.key}>
+          <span className="story-index">0{index+1}</span><div><span className="editorial-label">What we observe</span><h3>{o.evidence}</h3><p>{o.life_effect}</p>
+          <div className="evidence-meaning"><span className="editorial-label">The decision it informs</span><p>{o.unlocks}</p></div>
+          {o.needs_answer && <Link className="evidence-question" to={`/?prompt=${encodeURIComponent(`Help me answer this using my records: ${o.question}`)}`}>{o.question}<ArrowUpRight size={18}/></Link>}
+          </div></article>)}
+      </section>}
+      <details className="profile-method"><summary>Explore the supporting patterns and comparisons</summary>
       <div className={`insights${compact ? ' compact' : ''}`}>
         <div className="insights-main">
           <ul className="insight-list">
@@ -81,6 +91,7 @@ export default function ProfileInsights({ compact = false }: { compact?: boolean
         )}
       </div>
       <p className="tiny muted" style={{ marginTop: 10 }}>Derived from monthly_summary.csv and the other summary files; the model may only describe the flags shown.</p>
+      </details>
     </Card>
   )
 }

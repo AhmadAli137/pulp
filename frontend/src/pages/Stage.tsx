@@ -1,8 +1,8 @@
 /* Conversation-first home: native live audio, concise text replies, and optional inline figures.
    The microphone starts only after the person chooses Talk to Pulp. */
-import { ArrowRight, ArrowUp, ArrowUpRight, BookOpen, Check, ChevronDown, Compass, Dice5, LoaderCircle, Menu, MessageCircle, Mic, RotateCcw, Shuffle, SlidersHorizontal, Sparkles, Square, Users, Volume2, VolumeX, Wallet, X } from 'lucide-react'
+import { ArrowRight, ArrowUp, ArrowUpRight, Check, ChevronDown, Compass, Dice5, LoaderCircle, Menu, Mic, RotateCcw, Shuffle, Sparkles, Square, Users, Volume2, VolumeX, Wallet, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PulpMark, Tangerine, clearIntroSeen } from '../components/PulpMascot'
 import Backstage, { splitKeys, type FeedItem } from '../components/stage/Backstage'
 import PulpText from '../components/stage/PulpText'
@@ -11,9 +11,10 @@ import { startVoice, type VoiceSession } from '../services/voice'
 import { API_BASE, api, type Beat, type Persona, type Proposal, type SampleAccount, type StageAgentEvent, type StageHandoffEvent, type StageMemoryEvent, type Storyboard } from '../services/api'
 import { useApp } from '../stores/useApp'
 import CurrentPlan from '../components/CurrentPlan'
+import { WORKSPACE, WorkspaceNav } from '../components/workspace'
 import '../stage.css'
 
-const PAGES: [string, string, typeof Wallet][] = [['/shock', 'Financial snapshot & shock lab', Wallet], ['/explore', 'Explore futures', SlidersHorizontal], ['/goals', 'My goals & plan review', MessageCircle], ['/roadmap', 'Financial roadmap', Compass], ['/insights', 'Research & insights', BookOpen]]
+
 const TOOL_WORDS: Record<string, string> = { calculate_shock: 'running the shock', deal_or_set_shock: 'setting up the shock', get_profile: 'reading your numbers', get_financial_profile: 'reading your numbers', score_strategy: 'scoring an idea', run_council: 'asking the council', compare_strategies: 'comparing plans', get_insights: 'reading your profile', get_cohort: 'looking at people like you', show_math: 'writing out the math', simulate: 'simulating months' }
 const fieldNames: Record<string, string> = { goals: 'Goal', concerns: 'Concern', constraints: 'Planning detail', preferences: 'Preference', upcoming_events: 'Life event' }
 const GREETING = 'What would you like to feel more prepared for?'
@@ -53,6 +54,8 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
   const [confirming, setConfirming] = useState<string | null>(null)
   const [glanceOpen, setGlanceOpen] = useState(false)
   const [mute, setMute] = useState(() => readFlag('pulp.mute'))
+  const [searchParams] = useSearchParams()
+  useEffect(() => { const prompt = searchParams.get('prompt'); if (prompt) setDraft(prompt) }, [searchParams])
   const [backstage, setBackstage] = useState(false)
   const [personas, setPersonas] = useState<Persona[]>([])
   const [feed, setFeed] = useState<FeedItem[]>([])
@@ -297,7 +300,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
         <button className="menu-scrim" aria-label="Close navigation" onClick={() => setMenu(false)} />
         <nav className="agent-menu" aria-label="Explore PULP">
           <div><span>THE BIGGER PICTURE</span><button aria-label="Close menu" onClick={() => setMenu(false)}><X size={16} /></button></div>
-          {PAGES.map(([path, label, Icon]) => <button key={path} onClick={() => nav(path)}><Icon size={17} />{label}<ArrowUpRight size={14} /></button>)}
+          {WORKSPACE.filter(p => p.to !== '/').map(p => <button key={p.to} onClick={() => nav(p.to)}><p.icon size={17} />{p.label}<ArrowUpRight size={14} /></button>)}
           <p>Everything Pulp shows comes from these pages' numbers. They stay here when you want the detail.</p>
         </nav>
       </>)}
@@ -315,6 +318,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
       )}
       {profileError && <div className="agent-alert" role="alert">{profileError}</div>}
 
+      <WorkspaceNav />
       <div className="conversation-context"><CurrentPlan /></div>
       <div className="stage-body">
         <main className="thread-main">
@@ -326,9 +330,9 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
           ) : (
             <div className="thread" aria-live="polite">
               {thread.length <= 2 && <section className="conversation-welcome">
-                <span className="editorial-label">A little perspective. A way forward.</span>
-                <h1>Life changes.<br /><em>Let's find your next step.</em></h1>
-                <p>Talk through what matters. We'll work out the numbers together.</p>
+                <span className="editorial-label">Personal perspective / Practical possibilities</span>
+                <h1>Your life, in focus.<br /><em>Your next move, considered.</em></h1>
+                <p>A place for the everyday choices and the life-changing ones. Start with a conversation; see the evidence when you need it.</p>
                 <div className="welcome-art" aria-hidden="true"><i /><i /><i /></div>
               </section>}
               {thread.map((m) => {
