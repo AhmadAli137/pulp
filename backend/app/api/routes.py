@@ -45,7 +45,7 @@ def _metrics_or_404(account_id: int):
 def health():
     store = get_store()
     return {"ok": True, "accounts": len(store.account_ids), "data_dir": str(store.data_dir),
-            "gemini_configured": bool(GEMINI_API_KEY), "gemini_model": GEMINI_MODEL if GEMINI_API_KEY else None, **provider_info()}
+            "gemini_configured": bool(GEMINI_API_KEY), "gemini_model": GEMINI_MODEL if GEMINI_API_KEY else None, "context_storage": cm.storage_backend(), **provider_info()}
 
 
 @router.get("/accounts/sample")

@@ -1,0 +1,10 @@
+# Runtime dependencies for the Vercel Python function (slim: no scipy/matplotlib/pytest, which only the
+# analysis script and tests need; see backend/requirements.txt for the full local set).
+fastapi>=0.115
+pandas>=2.2
+numpy>=1.26
+pydantic>=2.7
+python-dotenv>=1.0
+python-multipart>=0.0.9
+google-genai>=1.0
+httpx>=0.27

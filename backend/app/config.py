@@ -49,8 +49,12 @@ VULTR_INFERENCE_MODEL = os.environ.get("VULTR_INFERENCE_MODEL", "deepseek-v4.1-f
 VULTR_INFERENCE_BASE_URL = os.environ.get("VULTR_INFERENCE_BASE_URL", "https://api.vultrinference.com/v1").strip()
 # Which AI provider answers the companion: auto (Gemini if keyed, else Vultr if keyed, else offline) | gemini | vultr | offline
 AI_PROVIDER = os.environ.get("AI_PROVIDER", "auto").strip().lower()
-STORAGE_DIR = Path(__file__).resolve().parent / "storage" / "context"
+_storage_env = os.environ.get("PULP_STORAGE_DIR", "").strip()
+STORAGE_DIR = Path(_storage_env) if _storage_env else Path(__file__).resolve().parent / "storage" / "context"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+# Optional Redis (Upstash / Vercel KV REST API) for durable context on serverless hosts.
+KV_REST_API_URL = (os.environ.get("KV_REST_API_URL") or os.environ.get("UPSTASH_REDIS_REST_URL") or "").strip().rstrip("/")
+KV_REST_API_TOKEN = (os.environ.get("KV_REST_API_TOKEN") or os.environ.get("UPSTASH_REDIS_REST_TOKEN") or "").strip()
 
 # Scenario constants used across the engine (documented assumptions)
 DEFAULT_HORIZON_MONTHS = 6

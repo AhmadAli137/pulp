@@ -34,3 +34,7 @@ pulp2/
 *.pdf
 frontend/test-results/
 frontend/.shoot*.mjs
+.vercel/
+
+.vercel
+.env*

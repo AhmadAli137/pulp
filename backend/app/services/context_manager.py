@@ -10,13 +10,14 @@ Nothing here implies the bank record truly belongs to that person.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from ..config import STORAGE_DIR
+from ..config import KV_REST_API_TOKEN, KV_REST_API_URL, STORAGE_DIR
 
 LISTS = ("goals", "concerns", "constraints", "preferences", "upcoming_events", "accepted_actions", "completed_actions")
 _LOCK = threading.Lock()
@@ -45,7 +46,33 @@ def empty_context(account_id: int) -> dict:
     }
 
 
+# ----------------------------------------------------------------------------- storage backends
+_KV_ENABLED = bool(KV_REST_API_URL and KV_REST_API_TOKEN)
+
+
+def _kv(command: list) -> Any:
+    """Run one Redis command over the Upstash/Vercel KV REST API; raises on transport or auth errors."""
+    import httpx
+    r = httpx.post(KV_REST_API_URL, json=command, headers={"Authorization": f"Bearer {KV_REST_API_TOKEN}"}, timeout=8.0)
+    r.raise_for_status()
+    return r.json().get("result")
+
+
+def _kv_key(account_id: int) -> str:
+    return f"pulp:context:{int(account_id)}"
+
+
+def storage_backend() -> str:
+    return "redis" if _KV_ENABLED else "file"
+
+
 def load_context(account_id: int) -> dict:
+    if _KV_ENABLED:
+        try:
+            raw = _kv(["GET", _kv_key(account_id)])
+            return json.loads(raw) if raw else empty_context(account_id)
+        except Exception as e:  # pragma: no cover - network
+            logging.getLogger("pulp.context").warning("KV read failed, using file storage: %s", e)
     p = _path(account_id)
     if not p.exists():
         return empty_context(account_id)
@@ -55,7 +82,14 @@ def load_context(account_id: int) -> dict:
 
 def save_context(ctx: dict) -> None:
     ctx["updated_at"] = _now()
+    if _KV_ENABLED:
+        try:
+            _kv(["SET", _kv_key(ctx["account_id"]), json.dumps(ctx)])
+            return
+        except Exception as e:  # pragma: no cover - network
+            logging.getLogger("pulp.context").warning("KV write failed, using file storage: %s", e)
     p = _path(ctx["account_id"])
+    p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(ctx, f, indent=2)
@@ -64,6 +98,11 @@ def save_context(ctx: dict) -> None:
 
 def reset_context(account_id: int) -> dict:
     with _LOCK:
+        if _KV_ENABLED:
+            try:
+                _kv(["DEL", _kv_key(account_id)])
+            except Exception as e:  # pragma: no cover - network
+                logging.getLogger("pulp.context").warning("KV delete failed: %s", e)
         p = _path(account_id)
         if p.exists():
             p.unlink()
