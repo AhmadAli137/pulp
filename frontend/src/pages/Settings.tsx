@@ -1,49 +1,58 @@
 import { useEffect, useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
+import { Card, Chip, ErrorBox, KV } from '../components/ui'
 import { api, type Health } from '../services/api'
 import { useApp } from '../stores/useApp'
-import { Card, Chip, KV } from '../components/ui'
 
 export default function Settings() {
-  const { accountId, accessible, setAccessible, refreshContext, clearAccount } = useApp()
-  const [health, setHealth] = useState<Health | null>(null)
-  const [msg, setMsg] = useState<string | null>(null)
-  useEffect(() => { api.health().then(setHealth).catch(() => setHealth(null)) }, [])
+  const replayIntro = useOutletContext<() => void>()
+  const { accountId, accessible, setAccessible, refreshContext } = useApp()
+  const [health, setHealth] = useState<Health | null | undefined>()
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [resetting, setResetting] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    api.health().then((result) => { if (active) setHealth(result) }).catch(() => { if (active) setHealth(null) })
+    return () => { active = false }
+  }, [])
 
   const reset = async () => {
-    if (!accountId) return
-    if (!window.confirm(`Delete all personal context stored for account ${accountId}? Official metrics are unaffected.`)) return
-    await api.resetContext(accountId)
-    await refreshContext()
-    setMsg('Context deleted. The plan now uses defaults.')
+    if (!accountId || !window.confirm(`Delete all personal details saved for demo account ${accountId}?`)) return
+    setResetting(true)
+    setError(null)
+    setMessage('')
+    try {
+      await api.resetContext(accountId)
+      await refreshContext()
+      setMessage('Saved personal details cleared. Historical account records are still available.')
+    } catch {
+      setError('Could not clear saved details. Try again.')
+    } finally {
+      setResetting(false)
+    }
   }
 
   return (
     <div className="grid cols-2">
-      <Card title="Connection & availability">
+      <Card title="Display preferences">
+        <label className="row small"><input type="checkbox" checked={accessible} onChange={(event) => setAccessible(event.target.checked)} /> Open exact-amount tables by default</label>
+        <p className="small muted">Motion follows your device’s accessibility setting.</p>
+        <p><button className="btn" type="button" onClick={replayIntro}>Replay intro</button></p>
+      </Card>
+      <Card title="Data and availability">
         <KV rows={[
-          ['API', health ? <Chip>connected</Chip> : <Chip tone="danger">unreachable</Chip>],
-          ['Accounts loaded', health ? health.accounts.toLocaleString() : '—'],
-          ['Data folder', health?.data_dir ?? '—'],
-          ['AI provider', health ? <Chip tone={health.ai_provider === 'offline' ? 'gray' : ''}>{health.ai_label}{health.ai_model ? ` · ${health.ai_model}` : ''}</Chip> : '—'],
-          ['Voice', 'One continuous voice for conversation and planning'],
+          ['Connection', health ? <Chip>Connected</Chip> : health === null ? <Chip tone="danger">Unavailable</Chip> : 'Checking…'],
+          ['Demo accounts', health ? health.accounts.toLocaleString() : '—'],
         ]} />
-        <p className="tiny muted" style={{ marginTop: 10 }}>Voice starts only when you choose Talk to Pulp. You can keep typing during the same conversation.</p>
+        <p className="small muted">The demo uses historical, anonymized banking records supplied by the Tangerine track. Amounts are in Canadian dollars. Scenario results depend on the inputs you select.</p>
       </Card>
-      <Card title="Accessibility">
-        <label className="row small"><input type="checkbox" checked={accessible} onChange={(e) => setAccessible(e.target.checked)} /> Always show results as tables beside charts (no colour needed to read a verdict)</label>
-        <p className="tiny muted" style={{ marginTop: 8 }}>Verdicts also carry a text mark (✓, !, =) and a sentence, and every chart has a data table when this is on.</p>
-      </Card>
-      <Card title="Your data">
-        <p className="small">Pulp keeps your conversation and the personal details you confirm for this demo account. Review or remove individual details in Your financial picture, or clear your saved context here.</p>
-        <div className="row" style={{ marginTop: 10 }}>
-          <button className="btn danger" onClick={reset} disabled={!accountId}>Delete personal context</button>
-          <button className="btn" onClick={clearAccount} disabled={!accountId}>Unload account</button>
-          <button className="btn" onClick={() => { try { sessionStorage.removeItem('pulp-intro-seen') } catch { /* ignore */ } window.location.href = '/' }}>Replay intro</button>
-        </div>
-        {msg && <p className="callout green" style={{ marginTop: 10 }}>{msg}</p>}
-      </Card>
-      <Card title="About the data and the numbers" soft>
-        <p className="small">Observed records: PKDD'99 Discovery Challenge Financial dataset (anonymized bank data) via the Tangerine track, CTU Prague Relational Dataset Repository. Amounts are in Canadian dollars per the event README. Official metrics follow the event definitions exactly. Simulated futures and strategy scores are model outputs for scenarios you choose; they are not forecasts and not real-world probabilities. PULP never moves money, applies for products or trades.</p>
+      <Card title="Saved demo details">
+        <p className="small">Details you confirm stay with this demo account. You can clear them here. Use Sign out of demo to end the current session.</p>
+        <p><button className="btn danger" type="button" onClick={() => void reset()} disabled={!accountId || resetting}>Clear saved details</button></p>
+        {message && <p className="small" role="status">{message}</p>}
+        <ErrorBox msg={error} />
       </Card>
     </div>
   )

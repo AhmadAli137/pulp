@@ -1,52 +1,46 @@
 # PULP
 
-**Planning Under Life's Pressures. A considered financial life.**
+**Planning Under Life’s Pressures**
 
-[Live application](https://askpulp.com) ? [Documentation](docs/README.md) ? [Architecture](docs/architecture.md) ? [Run and deploy](docs/deployment.md)
+PULP is a financial resilience workspace built for the Sheridan Datathon’s Tangerine track. Pick a historical demo account, see what typically comes in and goes out, and test what an income drop or an unexpected bill would change. The result gives you a savings target for before the shock and a backup plan for when it hits.
 
-Pulp is a conversation-first financial planning prototype. It connects anonymized banking records with the goals, constraints and priorities a person confirms, then helps them explore everyday choices, larger life decisions and financial setbacks. It does not move money or connect to a live bank account.
+## The workspace
 
-Voice and typed conversation share one workflow and one saved planning context. Visuals support a decision when useful or requested; they are not required for every answer. The rest of the workspace makes the evidence, assumptions and next steps available without turning every task into a chat.
+| Page | What you can do |
+|---|---|
+| **Overview** | Load any supplied account ID and see typical inflow, spending, fixed costs, cash buffer, and baseline runway. |
+| **Shocks** | Adjust income, household bills, upfront cost, and duration. See the cash timeline, the result, and both plans. Compare keeping cash available with paying a remaining optional expense. |
+| **My Plan** | Revisit the preparation and backup plans for the current shock. Mark a shock as already happened to see the backup plan first. |
+| **Insights** | Explore an account’s recorded patterns, confirm details that affect the decision, and see a finding from the larger dataset. |
 
-## The core journey
+The optional-spending comparison uses the same income, regular expenses, and duration for both choices. Paying now adds only the remaining cost at the start. The app shows the cash preserved by waiting and whether paying would exhaust the cushion or leave a gap.
 
-Start at the planning room or open `/shock` directly: select any supplied customer, review their baseline, apply an adjustable shock, and inspect the survival verdict plus preparation and backup plans. Explicit twist requests run immediately, even for a fresh profile. Personalization follows the calculation. The conversation keeps its optional animated walkthroughs and single native voice.
+Use **Sign out of demo** to clear the selected account and in-progress scenario from your browser. Saved details stay with their demo account. The demo has no connection to a live bank.
 
-The research finding is available from the opening journey, with its matched-pair denominator and simulated-outcome caveat. Financial overview, goals and briefings remain supporting destinations. Reported balances have not been merged into the sponsor's historical runway definition.
+## Where the numbers come from
 
-## What is available
+The challenge provides 4,500 anonymized bank accounts. Monthly inflow, spending, and household bills use the middle value across the selected account’s monthly records. The starting cash buffer uses the average of the last six monthly average daily balances, or fewer months when history is shorter. Amounts are in Canadian dollars.
 
-The primary navigation has four destinations: conversation, your financial picture, scenarios, and goals. Next steps, briefings, evidence and settings are secondary. The former `/explore` screen redirects to `/shock`; its simulation controls and duplicate charts have been removed from the UI.
+- **Cash after upfront cost** equals the starting buffer minus the one-time cost.
+- **Monthly shortfall** is the amount by which spending exceeds income after the shock. Existing fixed costs are included in typical spending.
+- **Runway** measures how many months the remaining cash covers a shortfall. The challenge displays at most 120 months. The verdict uses the full-precision amounts and the selected duration.
+- **Prepare now** shows the cash target, the amount left to save, and an estimated timeline when there is a monthly surplus.
+- **If it happens** separates the cash needed today from the amount to free up each month.
 
-| Destination | Route | Purpose |
-|---|---|---|
-| Planning room | `/` | Talk or type; discuss small and big decisions; confirm personal details; open optional visuals and the agent flow |
-| Your financial picture | `/twin` | Track reported assets and liabilities, actual goal savings, and historical spending allocation |
-| Insights & evidence | `/insights` | Connect observed patterns to life implications, unanswered questions and research |
-| Prepare for a setback | `/shock` | Enter a specific change in income, bills or upfront costs; review the official calculation and planning options |
-| Goals & choices | `/goals` | Review the saved goal, compare strategies and see what changed |
-| Your next steps | `/roadmap` | Review suggested actions, trade-offs and assumptions by timeframe |
-| Briefings & summaries | `/briefings` | Daily focus and seven-day review of saved updates, goals and next questions |
-| Preferences & data | `/settings` | Accessibility, service status, saved-context controls and data limitations |
+The chart uses the same values as the verdict. It starts at the historical cash estimate and shows the upfront change at month 0. The account records, details the user confirms, and simulated outcomes have separate labels. A recorded transfer may need clarification before it can be treated as available cash.
 
-The financial story also explains borrowing context: recorded loan terms and status, evidence from complete months around origination, tentative alternative explanations, and motivations the person confirms. Loan purpose is never inferred as a fact, and correcting it replaces the tentative explanation.
-
-The profile interpretation layer explains **what the records show, why it may matter, what is unknown, and which decision it can inform**. It does not assume card spending is discretionary, a transfer is savings, or pension income means extra shifts are possible. Missing budgets, dates and spending flexibility lead to questions or conditional options.
-
-Reported balances are entered explicitly; unknown balances and goal savings stay unknown. Daily and weekly briefings are generated inside Pulp when opened, with no email or scheduled notifications. Goal savings inform questions; strategy projections still use historical cash flow and do not assume reported assets are liquid.
+In 78 of 2,238 pairs with similar typical inflows, the account with more cash ran out within six months while its partner made it through the same modeled drop to 55% of typical inflow. The experiment illustrates how both cash and monthly spending shape resilience. [Research methods and results](docs/findings.md)
 
 ## Run locally
 
-Use Python 3.12 and Node.js 22 to match CI and Docker. Install dependencies from the repository root:
+Use Python 3.12 and Node.js 22. From the repository root, install dependencies in your active Python environment.
 
 ```sh
 python -m pip install -r backend/requirements.txt
 npm --prefix frontend ci
 ```
 
-Copy [.env.example](.env.example) to `.env` with your shell or editor. The supplied CSV directory must contain at least `monthly_summary.csv`, `loans.csv` and `accounts.csv`; other supplied tables and derived artifacts enrich the profiles. The loader checks `PULP_DATA_DIR` / `EVERPATH_DATA_DIR`, then `data/`, then recognized `data-*` export folders.
-
-Start these in separate terminals:
+Start the API and frontend in separate terminals.
 
 ```sh
 python -m uvicorn app.main:app --app-dir backend --port 8000
@@ -56,55 +50,16 @@ python -m uvicorn app.main:app --app-dir backend --port 8000
 npm --prefix frontend run dev
 ```
 
-Open `http://localhost:5173`; Vite proxies `/api`, including WebSockets, to port 8000. Backend OpenAPI is at `http://127.0.0.1:8000/docs`.
+Open [http://localhost:5173](http://localhost:5173). The frontend proxies API requests to port 8000. The supplied CSVs are loaded from `data/` by default. For a separate dataset directory, set `PULP_DATA_DIR`. The main workflow runs with the supplied data.
 
-The calculators, recorded profiles, simulations and grid planner work without AI credentials. Free-text interpretation then uses a limited offline fallback. Native voice requires Gemini credentials and an available Live model. Copy the repository's model defaults from `.env.example`; they are configuration defaults, not a promise of provider availability.
-
-For a single-server build:
-
-```sh
-npm --prefix frontend run build
-python -m uvicorn app.main:app --app-dir backend --port 8000
-```
-
-The backend serves `frontend/dist` when present. Production runs this application behind Caddy on Vultr at **askpulp.com**; the `.ca` domain redirects there. [Deployment guide](docs/deployment.md).
-
-## How it fits together
-
-1. Python computes official metrics, historical features, flags and scenario results from the mapped CSV data.
-2. The decision profile combines those observations with confirmed context to identify useful questions and choices.
-3. Typed SSE requests and Gemini Live's `conversation_turn` tool both call `director.stage_stream`.
-4. New personal details become proposals. Confirmation applies them with a context-version check.
-5. The council scores a grid, optionally gets Strategist proposals, validates and re-scores them, then lets the Challenger review the actual candidates before final ranking.
-6. A versioned active plan is shared by conversation, goals, roadmap and scenario comparisons.
-
-The system mixes deterministic components and model roles; it is not eight independent agents running on every message. [Current agent inventory and unfinished blueprint work](docs/agents/README.md).
+For a single-server build, run `npm --prefix frontend run build` and open [http://localhost:8000](http://localhost:8000) with the API running.
 
 ## Verify
 
 ```sh
 python -m pytest backend/tests -q
-node frontend/tests/voice.test.mjs
 npm --prefix frontend run build
 npm --prefix frontend run test:e2e
-python docs/agents/validate_examples.py
 ```
 
-Browser tests require installed Chrome (or the configured Playwright channel), a built frontend and a free port 8002. They use an isolated API, temporary context and disabled live AI credentials. The last code verification on November 8, 2026 passed **144 backend tests, 18 browser tests and the voice client regression test**. Counts are a dated snapshot, not a fixed acceptance target. CI runs a smaller named backend subset, voice regression and the frontend build; it does not run the full local browser suite. [Testing and verification](docs/testing.md).
-
-## Data and research
-
-The organizer-supplied dataset contains 4,500 anonymized accounts and monthly records from January 2020 through December 2025. It is historical data, not the current finances or identity of the person using the app. The app uses explicit semantic column mappings; automatic interpretation of arbitrary Excel files is **not implemented**.
-
-The original research matched 2,238 pairs of accounts with similar inflows under the same modeled layoff. In 78 pairs, the account with more cash exhausted its buffer first. These are simulated outcomes under stated assumptions, not observed layoffs or causal evidence. [Findings and denominators](docs/findings.md) ? [Methodology and formulas](docs/methodology.md).
-
-## Boundaries
-
-- Context questions are heuristics, not a learned or human-validated optimum.
-- Simulations and ranked options are conditional calculations, not forecasts or proof of affordability.
-- Native voice is one Gemini Live voice; text-only mode is silent. Offline mode does not provide native voice.
-- The public account selector is a demo interface, not authenticated personal banking.
-- File storage and current locking are a single-worker prototype; Redis support does not make multi-worker writes transactional.
-- Schema Scout, the separate Consultant/Advocate review-and-acceptance protocol, live bank feeds and autonomous transactions remain unimplemented.
-
-See [limitations](docs/limitations.md), [product and design guide](docs/product.md), and [the documentation index](docs/README.md). Original event briefs and research artifacts are retained separately from descriptions of shipped behavior.
+Browser tests use an isolated API and a free port 8002. They require an installed Chrome or the Chromium executable configured through `PULP_BROWSER_EXECUTABLE`. [Demo walkthrough](demo/demo-script.md) · [Challenge and data dictionary](docs/tangerine-challenge.md)

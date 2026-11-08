@@ -1,75 +1,119 @@
-import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useApp } from '../stores/useApp'
-import { api } from '../services/api'
-import { Spinner } from './ui'
-import CurrentPlan from './CurrentPlan'
-import { WORKSPACE, PRIMARY_WORKSPACE, SUPPORTING_WORKSPACE, WorkspaceNav } from './workspace'
+import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
+import { ChevronDown, LogOut } from 'lucide-react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { readSavedAccount, useApp } from '../stores/useApp'
 import { PulpMark } from './PulpMascot'
+import { SUPPORTING_WORKSPACE, WORKSPACE, WorkspaceNav } from './workspace'
+import './banking.css'
 
-export default function Layout() {
-  const { accountId, loadAccount, loadingProfile, profileError, setGemini } = useApp()
+export default function Layout({ onReplayIntro }: { onReplayIntro: () => void }) {
+  const { accountId, loadAccount, loadingProfile, profileError, clearAccount } = useApp()
   const [draft, setDraft] = useState(accountId ? String(accountId) : '')
+  const [inputError, setInputError] = useState('')
+  const signOutDialog = useRef<HTMLDialogElement>(null)
+  const accountField = useRef<HTMLInputElement>(null)
+  const accountTools = useRef<HTMLDetailsElement>(null)
   const loc = useLocation()
-  const page = WORKSPACE.find(x => x.to === loc.pathname)
-  const title = page?.label ?? 'Pulp'; const subtitle = page?.subtitle ?? ''
+  const navigate = useNavigate()
+  const page = WORKSPACE.find(({ to }) => to === loc.pathname)
 
   useEffect(() => {
-    api.health().then((h) => setGemini(h.ai_provider !== 'offline', h.ai_label)).catch(() => setGemini(false))
-    // Restore the last account on any page after a reload so deep links keep working.
-    const saved = (() => { try { return localStorage.getItem('pulp.account') } catch { return null } })()
-    if (!accountId && saved && Number.isInteger(Number(saved))) void loadAccount(Number(saved))
-  }, [setGemini]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (accountId) setDraft(String(accountId)) }, [accountId])
+    const current = useApp.getState()
+    const saved = readSavedAccount()
+    if (!current.accountId && !current.loadingProfile && saved) void loadAccount(saved)
+  }, [loadAccount])
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const id = Number(draft)
-    if (Number.isInteger(id) && id > 0) void loadAccount(id)
+  useEffect(() => {
+    if (accountId) {
+      setDraft(String(accountId))
+      setInputError('')
+    }
+  }, [accountId])
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const value = draft.trim()
+    const id = Number(value)
+    if (!/^\d+$/.test(value) || !Number.isSafeInteger(id) || id < 1) {
+      setInputError('Enter a valid positive account ID from the demo dataset.')
+      accountField.current?.focus()
+      return
+    }
+    setInputError('')
+    if (id !== accountId) void loadAccount(id)
+  }
+
+  const signOut = () => {
+    signOutDialog.current?.close()
+    clearAccount()
+    setDraft('')
+    setInputError('')
+    if (accountTools.current) accountTools.current.open = false
+    navigate('/', { replace: true })
+    accountField.current?.focus()
   }
 
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <PulpMark size={36} />
-          <div>
-            <div className="name">PULP<span className="dot">.</span></div>
-            <div className="tag">A considered financial life</div>
+    <div className="bank-workspace">
+      <a className="bank-skip" href="#workspace-content">Skip to content</a>
+      <header className="bank-header">
+        <div className="bank-width bank-header-inner">
+          <Link className="bank-brand" to="/" aria-label="PULP home">
+            <PulpMark size={34} />
+            <span className="bank-brand-name">PULP<span>.</span></span>
+          </Link>
+          <div className="bank-account-tools">
+            <form className="bank-account-form" onSubmit={submit} aria-label="Select demo account">
+              <label htmlFor="acct">Demo account</label>
+              <input ref={accountField} id="acct" inputMode="numeric" autoComplete="off" placeholder="Account ID"
+                value={draft} aria-invalid={Boolean(inputError)} aria-describedby={inputError ? 'account-input-error' : undefined}
+                onChange={(event) => { setDraft(event.target.value); setInputError('') }} />
+              <button className="bank-button bank-button-primary" type="submit" disabled={loadingProfile}>
+                {loadingProfile ? 'Loading…' : 'Load account'}
+              </button>
+            </form>
+            {(accountId || loadingProfile) && (
+              <button className="bank-signout" type="button" onClick={() => signOutDialog.current?.showModal()}>
+                <LogOut size={16} aria-hidden="true" /> Sign out of demo
+              </button>
+            )}
           </div>
         </div>
-        <nav className="nav" aria-label="Main">
-          {PRIMARY_WORKSPACE.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
-              <span className="ic" aria-hidden><n.icon size={17} /></span>{n.label}
-            </NavLink>
-          ))}
-          <details className="supporting-nav"><summary>Reviews, evidence & settings</summary>{SUPPORTING_WORKSPACE.map(n => <NavLink key={n.to} to={n.to}>{n.label}</NavLink>)}</details>
-        </nav>
-        <div className="foot"><span className="sidebar-seal">P / PERSONAL PERSPECTIVE</span>
-          Planning informed by records.<br/>Decisions shaped around your life.<br/><Link to="/settings">About the data &amp; your controls</Link>
+      </header>
+      <div className="bank-nav-band">
+        <div className="bank-width bank-nav-inner">
+          <WorkspaceNav />
+          <details className="bank-menu" ref={accountTools}>
+            <summary>Account tools <ChevronDown size={15} aria-hidden="true" /></summary>
+            <nav aria-label="Account tools" className="bank-menu-panel">
+              {SUPPORTING_WORKSPACE.map(({ to, label, icon: Icon }) => (
+                <NavLink key={to} to={to} onClick={() => { if (accountTools.current) accountTools.current.open = false }}>
+                  <Icon size={16} aria-hidden="true" />{label}
+                </NavLink>
+              ))}
+            </nav>
+          </details>
         </div>
-      </aside>
-      <main className="main" data-page={loc.pathname.slice(1)}>
-        <WorkspaceNav />
-        <div className="topbar">
-
-          <div className="title">
-            <span className="editorial-label">Pulp / Your planning workspace</span>
-            <h1>{title}</h1>
-            <p>{subtitle}</p>
-          </div>
-          <form className="acct-pill" onSubmit={submit} aria-label="Select account">
-            <span className="dot" aria-hidden />
-            <label htmlFor="acct" className="small muted">Demo account</label>
-            <input id="acct" inputMode="numeric" placeholder="Account number" value={draft} onChange={(e) => setDraft(e.target.value)} />
-            <button className="btn primary sm" type="submit" disabled={loadingProfile}>{loadingProfile ? <Spinner /> : 'Load'}</button>
-          </form>
+      </div>
+      <main id="workspace-content" className="main bank-main bank-width" data-page={loc.pathname.slice(1)} tabIndex={-1}>
+        <div className="bank-page-heading">
+          <h1>{page?.label ?? 'PULP'}</h1>
+          {page && <p>{page.subtitle}</p>}
         </div>
-        {profileError && <div className="err" role="alert" style={{ marginBottom: 16 }}>{profileError} Choose a demo account in the planning room to continue.</div>}
-        {['/goals', '/roadmap'].includes(loc.pathname) && <CurrentPlan />}
-        <Outlet />
+        {inputError && <div className="err bank-error" id="account-input-error" role="alert">{inputError}</div>}
+        {profileError && <div className="err bank-error" role="alert">{profileError}</div>}
+        <Suspense fallback={<p className="bank-loading" role="status"><span aria-hidden="true" />Loading page…</p>}>
+          <Outlet context={onReplayIntro} key={accountId ?? 'signed-out'} />
+        </Suspense>
       </main>
+      <dialog ref={signOutDialog} className="bank-dialog" aria-labelledby="sign-out-title" aria-describedby="sign-out-message">
+        <h2 id="sign-out-title">Sign out of demo?</h2>
+        <p id="sign-out-message">This clears the account from this browser’s session. You can choose it again later.</p>
+        <div className="bank-actions">
+          <button className="bank-button" type="button" onClick={() => signOutDialog.current?.close()}>Cancel</button>
+          <button className="bank-button bank-button-primary" type="button" onClick={signOut}>Sign out</button>
+        </div>
+      </dialog>
     </div>
   )
 }

@@ -27,6 +27,10 @@ class ShockRequest(BaseModel):
         return v
 
 
+class PurchaseComparisonRequest(ShockRequest):
+    purchase_cost: float = Field(..., gt=0.0, strict=True, description="Remaining optional purchase cost in dollars")
+
+
 class StrategyAdjustIn(BaseModel):
     label: str = "Custom"
     freed_up_per_month: float = Field(0.0, ge=0.0)

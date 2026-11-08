@@ -1,5 +1,5 @@
-/* Pulp the tangerine, the PULP wordmark and the harvest intro. Ported from the Codex build (pulp2). */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import './pulp-mascot.css'
 
 export type PipMood = 'idle' | 'thinking' | 'listening'
 
@@ -39,6 +39,7 @@ export function PulpMark({ size = 28 }: { size?: number }) {
 }
 
 const INTRO_KEY = 'pulp-intro-seen'
+const INTRO_DURATION_MS = 2000
 export function introSeen(): boolean { try { return sessionStorage.getItem(INTRO_KEY) === '1' } catch { return false } }
 export function markIntroSeen() { try { sessionStorage.setItem(INTRO_KEY, '1') } catch { /* ignore */ } }
 export function clearIntroSeen() { try { sessionStorage.removeItem(INTRO_KEY) } catch { /* ignore */ } }
@@ -51,13 +52,14 @@ export function HarvestIntro({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
     skip.current?.focus()
-    const timer = setTimeout(() => callback.current(), reduced ? 650 : 5400)
+    const timer = setTimeout(() => callback.current(), reduced ? 350 : INTRO_DURATION_MS)
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') callback.current() }
     document.addEventListener('keydown', key)
     return () => { clearTimeout(timer); document.removeEventListener('keydown', key); previous?.focus?.() }
   }, [reduced])
   return (
-    <div className={`harvest-intro ${reduced ? 'reduced' : ''}`} role="dialog" aria-modal="true" aria-label="PULP opening animation">
+    <div className={`harvest-intro ${reduced ? 'reduced' : ''}`} role="dialog" aria-modal="true" aria-label="PULP opening animation"
+      style={{ '--harvest-duration': `${INTRO_DURATION_MS}ms` } as CSSProperties}>
       <span className="intro-corner"><PulpMark size={23} /> A little care goes a long way.</span>
       <div className="harvest-center">
         <svg className="harvest-film" viewBox="0 0 600 390" role="img" aria-label="A tangerine is picked from a tree, gently squeezed, and pours juice and pulp into a glass.">

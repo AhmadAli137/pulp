@@ -1,22 +1,25 @@
-import { useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { lazy, useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Layout from './components/Layout'
 import { HarvestIntro, introSeen, markIntroSeen } from './components/PulpMascot'
-import Stage from './pages/Stage'
-import ShockLab from './pages/ShockLab'
-import Twin from './pages/Twin'
-import Goals from './pages/Goals'
-import Roadmap from './pages/Roadmap'
-import Insights from './pages/Insights'
-import Settings from './pages/Settings'
-import Briefings from './pages/Briefings'
+import Overview from './pages/Overview'
 
-function Home() {
-  const [intro, setIntro] = useState(() => !introSeen())
+const ShockLab = lazy(() => import('./pages/ShockLab'))
+const Plan = lazy(() => import('./pages/Plan'))
+const Twin = lazy(() => import('./pages/Twin'))
+const Goals = lazy(() => import('./pages/Goals'))
+const Roadmap = lazy(() => import('./pages/Roadmap'))
+const Insights = lazy(() => import('./pages/Insights'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Briefings = lazy(() => import('./pages/Briefings'))
+
+function OpeningWorkspace() {
+  const { pathname } = useLocation()
+  const [intro, setIntro] = useState(() => pathname === '/' && !introSeen())
   const finish = () => { markIntroSeen(); setIntro(false) }
   return (
     <>
-      <div inert={intro}><Stage onReplayIntro={() => setIntro(true)} /></div>
+      <div inert={intro}><Layout onReplayIntro={() => setIntro(true)} /></div>
       {intro && <HarvestIntro onDone={finish} />}
     </>
   )
@@ -26,20 +29,21 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route index element={<Home />} />
         <Route path="classic" element={<Navigate to="/" replace />} />
-        <Route element={<Layout />}>
+        <Route path="companion" element={<Navigate to="/" replace />} />
+        <Route path="explore" element={<Navigate to="/shock" replace />} />
+        <Route element={<OpeningWorkspace />}>
+          <Route index element={<Overview />} />
           <Route path="shock" element={<ShockLab />} />
+          <Route path="plan" element={<Plan />} />
           <Route path="briefings" element={<Briefings />} />
           <Route path="twin" element={<Twin />} />
-          <Route path="explore" element={<Navigate to="/shock" replace />} />
           <Route path="goals" element={<Goals />} />
           <Route path="roadmap" element={<Roadmap />} />
           <Route path="insights" element={<Insights />} />
-          <Route path="companion" element={<Navigate to="/" replace />} />
           <Route path="settings" element={<Settings />} />
         </Route>
-        <Route path="*" element={<Home />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )

@@ -1,4 +1,5 @@
 import FinancialOverview from '../components/FinancialOverview'
+import DemoAccountPicker from '../components/DemoAccountPicker'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Comparison, type Snapshot, type Diff } from '../services/api'
@@ -9,7 +10,7 @@ import { Card, Chip, Empty, ErrorBox, Spinner, Tip, fmt } from '../components/ui
 const GOAL_TYPES = ['emergency_fund', 'move_out', 'home_purchase', 'entrepreneurship', 'education', 'vehicle', 'travel', 'wedding', 'debt_payoff', 'retirement', 'family', 'other']
 
 export default function Goals() {
-  const { accountId, profile, activePlan, lastReplan, setLastReplan, refreshContext, context } = useApp()
+  const { accountId, profile, lastReplan, setLastReplan, refreshContext, context } = useApp()
   const [cmp, setCmp] = useState<Comparison | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -30,9 +31,9 @@ export default function Goals() {
       setCmp(c); setHist({ current: d.current, previous: d.previous, diff: d.diff })
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }, [accountId])
-  useEffect(() => { void load() }, [load, lastReplan, activePlan])
+  useEffect(() => { void load() }, [load, lastReplan])
 
-  if (!profile || !accountId) return <Empty>Select an account first.</Empty>
+  if (!profile || !accountId) return <DemoAccountPicker />
 
   const saveGoal = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,7 +48,6 @@ export default function Goals() {
       const r = await api.confirm(accountId, p.proposal.id, true)
       if (r.replan) setLastReplan(r.replan)
       await refreshContext()
-      await useApp.getState().refreshSession()
       await load()
     } catch (ex) { setErr((ex as Error).message) } finally { setBusy(false) }
   }
@@ -62,15 +62,15 @@ export default function Goals() {
         <Card title="What you are working toward" right={<Chip tone="gold">Your priorities shape the comparison</Chip>}>
           <form className="stack" onSubmit={saveGoal}>
             <div className="grid cols-2">
-              <div className="field"><label>Goal type</label><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{GOAL_TYPES.map((g) => <option key={g} value={g}>{g.replace(/_/g, ' ')}</option>)}</select></div>
-              <div className="field"><label>Label (optional)</label><input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Move into my own place" /></div>
-              <div className="field"><label>Target amount $ <Tip text="Enter the amount you want to plan for. If it is unknown, discuss the budget with Pulp before treating a comparison as a plan." /></label><input type="number" min="0" value={form.target_amount} onChange={(e) => setForm({ ...form, target_amount: e.target.value })} /></div>
-              <div className="field"><label>Target timeline (months)</label><input type="number" min="1" max="240" value={form.target_months} onChange={(e) => setForm({ ...form, target_months: e.target.value })} /></div>
-              <div className="field"><label>Priority</label><select value={form.risk} onChange={(e) => setForm({ ...form, risk: e.target.value })}><option value="balanced">Balanced</option><option value="safety">Keep a larger safety buffer</option><option value="speed">Reach the goal faster</option></select></div>
-              <div className="field"><label>I could free up $/month <Tip text="A constraint you state. The data does not label discretionary spending, so PULP never guesses this." /></label><input type="number" min="0" value={form.free_up} onChange={(e) => setForm({ ...form, free_up: e.target.value })} /></div>
+              <div className="field"><label htmlFor="goal-type">Goal type</label><select id="goal-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{GOAL_TYPES.map((g) => <option key={g} value={g}>{g.replace(/_/g, ' ')}</option>)}</select></div>
+              <div className="field"><label htmlFor="goal-label">Label (optional)</label><input id="goal-label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Move into my own place" /></div>
+              <div className="field"><label htmlFor="goal-target">Target amount (CAD)</label><input id="goal-target" type="number" min="0" value={form.target_amount} onChange={(e) => setForm({ ...form, target_amount: e.target.value })} /></div>
+              <div className="field"><label htmlFor="goal-months">Target timeline (months)</label><input id="goal-months" type="number" min="1" max="240" value={form.target_months} onChange={(e) => setForm({ ...form, target_months: e.target.value })} /></div>
+              <div className="field"><label htmlFor="goal-priority">Priority</label><select id="goal-priority" value={form.risk} onChange={(e) => setForm({ ...form, risk: e.target.value })}><option value="balanced">Balanced</option><option value="safety">Keep a larger safety buffer</option><option value="speed">Reach the goal faster</option></select></div>
+              <div className="field"><label htmlFor="goal-capacity">I could free up $/month <Tip text="Use an amount you could realistically cut from your monthly spending." /></label><input id="goal-capacity" type="number" min="0" value={form.free_up} onChange={(e) => setForm({ ...form, free_up: e.target.value })} /></div>
             </div>
             <div className="row between">
-              <span className="small muted">Saving updates your goal and recalculates your choices. Or <Link to="/companion">talk it through</Link>.</span>
+              <span className="small muted">Add a budget and a timeline when you know them. Saving updates the comparison below.</span>
               <button className="btn primary" type="submit" disabled={busy}>{busy ? <Spinner /> : 'Save goal & review choices'}</button>
             </div>
           </form>
@@ -107,7 +107,7 @@ export default function Goals() {
       </Card>
 
       {diff?.materially_changed && <Card title="What changed in your plan"><ul>{diff.reasons.map(r => <li key={r}>{r}</li>)}</ul></Card>}
-      <section className="financial-section"><h2>Choose your next step</h2><p>Discuss which option fits your essential costs, then use the action plan to decide what to do first.</p><Link to="/roadmap">Review your next steps</Link><p><Link to="/?prompt=Help%20me%20compare%20my%20plan%20options%20and%20choose%20one%20realistic%20next%20step.">Talk through the trade-offs</Link></p></section>
+      <section className="financial-section"><h2>Choose your next step</h2><p>Check which option leaves room for your essential costs and your backup plan.</p><Link to="/plan">Review My Plan</Link></section>
     </div>
   )
 }

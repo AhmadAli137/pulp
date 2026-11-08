@@ -6,6 +6,7 @@ transfer ownership, or which spending a person can cut. Rebuilt against confirme
 from __future__ import annotations
 
 import math
+from .features import AS_OF
 
 
 def build_decision_profile(monthly, row, summary: dict, loan=None) -> dict:
@@ -22,25 +23,25 @@ def build_decision_profile(monthly, row, summary: dict, loan=None) -> dict:
     def add(key, evidence, meaning, question, unlocks, priority, constraint):
         observations.append({"key": key, "evidence": evidence, "life_effect": meaning,
             "question": question, "unlocks": unlocks, "priority": priority,
-            "needs_answer": constraint not in constraints, "source": "observed account records", "period": period if key == "monthly_room" else full_period})
+            "needs_answer": constraint not in constraints, "source": "Monthly account summaries", "period": period if key == "monthly_room" else full_period})
     add("monthly_room", f"In the latest {len(recent)} recorded months through {period['to']}, the median money left after outflows was ${margin:,.0f}; {int((net < 0).sum())} months ended with more going out than coming in.",
-        "A new monthly commitment uses this room before there is anything left for a trip or an unexpected bill. Transfers may include savings, so this is account cash flow, not disposable income.",
+        "A new monthly commitment could leave less for a trip or an unexpected bill. Confirm what the transfers cover and which costs are essential before relying on this amount.",
         "Which regular costs must stay untouched, and is there anything you would willingly spend less on?",
         "Compare a recurring purchase with keeping that money for your goal.", 70, "can_free_up_per_month")
     if number("regular_transfer_out_amount") > 0:
         amount = number("regular_transfer_out_amount")
         add("transfer_purpose", f"The records show a recurring transfer of about ${amount:,.0f} per month out of this account.",
-            "If this is accessible savings it may support your goal; if it pays rent, debt or family support, stopping it could cause harm.",
+            "A transfer could be paying for rent, debt, or family support. Check what it covers and whether you can access the money before counting it as savings or considering a pause.",
             f"What is that roughly ${amount:,.0f} transfer for: your own savings, a bill, or supporting someone?",
             "Decide whether this money is available at all before comparing changes to it.", 95, "transfer_purpose")
     if number("timing_dip_share") > 0 and number("neg_months_share") > 0:
         add("bill_timing", "Some recorded months went below zero even though total inflow covered total outflow.",
-            "The order of payments may be the problem, rather than the amount you spend.",
+            "The dates money arrives and bills leave may explain some of those dips. Check the dates before deciding whether a larger cash cushion or a different bill date would help.",
             "Which bill arrives before your income, and can its payment date be changed?",
             "Compare asking to move that bill date with keeping a small payment buffer.", 90, "bill_date_flexibility")
     if number("pension_share") >= .75:
         add("income_options", "Most recorded inflow is labelled pension.",
-            "Extra shifts or job-loss scenarios may not fit your life. A recurring price increase may be more relevant.",
+            "Confirm which income would continue if work stopped. If your pension would continue, include it when setting how much income remains in the shock.",
             "Is this pension your only income, or is there other income we should include?",
             "Compare a smaller commitment or a later goal date without assuming you can work more.", 60, "other_income")
     if number("fee_share") > .005:
@@ -52,6 +53,15 @@ def build_decision_profile(monthly, row, summary: dict, loan=None) -> dict:
     questions = []
     from .life_profile import build_life_profile
     life_profile = build_life_profile(monthly, summary, loan)
+    home_district = row.get("owner_home_district_name")
+    branch_district = row.get("district_name")
+    life_profile["geography"] = {
+        "home_district": home_district if isinstance(home_district, str) else None,
+        "branch_district": branch_district if isinstance(branch_district, str) else None,
+    }
+    owner_age = number("owner_age")
+    if owner_age > 0:
+        life_profile["recorded_age"] = {"years": owner_age, "as_of": AS_OF.date().isoformat()}
     if life_profile["loan"]:
         story = life_profile["loan"]
         questions.append({"key": "loan_current_terms" if story["confirmed_purpose"] else "loan_purpose", "text": story["question"], "why": story["decision"], "value": 1.1})

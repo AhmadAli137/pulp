@@ -51,21 +51,21 @@ FEATURE_DOCS: dict[str, str] = {
     "balance_trend_pm": "monthly trend of the average balance over the last 12 months, as a share of B",
     "bills_share_trend": "bills share in the last 12 months minus the prior 12 months",
     "december_spend_ratio": "December spending / S", "max_drawdown_share": "largest fall in month-end balance from its running peak, as a share of B",
-    "regular_transfer_out": "recurring unlabelled transfer out most months with a stable amount (likely savings or support elsewhere)",
+    "regular_transfer_out": "recurring unlabelled transfer out most months with a stable amount",
     "regular_transfer_out_amount": "median monthly amount of that recurring transfer",
     "loan_payment_share": "running loan payment / I", "has_running_loan": "loan running at end of 2025", "loan_in_debt": "loan status D",
     "owner_age": "account owner's age at end of 2025", "n_authorized_users": "authorized users on the account",
     "card_rank": "0 none, 1 junior, 2 classic, 3 gold", "account_age_years": "years since the account was opened",
-    "district_salary": "district average monthly salary", "inflow_vs_district_salary": "I / district average salary",
-    "district_unemployment": "district unemployment rate 2023 (%)", "n_standing_orders": "standing orders on the account",
-    "so_unlabelled_amount": "monthly standing orders with no stated purpose (often savings or transfers to family)",
+    "district_salary": "average monthly salary in the branch district", "inflow_vs_district_salary": "I / branch district average salary",
+    "district_unemployment": "branch district unemployment rate 2023 (%)", "n_standing_orders": "standing orders on the account",
+    "so_unlabelled_amount": "monthly standing orders with no stated purpose",
     **HISTORY_DOCS,
     "payday_dom": "day of the month the main inflow usually lands (from transactions.csv)",
     "payday_regular_share": "share of months where the main inflow landed within two days of that day",
     "bill_dom": "day of the month labelled bills usually leave", "bills_before_pay_share": "share of months where the first bill left before that month's pay arrived",
     "penalty_events": "penalty-interest postings for a negative balance", "penalty_total": "total penalty interest paid", "penalty_months": "months with penalty interest",
     "recurring_partner_amount": "stable monthly transfer to one other account (>= 6 months, steady amount)", "recurring_partner_months": "months that transfer occurred",
-    "recurring_partner_purpose": "label on that transfer when the bank has one (loan payment, household bills, insurance); blank = unlabelled, often savings or support",
+    "recurring_partner_purpose": "recorded label on that transfer, such as loan payment, household bills, or insurance",
     "n_partners_out": "distinct accounts money is sent to",
     "runway_layoff": "official runway under the 55% layoff (months; inf = no shortfall)", "survives6_layoff": "runway_layoff >= 6",
     "runway_combined": "official runway under layoff + bills +15%", "survives6_combined": "runway_combined >= 6",
@@ -124,7 +124,7 @@ def _per_account_trends(ms: pd.DataFrame, pop: pd.DataFrame) -> pd.DataFrame:
 
 
 def _people_features(store: DataStore) -> pd.DataFrame:
-    """Owner age, gender, authorized users, best card, from clients/dispositions/cards (optional files)."""
+    """Owner age and home district, authorized users, and best card from optional files."""
     d = store.data_dir
     try:
         clients = pd.read_csv(d / "clients.csv", parse_dates=["birth_date"])
@@ -134,6 +134,9 @@ def _people_features(store: DataStore) -> pd.DataFrame:
     owners = disp[disp["type"] == "owner"].merge(clients, on="client_id", how="left")
     owners["owner_age"] = ((AS_OF - owners["birth_date"]).dt.days / 365.25).round(1)
     out = owners.groupby("account_id").agg(owner_age=("owner_age", "first"), owner_gender=("gender", "first"))
+    if "district_id" in owners and not store.districts.empty:
+        owner_district = owners.groupby("account_id")["district_id"].first()
+        out["owner_home_district_name"] = owner_district.map(store.districts.set_index("district_id")["district_name"])
     out["n_authorized_users"] = disp[disp["type"] != "owner"].groupby("account_id").size().reindex(out.index).fillna(0).astype(int)
     rank = {"junior": 1, "classic": 2, "gold": 3}
     try:
@@ -316,20 +319,20 @@ FLAG_RULES: list[FlagRule] = [
              lambda r: bool(r.months >= 24 and r.lifestyle_creep >= 0.005),
              lambda r: f"over the last 24 months spending rose about {_pct(r.spending_drift_pm)} of S per month while inflow moved {_pct(r.income_drift_pm)} of I per month",
              "spending has been drifting up faster than income, which quietly shrinks the margin each year"),
-    FlagRule("savings_elsewhere", "Regular transfer to another bank", "info",
+    FlagRule("savings_elsewhere", "Regular transfer out", "info",
              lambda r: bool(r.regular_transfer_out),
              lambda r: (f"a steady ${r.recurring_partner_amount:,.0f} a month goes to one account at another bank ({int(r.recurring_partner_months)} months, "
-                        + (f"labelled {r.recurring_partner_purpose}" if str(r.recurring_partner_purpose) else "no label, so likely savings or support") + ")")
+                        + (f"labelled {r.recurring_partner_purpose}" if str(r.recurring_partner_purpose) else "purpose unlabelled") + ")")
                        if _fnum(r.get("recurring_partner_amount")) > 0 else f"a steady unlabelled transfer out of about ${r.regular_transfer_out_amount:,.0f} most months",
-             "a regular transfer leaves this account every month, so the real safety cushion is probably larger than the balance here shows"),
-    FlagRule("pension_dependent", "Pension is the main income", "info",
+             "confirm where the transfer goes and whether the money is accessible before counting it toward your cash cushion"),
+    FlagRule("pension_dependent", "Recorded inflow mainly labelled pension", "info",
              lambda r: bool(r.pension_share >= 0.5),
-             lambda r: f"{_pct(r.pension_share)} of inflow is pension",
-             "income is pension-based, so a job-loss shock applies less and a cost shock matters more"),
+             lambda r: f"{_pct(r.pension_share)} of recorded inflow is labelled pension",
+             "confirm what income would continue under a shock before choosing how much income to retain in the scenario"),
     FlagRule("cash_economy", "Uneven cash income", "info",
              lambda r: bool(r.cash_deposit_share >= 0.9 and r.income_cv >= 0.5),   # cash deposits are the norm here; uneven cash is the signal
              lambda r: f"{_pct(r.cash_deposit_share)} of inflow is cash deposits and inflow volatility is {r.income_cv:.2f}",
-             "income arrives as uneven cash deposits, which usually means self-employment or cash-paid work"),
+             "uneven deposits can make it harder to schedule regular payments, and their source needs confirming"),
     FlagRule("income_volatile", "Uneven income", "watch",
              lambda r: bool(r.income_cv >= 0.5 and r.inflow_regular_share < 0.5),
              lambda r: f"inflow volatility {r.income_cv:.2f}; only {_pct(r.inflow_regular_share)} of months are within 20% of the median",
@@ -338,10 +341,10 @@ FLAG_RULES: list[FlagRule] = [
              lambda r: bool(r.has_running_loan and (r.loan_payment_share >= 0.3 or r.loan_in_debt)),
              lambda r: f"running loan payment ${r.P:,.0f} is {_pct(r.loan_payment_share)} of typical inflow" + (" and the loan is already in debt" if r.loan_in_debt else ""),
              "the loan takes a large bite of every month's inflow, so it should be the first thing protected in a shock"),
-    FlagRule("below_district_pay", "Inflow well below the local average salary", "info",
+    FlagRule("below_district_pay", "Inflow below the branch district salary benchmark", "info",
              lambda r: bool(np.isfinite(r.get("inflow_vs_district_salary", np.nan)) and r.inflow_vs_district_salary < 0.6),
-             lambda r: f"typical inflow ${r.I:,.0f} is {_pct(r.inflow_vs_district_salary)} of the district average salary ${r.district_salary:,.0f}",
-             "inflow is well under the local average, so this account may be a secondary account or a part-time income"),
+             lambda r: f"typical inflow ${r.I:,.0f} is {_pct(r.inflow_vs_district_salary)} of the branch district average salary ${r.district_salary:,.0f}",
+             "account inflow includes deposits and transfers, so confirm the amount and sources of current income"),
     FlagRule("rent_pressure", "Bills taking a growing share", "watch",
              lambda r: bool(r.months >= 24 and r.bills_share_trend >= 0.05),
              lambda r: f"household bills took {_pct(r.bills_share_trend)} more of outflow in the last 12 months than the 12 before",

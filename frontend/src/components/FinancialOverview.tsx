@@ -12,22 +12,21 @@ export type Overview = { position: (Position & { asset_total: number; liability_
 export type Briefing = { headline: string; from: string; through: string; delivery: string; freshness: string; data_through: string; changes: { date: string; text: string }[]; goals: Goal[]; focus: string; next_steps: string[]; choices: Choice[]; plan_stale: boolean }
 const money = (n: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n)
 const today = () => new Date().toLocaleDateString('en-CA')
-export const talk = (question: string) => `/?prompt=${encodeURIComponent(question)}`
 
 export function GoalCards({ goals, onSave }: { goals: Goal[]; onSave?: (goal: Goal, amount: number) => Promise<void> }) {
   return <div className="financial-goals">{goals.length === 0 ? <p>No confirmed goals yet. <Link to="/goals">Set your first goal</Link>.</p> : goals.map(g => <article className="financial-goal" key={g.id}>
-    <div className="goal-ring" style={{ background: g.progress === null ? '#e5e5dc' : `conic-gradient(#225649 ${g.progress * 360}deg, #e5e5dc 0)` }}><span>{g.progress === null ? '?' : `${Math.round(g.progress * 100)}%`}</span></div>
+    <div className="goal-ring" style={{ background: g.progress === null ? '#e5e5dc' : `conic-gradient(#225649 ${g.progress * 360}deg, #e5e5dc 0)` }}><span>{g.progress === null ? '—' : `${Math.round(g.progress * 100)}%`}</span></div>
     <div><h3>{g.label}</h3><p>{g.saved === null ? 'Savings not recorded' : `${money(g.saved)} set aside`}{g.target !== null ? ` of ${money(g.target)}` : ' · Budget needed'}</p>
     {g.saved_as_of && <small>Reported {g.saved_as_of}</small>}
     {g.deadline && <p>Target date: {g.deadline} (from your original goal timeline)</p>}
     {g.monthly_needed !== null && <p><strong>{money(g.monthly_needed)}/month</strong> needed at a steady pace. This is a target, not a confirmed affordable contribution.</p>}
-    {g.question && <Link to={talk(`For my ${g.label} goal, help me answer: ${g.question}`)}>{g.question}</Link>}
+    {g.question && <p className="small muted">{g.question}</p>}
     {onSave && <form className="goal-saving-form" onSubmit={async e => { e.preventDefault(); const form = e.currentTarget; const value = Number(new FormData(form).get('saved')); await onSave(g, value) }}><label>Already set aside for {g.label}<input name="saved" type="number" min="0" max="1000000000000" step="0.01" required defaultValue={g.saved ?? ''} placeholder="Amount in CAD" /></label><button className="btn ghost" type="submit">Save progress</button></form>}
     </div></article>)}</div>
 }
 
 export default function FinancialOverview({ goalsOnly = false }: { goalsOnly?: boolean }) {
-  const { accountId, context, refreshSession } = useApp()
+  const { accountId, context, refreshContext } = useApp()
   const [data, setData] = useState<Overview | null>(null)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(false)
@@ -37,9 +36,9 @@ export default function FinancialOverview({ goalsOnly = false }: { goalsOnly?: b
   const save = async (change: { field: string; operation: string; value: Record<string, unknown>; target_id?: string }) => {
     if (!accountId || busy) return
     setBusy(true); setError('')
-    try { await api.edit(accountId, change, false); await refreshSession(); setData(await api.overview(accountId)); setEditing(false) } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
+    try { await api.edit(accountId, change, false); await refreshContext(); setData(await api.overview(accountId)); setEditing(false) } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
   }
-  if (!data) return <p role="status">{error || 'Loading your financial picture...'}</p>
+  if (!data) return error ? <p role="alert">{error}</p> : <p role="status">Loading your account details…</p>
   const p = data.position
   const maximum = p ? Math.max(p.asset_total, p.liability_total, 1) : 1
   const parts = data.cash_flow.parts

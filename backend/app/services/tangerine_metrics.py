@@ -232,11 +232,12 @@ def horizon_verdict(shock: dict, horizon_months: int) -> dict:
             "verdict": (f"Immediate funding gap: ${-bl:,.0f}. Future income cannot pay an upfront bill today." if bl < 0 else "The buffer is exhausted now; official runway is zero. Ongoing income and spending must be considered separately."),
         }
     if status == "no_shortfall":
+        change = f"the buffer grows by about ${(-gap) * T:,.0f}" if gap < 0 else "the buffer stays level"
         return {
             "horizon_months": T, "survives": True, "exact_at_horizon": False,
             "months_covered": float(T), "shortfall_over_horizon": 0.0,
             "cash_left_at_horizon": bl + (-gap) * T,
-            "verdict": f"Makes it. Income still covers spending; the buffer grows by about ${(-gap) * T:,.0f} over {T} months.",
+            "verdict": f"Makes it. Income covers spending, so {change} over {T} months.",
         }
     rw = shock["runway"]
     needed = gap * T
@@ -270,9 +271,9 @@ def explain_change(baseline: dict, shocked: dict) -> dict:
     }
     drivers = []
     if abs(d_income) > 0.005:
-        drivers.append(("income", abs(d_income), f"Income fell by ${-d_income:,.0f} a month"))
+        drivers.append(("income", abs(d_income), f"Income {'fell' if d_income < 0 else 'rose'} by ${abs(d_income):,.0f} a month"))
     if abs(d_spend) > 0.005:
-        drivers.append(("spending", abs(d_spend), f"Spending rose by ${d_spend:,.0f} a month"))
+        drivers.append(("spending", abs(d_spend), f"Spending {'fell' if d_spend < 0 else 'rose'} by ${abs(d_spend):,.0f} a month"))
     if abs(d_buffer) > 0.005:
         # compare one-off against the per-month gap on a six-month scale so magnitudes are comparable
         drivers.append(("one_off", abs(d_buffer) / 6.0, f"A one-off cost of ${-d_buffer:,.0f} came off the buffer"))
@@ -335,8 +336,11 @@ def backup_plan(shock: dict, horizon_months: int) -> dict:
     recurring = max(0.0, gap)
     if bl <= 0:
         monthly_improvement = recurring
-        note = (f"The upfront bill exceeds the buffer: ${immediate:,.0f} is needed immediately, and monthly savings later "
-                f"cannot pay today's bill. After that, each month still needs ${recurring:,.0f} covered.")
+        note = f"Cover the ${immediate:,.0f} immediate funding gap first." if immediate > 0 else "The cash buffer is exhausted now."
+        if recurring > 0:
+            note += f" After that, close the recurring gap of ${recurring:,.0f} per month."
+        else:
+            note += " Income covers ongoing spending under these assumptions."
     else:
         monthly_improvement = max(0.0, gap - bl / T)
         if recurring == 0:
@@ -386,12 +390,19 @@ def full_shock_report(m: OfficialMetrics, *, r: float, h: float, one_off: float,
     I, S, H, B = m.typical_inflow, m.typical_spending, m.household_bills, m.buffer
     baseline = compute_shock(I, S, H, B)
     shocked = compute_shock(I, S, H, B, r=r, h=h, one_off=one_off)
+    baseline_verdict = horizon_verdict(baseline, horizon_months)
     verdict = horizon_verdict(shocked, horizon_months)
+    cash_path = [{"month": 0, "baseline": B, "after_shock": B}]
+    if one_off > 0:
+        cash_path.append({"month": 0, "baseline": B, "after_shock": shocked["buffer_left"]})
+    cash_path.append({"month": horizon_months, "baseline": baseline_verdict["cash_left_at_horizon"],
+                      "after_shock": verdict["cash_left_at_horizon"]})
     return {
         "account_id": m.account_id,
         "baseline": baseline,
         "shocked": shocked,
         "verdict": verdict,
+        "cash_path": cash_path,
         "change_in_monthly_cash_flow": -(shocked["monthly_gap"] - baseline["monthly_gap"]),
         "upfront_cost": one_off,
         "remaining_buffer": shocked["buffer_left"],

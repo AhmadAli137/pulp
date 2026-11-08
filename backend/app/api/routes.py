@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from decimal import Decimal
 from typing import Any
 
 import json
@@ -28,7 +29,7 @@ from ..services.gemini_agent import chat, next_question, provider_info
 from ..services.roadmap import build_roadmap
 from ..services.scenario_engine import ScenarioSpec, StrategyAdjust, branches, resolve_preset, simulate_both
 from ..services.strategy_optimizer import compare_strategies
-from ..services.tangerine_metrics import full_shock_report
+from ..services.tangerine_metrics import OfficialMetrics, full_shock_report
 from ..config import GEMINI_API_KEY, GEMINI_MODEL
 
 router = APIRouter(prefix="/api")
@@ -188,9 +189,7 @@ def get_research():
     return _clean(research_summary())
 
 
-@router.post("/shocks/calculate")
-def post_shock(req: schemas.ShockRequest):
-    m = _metrics_or_404(req.account_id)
+def _shock_inputs(m: OfficialMetrics, req: schemas.ShockRequest) -> tuple[float, float, float, int]:
     r, h, C, T = req.income_fraction, req.bills_increase, req.one_off_cost, req.horizon_months
     if req.preset == "layoff":
         r, h, C, T = 0.55, 0.0, 0.0, 6
@@ -202,11 +201,44 @@ def post_shock(req: schemas.ShockRequest):
         r, h, C, T = 1.0, 0.0, 0.0, 6
     if req.one_off_in_months_of_spending is not None and req.preset is None:
         C = req.one_off_in_months_of_spending * m.typical_spending
+    if not math.isfinite(C):
+        raise HTTPException(status_code=422, detail="The one-time cost must be finite.")
+    return r, h, C, T
+
+
+def _shock_report(m: OfficialMetrics, r: float, h: float, C: float, T: int, preset: str | None = None) -> dict:
     rep = full_shock_report(m, r=r, h=h, one_off=C, horizon_months=T)
-    rep["applied_inputs"] = {"income_fraction": r, "bills_increase": h, "one_off_cost": C, "horizon_months": T, "preset": req.preset}
+    rep["applied_inputs"] = {"income_fraction": r, "bills_increase": h, "one_off_cost": C, "horizon_months": T, "preset": preset}
     rep["ei_note"] = ("EI regular benefits typically replace 55% of insurable earnings for 14 to 45 weeks. If the replacement period ends before the horizon, "
                       "a new assumption is needed beyond that point; this calculation holds the specified cash flows constant through the horizon.")
-    return _clean(rep)
+    return rep
+
+
+@router.post("/shocks/calculate")
+def post_shock(req: schemas.ShockRequest):
+    m = _metrics_or_404(req.account_id)
+    return _clean(_shock_report(m, *_shock_inputs(m, req), preset=req.preset))
+
+
+@router.post("/shocks/compare-purchase")
+def post_purchase_comparison(req: schemas.PurchaseComparisonRequest):
+    """Compare keeping the purchase money with paying the remaining cost now."""
+    m = _metrics_or_404(req.account_id)
+    r, h, C, T = _shock_inputs(m, req)
+    buy_cost = float(Decimal(str(C)) + Decimal(str(req.purchase_cost)))
+    if not math.isfinite(buy_cost):
+        raise HTTPException(status_code=422, detail="The combined one-time cost must be finite.")
+    wait = _shock_report(m, r, h, C, T, preset=req.preset)
+    buy = _shock_report(m, r, h, buy_cost, T)
+    buy_verdict = buy["verdict"]
+    extra_shortfall = max(0.0, buy_verdict["shortfall_over_horizon"] - wait["verdict"]["shortfall_over_horizon"])
+    return _clean({
+        "wait": wait,
+        "buy": buy,
+        "cash_preserved": req.purchase_cost,
+        "extra_shortfall": extra_shortfall,
+        "recommendation": "wait" if not buy_verdict["survives"] or buy_verdict["exact_at_horizon"] else "compare",
+    })
 
 
 @router.post("/scenarios/simulate")

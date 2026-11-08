@@ -1,29 +1,21 @@
-# Demo script
+# PULP demo walkthrough
 
-Use [askpulp.com](https://askpulp.com). This is an anonymized-account planning demo, not a live connection to the presenter's bank. Confirm microphone permission beforehand; type if voice is unavailable.
+## Pitch and finding
 
-## Five-minute walkthrough
+PULP answers three questions using a historical account. Where does the money go, what happens if income or expenses change, and what could the customer do before or after the shock?
 
-1. **A recognizable decision.** Open the Planning room, select a demo account and say or type a real goal, such as a vacation. Confirm only what Pulp correctly heard. Supply a budget and timing when asked; do not suggest that it already knows those details.
-2. **Why the record matters.** Open Your financial picture, then Insights & evidence. Show an observation, its possible effect, and the missing question. An unexplained transfer may be savings, a bill or support; Pulp should ask before proposing to change it.
-3. **A small choice.** Return to the Planning room and use A small everyday decision. Give an explicit monthly price if discussing a service. Explain the dollar trade-off without presenting historical room as guaranteed affordability.
-4. **A controlled setback.** Open Prepare for a setback. Enter the judge's retained-income fraction, bill increase, upfront cost and horizon. Read the official verdict and show the assumptions. Use Compare possibilities if the audience wants uncertainty paths.
-5. **A coherent plan.** Review Goals & choices and Your next steps. Explain any Option to discuss label: a ranked calculation may still need personal context. Show the same active scenario across pages.
-6. **Optional agent evidence.** Open Agents from the conversation. Explain actual calls and handoffs. The trace is not private model reasoning, and a deterministic fallback is not a completed model review.
+In 78 of 2,238 matched pairs with similar typical inflows, the account with the larger cash buffer ran out within six months while the smaller-buffer account made it through. Both were tested at 55% of their usual inflow. Explain that a large monthly shortfall can drain a larger cash buffer faster. These are simulated outcomes. [Study design and denominators](../docs/findings.md)
 
-## First-minute research alternative
+## Live twist
 
-If the judging format asks for a discovery first, use [the original findings](../docs/findings.md): under a defined modeled layoff, 78 of 2,238 matched pairs exhausted the larger cash buffer first. Retain the denominator, scenario and distinction from observed events. Then move to one account and one decision.
+1. Enter the judge’s account ID in **Overview**. Read typical money in, money out, fixed costs, cash buffer, and baseline runway. Explain that the buffer estimates cash from the last six available monthly balances.
+2. Open **Shocks**. Select a preset or enter the judge’s income retained, household bill change, one-time cost, and duration. Select **Run shock**.
+3. Read the verdict and open the exact amounts under **Cash over time**. If the shock includes an upfront cost, show the cash drop at month 0. Explain the difference between cash needed today and a monthly shortfall.
+4. Open **My Plan**. Read the savings target in **Prepare now** and the immediate and monthly actions in **If it happens**. If the shock is already underway, select **This shock has already happened** to put the backup first.
+5. For an optional purchase during an income loss, enter only income the customer can count on and the amount of the purchase they can still choose whether to pay. Compare waiting with paying today. Use the numbers to explain the trade-off.
 
-## Presentation rules
+## Rehearsal account
 
-- Keep conversation short; open a visual only when it explains the decision.
-- State that records end in December 2025 and ask about present changes.
-- Do not call occupation guesses facts, percentages forecasts, or the demo a regulated bank.
-- Do not claim automatic Excel ingestion, an Advocate/Consultant revision workflow, live bank feeds or transaction execution.
-- Use current page names; avoid the retired separate companion experience.
-- Historical research replay starts paused. Press Play deliberately if showing it.
+Load **90114**. Enter 55% retained income, 15% higher household bills, a $600 upfront cost, and six months. Starting cash is $4,086.79. The shock leaves $3,486.79 after the upfront cost and $489.94 at six months. Adding a $1,500 optional purchase leaves a $1,010.06 shortfall. Waiting preserves the $1,500 and covers the six-month scenario.
 
-## Pre-demo check
-
-Verify health, account selection, one typed turn and one short voice turn. Check the current release and microphone output. Do not reset a shared demo account without intending to remove its saved context. Keep the exact-input calculator available if provider access fails.
+In **Insights**, show why the home district and branch district are separate fields, and distinguish a recorded pattern from a question the customer can confirm.

@@ -68,15 +68,27 @@ export interface Verdict { horizon_months: number; survives: boolean; exact_at_h
 export interface GoalPlan { cash_needed: number; current_buffer: number; additional_buffer_needed: number; capacity_to_save_per_month: number; capacity_assumption: string; months_to_target: number | null; reachable_from_surplus: boolean; note: string; title: string; horizon_months: number }
 export interface BackupPlan { immediate_need: number; recurring_gap: number; buffer_left: number; monthly_improvement_needed: number; unresolved_gap_over_horizon: number; note: string; title: string; no_discretionary_inference: string }
 export interface TippingPoint { kind: string; max_bill_increase: number | null; absorbable_extra_per_month: number | null; note: string }
+export interface ShockCashPoint { month: number; baseline: number; after_shock: number }
 export interface ShockReport {
   account_id: number; baseline: ShockResult; shocked: ShockResult; verdict: Verdict; change_in_monthly_cash_flow: number
-  upfront_cost: number; remaining_buffer: number
+  upfront_cost: number; remaining_buffer: number; cash_path: ShockCashPoint[]
   explanation: { primary_driver: string; drivers: string[]; summary: string; contributions: Record<string, number> }
   goal_plan: GoalPlan; backup_plan: BackupPlan; tipping_point: TippingPoint; assumptions: string[]
   applied_inputs: { income_fraction: number; bills_increase: number; one_off_cost: number; horizon_months: number; preset: string | null }
   ei_note: string
 }
 export interface ShockInputs { income_fraction: number; bills_increase: number; one_off_cost: number; horizon_months: number }
+export interface PurchaseComparison {
+  wait: ShockReport; buy: ShockReport; cash_preserved: number; extra_shortfall: number; recommendation: 'wait' | 'compare'
+}
+
+export function matchesShockInputs(report: ShockReport | null, accountId: number | null, inputs: ShockInputs): report is ShockReport {
+  return report != null && report.account_id === accountId
+    && report.applied_inputs.income_fraction === inputs.income_fraction
+    && report.applied_inputs.bills_increase === inputs.bills_increase
+    && report.applied_inputs.one_off_cost === inputs.one_off_cost
+    && report.applied_inputs.horizon_months === inputs.horizon_months
+}
 export interface SimResult {
   spec: Record<string, unknown>; mode: string; calibration: string; months: number[]
   buffer_percentiles: { p10: number[]; p25: number[]; p50: number[]; p75: number[]; p90: number[] }
@@ -165,7 +177,7 @@ export interface Archetype {
   share: number; size: number; survive6_layoff_pct: number; naming_source: string
 }
 export interface Insights {
-  decision_profile?: { life_profile?: LifeProfile; period: { from: string; to: string; months: number }; observations: { key: string; evidence: string; life_effect: string; question: string; unlocks: string; needs_answer: boolean; priority: number }[] }
+  decision_profile?: { life_profile?: LifeProfile; period: { from: string; to: string; months: number }; observations: { key: string; evidence: string; life_effect: string; question: string; unlocks: string; needs_answer: boolean; priority: number; source: string; period: { from: string; to: string; months: number } }[] }
   account_id: number; flags: InsightFlag[]; archetype: Archetype | null
   features: Record<string, { value: number | boolean | null; percentile?: number | null; doc?: string }>
   narrative: { headline: string; insights: { text: string; flag: string }[]; source: string }
@@ -278,6 +290,7 @@ export const api = {
   hunter: () => get<HunterDoc>('/api/research/hunter'),
   featureSurvival: (feature: string, bins = 4) => get<FeatureSurvival>(`/api/research/features?feature=${encodeURIComponent(feature)}&bins=${bins}`),
   shock: (body: { account_id: number } & Partial<ShockInputs> & { preset?: string }) => post<ShockReport>('/api/shocks/calculate', body),
+  comparePurchase: (body: { account_id: number; purchase_cost: number } & ShockInputs) => post<PurchaseComparison>('/api/shocks/compare-purchase', body),
   simulate: (body: { account_id: number; scenario: Record<string, unknown>; strategy?: Record<string, unknown> }) => post<SimBundle>('/api/scenarios/simulate', body),
   branches: (id: number, horizon = 24) => get<{ branches: Branch[]; horizon_months: number }>(`/api/scenarios/branches/${id}?horizon=${horizon}&n_paths=300`),
   compare: (id: number) => post<Comparison>('/api/strategies/compare', { account_id: id, n_paths: 300 }),

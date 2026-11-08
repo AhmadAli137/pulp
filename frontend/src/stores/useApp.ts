@@ -21,6 +21,7 @@ interface AppState {
   shock: ShockReport | null
   shockLoading: boolean
   shockError: string | null
+  shockHasHappened: boolean
   context: ContextSummary | null
   lastReplan: ReplanResult | null
   accessible: boolean
@@ -29,6 +30,7 @@ interface AppState {
   loadAccount: (id: number) => Promise<void>
   clearAccount: () => void
   setInputs: (p: Partial<ShockInputs>, preset?: string | null) => void
+  setShockHasHappened: (value: boolean) => void
   applyPreset: (key: string) => void
   runShock: () => Promise<void>
   refreshContext: () => Promise<void>
@@ -37,34 +39,54 @@ interface AppState {
   setGemini: (v: boolean, label?: string) => void
 }
 
+const ACCOUNT_KEY = 'pulp.account'
 const DEFAULT_INPUTS: ShockInputs = { income_fraction: 0.55, bills_increase: 0, one_off_cost: 0, horizon_months: 6 }
-
-let accountRequest = 0
-let shockRequest = 0
-
-export const useApp = create<AppState>((set, get) => ({
-  activePlan: null,
-  planStale: false,
-  refreshSession: async () => {
-    const id = get().accountId
-    if (!id) return
-    const r = await api.session(id)
-    if (get().accountId !== id) return
-    const sh = r.plan?.request.shock
-    set({ activePlan: r.plan, planStale: r.stale, ...(sh ? { shockInputs: { income_fraction: sh.r, bills_increase: sh.h, one_off_cost: sh.one_off, horizon_months: sh.duration_months }, activePreset: null } : {}) })
-    await get().refreshContext()
-  },
+const EMPTY_ACCOUNT = {
   accountId: null,
   profile: null,
   loadingProfile: false,
   profileError: null,
+  activePlan: null,
+  planStale: false,
   shockInputs: DEFAULT_INPUTS,
   activePreset: 'layoff',
   shock: null,
   shockLoading: false,
   shockError: null,
+  shockHasHappened: false,
   context: null,
   lastReplan: null,
+}
+
+export function readSavedAccount(): number | null {
+  try {
+    const saved = localStorage.getItem(ACCOUNT_KEY)
+    const id = Number(saved)
+    return saved && /^\d+$/.test(saved) && Number.isSafeInteger(id) && id > 0 ? id : null
+  } catch {
+    return null
+  }
+}
+
+let accountRequest = 0
+let shockRequest = 0
+
+export const useApp = create<AppState>((set, get) => ({
+  ...EMPTY_ACCOUNT,
+  refreshSession: async () => {
+    const id = get().accountId
+    if (!id) return
+    const request = accountRequest
+    const lastInputs = get().shockInputs
+    const r = await api.session(id)
+    if (request !== accountRequest || get().accountId !== id) return
+    const sh = r.plan?.request.shock
+    set({ activePlan: r.plan, planStale: r.stale })
+    if (sh && get().shockInputs === lastInputs) {
+      set({ shockInputs: { income_fraction: sh.r, bills_increase: sh.h, one_off_cost: sh.one_off, horizon_months: sh.duration_months }, activePreset: null })
+    }
+    await get().refreshContext()
+  },
   accessible: (() => { try { return localStorage.getItem('pulp.accessible') === '1' } catch { return false } })(),
   geminiConfigured: null,
   aiLabel: 'offline companion',
@@ -72,23 +94,28 @@ export const useApp = create<AppState>((set, get) => ({
   loadAccount: async (id) => {
     const request = ++accountRequest
     ++shockRequest
-    set({ activePlan: null, planStale: false, loadingProfile: true, profileError: null, accountId: null, profile: null, context: null, shock: null, lastReplan: null })
+    set({ ...EMPTY_ACCOUNT, loadingProfile: true })
     try {
       const profile = await api.profile(id)
       if (request !== accountRequest) return
+      try { localStorage.setItem(ACCOUNT_KEY, String(id)) } catch { /* ignore */ }
       set({ accountId: id, profile, loadingProfile: false })
-      try { localStorage.setItem('pulp.account', String(id)) } catch { /* ignore */ }
-      await get().refreshSession()
-      await get().runShock()
-      await get().refreshContext()
+      await Promise.all([get().refreshContext(), get().runShock()])
     } catch (e) {
       if (request !== accountRequest) return
-      const msg = e instanceof ApiError ? e.message : 'Unexpected error'
+      const msg = e instanceof ApiError && e.status > 0 && e.status < 500
+        ? e.message : 'Couldn’t load this demo account. Try again.'
       set({ loadingProfile: false, profileError: msg, accountId: null, profile: null })
     }
   },
-  clearAccount: () => { ++accountRequest; ++shockRequest; set({ accountId: null, profile: null, shock: null, context: null, lastReplan: null, profileError: null }) },
+  clearAccount: () => {
+    ++accountRequest
+    ++shockRequest
+    try { localStorage.removeItem(ACCOUNT_KEY) } catch { /* ignore */ }
+    set(EMPTY_ACCOUNT)
+  },
   setInputs: (p, preset = null) => set((s) => ({ shockInputs: { ...s.shockInputs, ...p }, activePreset: preset })),
+  setShockHasHappened: (shockHasHappened) => set({ shockHasHappened }),
   applyPreset: (key) => {
     const p = PRESETS[key]
     const prof = get().profile
@@ -113,12 +140,15 @@ export const useApp = create<AppState>((set, get) => ({
   refreshContext: async () => {
     const { accountId } = get()
     if (!accountId) return
+    const request = accountRequest
     try {
       const r = await api.context(accountId)
-      if (get().accountId === accountId) set({ context: r.summary })
+      if (request === accountRequest && get().accountId === accountId) set({ context: r.summary })
     } catch { /* context is optional */ }
   },
-  setLastReplan: (r) => set({ lastReplan: r }),
+  setLastReplan: (r) => {
+    if (!r || r.account_id === get().accountId) set({ lastReplan: r })
+  },
   setAccessible: (v) => { try { localStorage.setItem('pulp.accessible', v ? '1' : '0') } catch { /* ignore */ } set({ accessible: v }) },
   setGemini: (v, label) => set({ geminiConfigured: v, aiLabel: label ?? (v ? 'Gemini companion' : 'offline companion') }),
 }))
