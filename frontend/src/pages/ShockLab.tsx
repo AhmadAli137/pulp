@@ -1,3 +1,4 @@
+import CouncilPanel from '../components/CouncilPanel'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import ProfileInsights from '../components/ProfileInsights'
 import ShockPanel from '../components/ShockPanel'
@@ -16,6 +17,7 @@ export default function ShockLab() {
         {profile.account.district_name && <Chip tone="outline">Branch · {profile.account.district_name}</Chip>}
       </div>
       <ShockPanel />
+      <CouncilPanel />
       <details className="financial-section">
         <summary>What we know about this account</summary>
         <ProfileInsights compact />

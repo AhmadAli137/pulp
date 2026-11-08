@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import ProfileInsights from '../components/ProfileInsights'
+import ResearchEvidence from '../components/ResearchEvidence'
 import { useApp } from '../stores/useApp'
 
 export default function Insights() {
@@ -8,6 +9,7 @@ export default function Insights() {
   return (
     <div className="stack">
       {accountId ? <ProfileInsights /> : <DemoAccountPicker />}
+      <ResearchEvidence />
       <section className="card stack" aria-labelledby="research-fact">
         <span className="editorial-label">Simulated · Research finding</span>
         <h2 id="research-fact">More cash can still run out sooner</h2>

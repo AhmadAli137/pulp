@@ -1,16 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { matchesShockInputs, type ShockInputs, type ShockReport } from '../services/api'
-import { PRESETS, useApp } from '../stores/useApp'
+import { matchesShockInputs, type Beat, type ShockInputs, type ShockReport } from '../services/api'
+import { useApp } from '../stores/useApp'
 import { Tangerine } from './PulpMascot'
 import PurchaseComparison from './PurchaseComparison'
 import ScenarioPlans from './ScenarioPlans'
 import ShockCashChart from './ShockCashChart'
+import ThreadFigure from './stage/ThreadFigure'
+import TwistDeck from './TwistDeck'
 import { Card, DataTable, ErrorBox, fmt } from './ui'
 
 export default function ShockPanel() {
   const {
-    profile, accountId, shockInputs, setInputs, applyPreset, runShock, shock, shockLoading, shockError, activePreset,
+    profile, accountId, shockInputs, setInputs, runShock, shock, shockLoading, shockError,
     accessible, shockHasHappened, setShockHasHappened,
   } = useApp()
   const [draft, setDraft] = useState<Partial<Record<keyof ShockInputs, string>>>({})
@@ -37,14 +39,8 @@ export default function ShockPanel() {
   return (
     <div className="stack scenario">
       <Card title="Set up a shock">
-        <p className="scenario-intro">Start with a preset or enter your own changes. If income has stopped, enter only what you can count on, including 0% when nothing is confirmed.</p>
-        <div className="preset-row" role="group" aria-label="Shock presets">
-          {Object.entries(PRESETS).map(([key, preset]) => (
-            <button key={key} type="button" className={`preset${!editing && activePreset === key ? ' active' : ''}`} aria-pressed={!editing && activePreset === key} onClick={() => { setDraft({}); applyPreset(key) }}>
-              {preset.label}<span className="k">{preset.hint}</span>
-            </button>
-          ))}
-        </div>
+        <p className="scenario-intro">Draw a twist card, shuffle the deck for a random one, or enter your own changes. If income has stopped, enter only what you can count on, including 0% when nothing is confirmed.</p>
+        <TwistDeck editing={editing} onPick={() => setDraft({})} />
         <form className="grid scenario-form" onSubmit={submit}>
           <div className="field">
             <label htmlFor="shock-income">Income retained</label>
@@ -108,8 +104,12 @@ function ShockResults({ report, responseFirst, showTable }: { report: ShockRepor
                     : 'Regular income covers ongoing spending under these assumptions, with no cash cushion at the start.'}
           </p>
           <p className="small muted">Runway · {runway}. Assumes the same income and spending for all {months} {months === 1 ? 'month' : 'months'}.</p>
+          {report.warnings?.map((w) => <p key={w} className="scenario-warning" role="note">{w}</p>)}
         </div>
       </section>
+      <Card title="Your cushion, month by month" className="scenario-figure">
+        <ThreadFigure beat={timelineBeat(report)} />
+      </Card>
       {responseFirst && <ScenarioPlans report={report} responseFirst />}
       <ShockCashChart report={report} showTable={showTable} />
       {!responseFirst && <ScenarioPlans report={report} responseFirst={false} />}
@@ -131,4 +131,25 @@ function ShockResults({ report, responseFirst, showTable }: { report: ShockRepor
       </Card>
     </>
   )
+}
+
+/** The engine's shock report drawn as the month-by-month cushion figure (same figure Pulp uses in conversation). */
+function timelineBeat(report: ShockReport): Beat {
+  const s = report.shocked
+  const months = report.verdict.horizon_months
+  const inputs = report.applied_inputs
+  const runsOut = s.buffer_left <= 0 ? 0 : s.runway != null && s.runway < months ? Math.round(s.runway * 10) / 10 : null
+  const what = [
+    inputs.income_fraction !== 1 ? `income at ${Math.round(inputs.income_fraction * 100)}%` : null,
+    inputs.bills_increase ? `bills ${inputs.bills_increase > 0 ? '+' : ''}${Math.round(inputs.bills_increase * 100)}%` : null,
+    inputs.one_off_cost ? `one-off ${fmt.money(inputs.one_off_cost)}` : null,
+  ].filter(Boolean).join(', ') || 'no shock'
+  return {
+    id: `shock-${report.account_id}-${months}`, visual: 'timeline', caption: '', duration_s: 0,
+    params: {
+      duration_months: months, income_before: report.baseline.income_after, income_after: s.income_after, spending_after: s.spending_after,
+      monthly_gap: s.monthly_gap, buffer_start: s.buffer_left, runs_out_month: runsOut, runway_label: s.runway_label, verdict: report.verdict.verdict,
+      events: [{ month: 0, label: what }, runsOut != null ? { month: runsOut, label: 'cushion empty' } : { month: months, label: 'still standing' }],
+    },
+  }
 }

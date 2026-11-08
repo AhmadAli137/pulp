@@ -1,8 +1,10 @@
-import { Activity, ArrowRight, CalendarDays, Landmark, Wallet } from 'lucide-react'
+import { Activity, ArrowRight, CalendarDays, Landmark, MessageCircle, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import { Tangerine } from '../components/PulpMascot'
 import ResilienceEntry from '../components/ResilienceEntry'
+import ThreadFigure from '../components/stage/ThreadFigure'
+import '../components/twist-deck.css'
 import { Card, fmt } from '../components/ui'
 import { useApp } from '../stores/useApp'
 
@@ -15,6 +17,7 @@ function recordMonth(value: string) {
 
 export default function Overview() {
   const profile = useApp((state) => state.profile)
+  const openPulp = useApp((state) => state.openPulp)
   if (!profile) return <DemoAccountPicker />
 
   const { account_id, typical_inflow, typical_spending, typical_surplus } = profile
@@ -68,6 +71,12 @@ export default function Overview() {
             </div>
             <p>{runwayNote}</p>
           </section>
+          <details className="bank-picture">
+            <summary>See your month as a picture</summary>
+            <ThreadFigure beat={{ id: `picture-${account_id}`, visual: 'picture', caption: '', duration_s: 0, params: {
+              inflow: typical_inflow, outflow: typical_spending, buffer: profile.buffer,
+              months_of_spending: typical_spending > 0 ? profile.buffer / typical_spending : 0, runway_label: profile.baseline_runway_label } }} />
+          </details>
         </Card>
 
         <div className="bank-balance-cards">
@@ -95,7 +104,10 @@ export default function Overview() {
           <h2>Start with a change you might face</h2>
           <p>Explore what a drop in income or an unexpected bill could change, then make a goal plan and a backup plan.</p>
         </div>
-        <Link to="/twin">See account details <ArrowRight size={16} aria-hidden="true" /></Link>
+        <div className="bank-next-actions">
+          <button type="button" className="bank-button" onClick={() => openPulp('__intro__')}><MessageCircle size={16} aria-hidden="true" /> Talk it through with Pulp</button>
+          <Link to="/twin">See account details <ArrowRight size={16} aria-hidden="true" /></Link>
+        </div>
       </aside>
       <ResilienceEntry researchOnly />
     </div>

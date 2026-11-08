@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import ScenarioPlans from '../components/ScenarioPlans'
+import ThreadFigure from '../components/stage/ThreadFigure'
+import '../components/twist-deck.css'
 import { Card, ErrorBox, fmt } from '../components/ui'
-import { matchesShockInputs } from '../services/api'
+import { matchesShockInputs, type Beat, type PlanResult } from '../services/api'
 import { useApp } from '../stores/useApp'
 
 export default function Plan() {
-  const { accountId, profile, shock, shockInputs, shockHasHappened, shockLoading, shockError } = useApp()
+  const { accountId, profile, shock, shockInputs, shockHasHappened, shockLoading, shockError, activePlan, planStale } = useApp()
   if (!profile) return <DemoAccountPicker />
 
   if (shockLoading || !matchesShockInputs(shock, accountId, shockInputs)) {
@@ -30,6 +32,23 @@ export default function Plan() {
         {shockHasHappened && <p className="small muted">You marked this shock as already happened. Your backup plan comes first.</p>}
       </Card>
       <ScenarioPlans report={shock} responseFirst={shockHasHappened} />
+      {activePlan && !planStale && activePlan.account_id === accountId && (
+        <Card title="What you could actually do" className="scenario-figure" right={<Link to="/shock">Compare again</Link>}>
+          <ThreadFigure beat={actionsBeat(activePlan)} />
+          <p className="small muted">Ranked by the planning council for the shock you compared. Every number is from the engine.</p>
+        </Card>
+      )}
     </div>
   )
+}
+
+function actionsBeat(plan: PlanResult): Beat {
+  const stay = plan.stay_the_course?.prob_shortfall_under_stress
+  const pct = (x: number) => `${Math.round(x * 100)}%`
+  const actions = plan.ranked.filter((c) => c.label !== plan.stay_the_course?.label).slice(0, 3).map((c) => ({
+    title: c.action ?? c.label, how: c.how ?? c.means ?? '', horizon: 'this month' as const,
+    effect: stay != null ? `shortfall risk ${pct(stay)} → ${pct(c.prob_shortfall_under_stress)}` : `shortfall risk ${pct(c.prob_shortfall_under_stress)}`,
+    source: c.source,
+  }))
+  return { id: `actions-${plan.account_id}`, visual: 'actions', caption: '', duration_s: 0, params: { headline: 'What you could actually do', actions } }
 }

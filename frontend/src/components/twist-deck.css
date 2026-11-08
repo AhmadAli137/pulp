@@ -1,0 +1,27 @@
+/* Twist cards on the Shocks page: the three judges' cards on the table and a fourth slot for the shuffle. */
+.twist-deck{display:flex;flex-direction:column;gap:12px;margin:6px 0 18px}
+.twist-deck-row{display:flex;flex-wrap:wrap;gap:14px}
+.twist-deck-card{width:clamp(108px,21%,150px);padding:0;border:0;background:none;border-radius:14px;cursor:pointer;font-size:13px;transition:transform .18s ease,box-shadow .18s ease}
+.twist-deck-card .twist-card{width:100%}
+.twist-deck-card:hover{transform:translateY(-4px)}
+.twist-deck-card:focus-visible{outline:3px solid #f9b17e;outline-offset:3px}
+.twist-deck-card.on{transform:translateY(-6px)}
+.twist-deck-card.on .twist-card{box-shadow:0 0 0 3px #9c4f30,0 12px 26px #1e2b2230}
+.twist-deck-card:disabled{cursor:default}
+.twist-deck-card .twist-card-text{font-size:.78em}
+.twist-deck-card.shuffling .twist-back{animation:twist-riffle .45s ease-in-out}
+.twist-dealt{animation:twist-deal .38s ease-out}
+.twist-deck-foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.twist-deck-none{border:0;background:none;color:#54645a;font-size:13px;text-decoration:underline;cursor:pointer;padding:6px 4px}
+.scenario-warning{margin-top:10px;padding:8px 12px;border-left:3px solid #ac7445;background:#f8f1e8;color:#5d4630;font-size:13px;line-height:1.5}
+.scenario-figure .thread-figure{max-width:none;margin:0}
+.scenario-figure .thread-figure-canvas{height:clamp(220px,32vw,300px)}
+.bank-picture{margin-top:14px}
+.bank-picture>summary{cursor:pointer;color:#1c4639;font-size:13px;font-weight:700}
+.bank-picture .thread-figure{max-width:none;margin-top:10px}
+@keyframes twist-riffle{0%,100%{transform:rotate(0)}25%{transform:rotate(-5deg) translateX(-4px)}50%{transform:rotate(4deg) translateX(4px)}75%{transform:rotate(-2deg)}}
+@keyframes twist-deal{from{opacity:0;transform:perspective(600px) rotateY(80deg) translateY(-6px)}to{opacity:1;transform:none}}
+@media (max-width:720px){.twist-deck-card{width:calc(50% - 7px);max-width:160px}}
+@media (prefers-reduced-motion:reduce){.twist-deck-card,.twist-deck-card *{animation:none!important;transition:none!important}}
+.bank-next-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-left:auto}
+@media (max-width:720px){.bank-next-actions{margin-left:0}}
