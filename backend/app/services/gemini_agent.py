@@ -159,8 +159,8 @@ PROFILE_ANSWER_PATTERNS = [
     ("work_type", "for an employer", r"for an? (employer|company|firm|bank|hospital|school|government)|salaried|my employer|full[- ]time job|part[- ]time job|i work (at|for) "),
     ("transfer_purpose", "savings", r"(that|it|the transfer|the money)('?s| is)? (my )?savings|goes (in)?to (my )?savings|tfsa|rrsp|saving(s)? account"),
     ("transfer_purpose", "a payment", r"(that|it|the transfer)('?s| is) (a |my )?(payment|loan|car payment|rent|mortgage|child support|credit card)"),
-    ("household", "rent", r"i rent|renting|my landlord|my lease"),
-    ("household", "own", r"i own|my mortgage|own my (place|home|house|condo)"),
+    ("household", "rent", r"\bi rent\b|renting|my landlord|my lease"),
+    ("household", "own", r"\bi own\b|my mortgage|own my (place|home|house|condo)"),
     ("other_income", "yes", r"(also|plus|as well as|on top).*(income|pension|work|job)|side (gig|income|hustle)"),
 ]
 
@@ -177,7 +177,7 @@ def _profile_answers(text: str) -> list[ProposedChange]:
                      "other_income": "has other income besides the pension"}[ctype]
             out.append(ProposedChange(field="constraints", operation="add", value={"type": ctype, "value": value, "label": label}))
             seen.add(ctype)
-    if re.search(r"(kids?|children|dependents?|my (son|daughter|parents?|wife|husband|partner) depends?)", low):
+    if re.search(r"\b(kids?|children|dependents?|my (son|daughter|parents?|wife|husband|partner) depends?)\b", low):
         out.append(ProposedChange(field="constraints", operation="add", value={"type": "dependents", "value": "yes", "label": "someone depends on their income"}))
     return out
 
