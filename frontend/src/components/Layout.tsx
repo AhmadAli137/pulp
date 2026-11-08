@@ -5,7 +5,7 @@ import { api } from '../services/api'
 import { Spinner } from './ui'
 
 const NAV = [
-  { to: '/', label: 'Home', ic: '◎' },
+  { to: '/', label: 'Home (Pip)', ic: '◎' },
   { to: '/shock', label: 'Shock Lab', ic: '⚡' },
   { to: '/twin', label: 'My Financial Twin', ic: '◫' },
   { to: '/explore', label: 'Explore Futures', ic: '⟡' },

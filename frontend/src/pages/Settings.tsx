@@ -38,7 +38,7 @@ export default function Settings() {
         <div className="row" style={{ marginTop: 10 }}>
           <button className="btn danger" onClick={reset} disabled={!accountId}>Delete personal context</button>
           <button className="btn" onClick={clearAccount} disabled={!accountId}>Unload account</button>
-          <button className="btn" onClick={() => { try { sessionStorage.removeItem('pulp.intro.seen') } catch { /* ignore */ } window.location.href = '/' }}>Replay intro</button>
+          <button className="btn" onClick={() => { try { sessionStorage.removeItem('pulp-intro-seen') } catch { /* ignore */ } window.location.href = '/' }}>Replay intro</button>
         </div>
         {msg && <p className="callout green" style={{ marginTop: 10 }}>{msg}</p>}
       </Card>

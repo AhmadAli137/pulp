@@ -3,9 +3,10 @@ import asyncio
 import base64
 import json
 import logging
+import anyio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from .decision import ScenarioProposal, profile
-from ..config import GEMINI_API_KEY, GEMINI_LIVE_MODEL
+from ..config import GEMINI_API_KEY, GEMINI_LIVE_MODEL, GEMINI_LIVE_API_VERSION
 from ..schemas import ShockRequest
 from ..services.tangerine_metrics import full_shock_report
 
@@ -15,7 +16,7 @@ router = APIRouter()
 @router.websocket('/api/agent/voice/{account_id}')
 async def voice(ws: WebSocket, account_id: int):
     origin = ws.headers.get('origin', '')
-    if origin and origin not in {'http://localhost:8000','http://127.0.0.1:8000','http://localhost:5173','http://127.0.0.1:5173'}:
+    if origin and origin not in {'http://localhost:8000','http://127.0.0.1:8000','http://localhost:5173','http://127.0.0.1:5173','http://localhost:8001','http://127.0.0.1:8001','http://localhost:5174','http://127.0.0.1:5174'} | ({f'https://{_d}', f'https://www.{_d}'} if (_d := __import__('os').environ.get('DOMAIN','').strip()) else set()):
         await ws.close(code=1008)
         return
     await ws.accept()
@@ -29,7 +30,7 @@ async def voice(ws: WebSocket, account_id: int):
         m=profile(account_id)
         from google import genai
         from google.genai import types
-        client=genai.Client(api_key=GEMINI_API_KEY)
+        client=genai.Client(api_key=GEMINI_API_KEY,http_options={'api_version':GEMINI_LIVE_API_VERSION})
         declarations=[
             dict(name='get_financial_profile',description='Read observed financial metrics for the selected account.',parameters={'type':'OBJECT','properties':{}}),
             dict(name='calculate_shock',description='Compute authoritative financial outcomes for an explicitly stated hypothetical scenario.',parameters={
@@ -102,15 +103,18 @@ async def voice(ws: WebSocket, account_id: int):
             tasks=[asyncio.create_task(receive_browser()),asyncio.create_task(receive_gemini())]
             done,_=await asyncio.wait(tasks,return_when=asyncio.FIRST_COMPLETED)
             for task in done: task.result()
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, asyncio.CancelledError):
         pass
     except Exception:
         logging.getLogger('pulp.voice').exception('Voice session ended')
         try: await ws.send_json(dict(type='error',message='Gemini voice is unavailable or disconnected. Check your key/model and continue with text or manual controls.'))
         except Exception: pass
     finally:
-        for task in tasks: task.cancel()
-        if tasks: await asyncio.gather(*tasks,return_exceptions=True)
-        if client: await client.aio.aclose()
-        try: await ws.close()
-        except Exception: pass
+        # Starlette cancels the request scope on disconnect. Finish provider/audio
+        # cleanup inside a shield so no receive task or provider socket leaks.
+        with anyio.CancelScope(shield=True):
+            for task in tasks: task.cancel()
+            if tasks: await asyncio.gather(*tasks,return_exceptions=True)
+            if client: await client.aio.aclose()
+            try: await ws.close()
+            except Exception: pass

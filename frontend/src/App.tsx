@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
-import Home from './pages/Home'
+import { HarvestIntro, introSeen, markIntroSeen } from './components/PulpMascot'
+import AgentHome from './pages/AgentHome'
 import ShockLab from './pages/ShockLab'
 import Twin from './pages/Twin'
 import Explore from './pages/Explore'
@@ -10,12 +12,23 @@ import Insights from './pages/Insights'
 import Companion from './pages/Companion'
 import Settings from './pages/Settings'
 
+function Home() {
+  const [intro, setIntro] = useState(() => !introSeen())
+  const finish = () => { markIntroSeen(); setIntro(false) }
+  return (
+    <>
+      <div inert={intro}><AgentHome onReplayIntro={() => setIntro(true)} /></div>
+      {intro && <HarvestIntro onDone={finish} />}
+    </>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route index element={<Home />} />
         <Route element={<Layout />}>
-          <Route index element={<Home />} />
           <Route path="shock" element={<ShockLab />} />
           <Route path="twin" element={<Twin />} />
           <Route path="explore" element={<Explore />} />
@@ -24,8 +37,8 @@ export default function App() {
           <Route path="insights" element={<Insights />} />
           <Route path="companion" element={<Companion />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="*" element={<Home />} />
         </Route>
+        <Route path="*" element={<Home />} />
       </Routes>
     </BrowserRouter>
   )

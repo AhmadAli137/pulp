@@ -60,4 +60,5 @@ KV_REST_API_TOKEN = (os.environ.get("KV_REST_API_TOKEN") or os.environ.get("UPST
 DEFAULT_HORIZON_MONTHS = 6
 RUNWAY_CAP_MONTHS = 120.0
 EI_REPLACEMENT_RATE = 0.55  # Challenge assumption, not a determination of EI eligibility.
-GEMINI_LIVE_MODEL = os.environ.get("GEMINI_LIVE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
+GEMINI_LIVE_MODEL = os.environ.get("GEMINI_LIVE_MODEL", "gemini-3.8-live")
+GEMINI_LIVE_API_VERSION = os.environ.get("GEMINI_LIVE_API_VERSION", "v1alpha")
