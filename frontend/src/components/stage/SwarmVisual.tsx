@@ -31,7 +31,7 @@ export default function SwarmVisual({ p }: { p: SwarmParams }) {
       <g transform="translate(90, 470)">
         <Label x={0} y={0} size={34} color={FOREST} weight={800}>{Math.round(count)} scenarios scored</Label>
         <Label x={0} y={30} size={13} color={GRAY}>{p.grid_size} from the lever grid · {cands.filter((c) => c.source === 'strategist').length} proposed by the Strategist · flags from the Challenger: {cands.reduce((a, c) => a + c.flags, 0)}</Label>
-        <Label x={0} y={56} size={12} color={GRAY}>score = {p.objective} · safety {pct(p.weights.resilience)} / goal {pct(p.weights.goal)}</Label>
+        <Label x={0} y={56} size={12} color={GRAY}>score = safety × (1 − P shortfall) + goal × progress − 0.25 × cut · weights {pct(p.weights.resilience)} / {pct(p.weights.goal)}</Label>
       </g>
       {best && <g transform="translate(640, 470)">
         <Label x={0} y={0} size={13} color={GRAY}>best so far</Label>
