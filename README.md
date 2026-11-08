@@ -13,15 +13,18 @@ Voice and typed conversation share one workflow and one saved planning context. 
 | Destination | Route | Purpose |
 |---|---|---|
 | Planning room | `/` | Talk or type; discuss small and big decisions; confirm personal details; open optional visuals and the agent flow |
-| Your financial picture | `/twin` | Review recorded cash flow alongside confirmed personal context |
+| Your financial picture | `/twin` | Track reported assets and liabilities, actual goal savings, and historical spending allocation |
 | Insights & evidence | `/insights` | Connect observed patterns to life implications, unanswered questions and research |
 | Prepare for a setback | `/shock` | Enter a specific change in income, bills or upfront costs; review the official calculation and planning options |
 | Compare possibilities | `/explore` | Change explicit assumptions and inspect simulated paths |
 | Goals & choices | `/goals` | Review the saved goal, compare strategies and see what changed |
 | Your next steps | `/roadmap` | Review suggested actions, trade-offs and assumptions by timeframe |
+| Briefings & summaries | `/briefings` | Daily focus and seven-day review of saved updates, goals and next questions |
 | Preferences & data | `/settings` | Accessibility, service status, saved-context controls and data limitations |
 
 The profile interpretation layer explains **what the records show, why it may matter, what is unknown, and which decision it can inform**. It does not assume card spending is discretionary, a transfer is savings, or pension income means extra shifts are possible. Missing budgets, dates and spending flexibility lead to questions or conditional options.
+
+Reported balances are entered explicitly; unknown balances and goal savings stay unknown. Daily and weekly briefings are generated inside Pulp when opened, with no email or scheduled notifications. Goal savings inform questions; strategy projections still use historical cash flow and do not assume reported assets are liquid.
 
 ## Run locally
 
@@ -78,7 +81,7 @@ npm --prefix frontend run test:e2e
 python docs/agents/validate_examples.py
 ```
 
-Browser tests require installed Chrome (or the configured Playwright channel), a built frontend and a free port 8002. They use an isolated API, temporary context and disabled live AI credentials. The last code verification on November 8, 2026 passed **126 backend tests, 13 browser tests and the voice client regression test**. Counts are a dated snapshot, not a fixed acceptance target. CI runs a smaller named backend subset, voice regression and the frontend build; it does not run the full local browser suite. [Testing and verification](docs/testing.md).
+Browser tests require installed Chrome (or the configured Playwright channel), a built frontend and a free port 8002. They use an isolated API, temporary context and disabled live AI credentials. The last code verification on November 8, 2026 passed **137 backend tests, 14 browser tests and the voice client regression test**. Counts are a dated snapshot, not a fixed acceptance target. CI runs a smaller named backend subset, voice regression and the frontend build; it does not run the full local browser suite. [Testing and verification](docs/testing.md).
 
 ## Data and research
 

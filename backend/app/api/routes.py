@@ -285,7 +285,10 @@ def post_confirm(req: schemas.ConfirmRequest):
 @router.post("/context/edit")
 def post_edit(req: schemas.EditRequest):
     _metrics_or_404(req.account_id)
-    res = cm.direct_edit(req.account_id, req.change.model_dump())
+    try:
+        res = cm.direct_edit(req.account_id, req.change.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     out = {"applied": res["applied"], "summary": cm.summarize(res["context"]), "replan": None}
     if req.replan:
         out["replan"] = _clean(replan(req.account_id, reason="direct context edit"))
@@ -412,3 +415,17 @@ def post_replan(req: schemas.ReplanRequest):
 def get_replan_diff(account_id: int):
     _metrics_or_404(account_id)
     return _clean(replanning_diff(account_id))
+
+
+@router.get("/customers/{account_id}/overview")
+def financial_overview(account_id: int):
+    _metrics_or_404(account_id)
+    from ..services.financial_overview import overview
+    return _clean(overview(account_id))
+
+
+@router.get("/customers/{account_id}/briefing")
+def financial_briefing(account_id: int, period: str = Query("daily", pattern="^(daily|weekly)$")):
+    _metrics_or_404(account_id)
+    from ..services.financial_overview import briefing
+    return _clean(briefing(account_id, period))

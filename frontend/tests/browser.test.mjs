@@ -200,7 +200,7 @@ test('everyday and bigger decisions start as contextual conversation', { timeout
 
 
 test('every workspace page shares navigation and fits desktop and mobile', { timeout: 120000 }, async t => {
-  const pages = [ ['/twin', 'Your financial picture'], ['/insights', 'Insights & evidence'], ['/shock', 'Prepare for a setback'], ['/explore', 'Compare possibilities'], ['/goals', 'Goals & choices'], ['/roadmap', 'Your next steps'], ['/settings', 'Preferences & data'] ]
+  const pages = [ ['/briefings', 'Briefings & summaries'], ['/twin', 'Your financial picture'], ['/insights', 'Insights & evidence'], ['/shock', 'Prepare for a setback'], ['/explore', 'Compare possibilities'], ['/goals', 'Goals & choices'], ['/roadmap', 'Your next steps'], ['/settings', 'Preferences & data'] ]
   for (const width of [1440, 390]) {
     const p = await pageFor(t, 20111, { viewport: { width, height: 960 } })
     for (const [path, title] of pages) {
@@ -223,4 +223,36 @@ test('insight questions lead back to the same conversation as a draft', { timeou
   const input = p.getByRole('textbox', { name: 'Message', exact: true })
   await input.waitFor()
   assert.match(await input.inputValue(), /Help me answer this using my records/)
+})
+
+
+test('reported balances and goal savings persist and inform briefings', { timeout: 60000 }, async t => {
+  const p = await pageFor(t, 20133)
+  const setup = await p.request.post(`${base}/api/context/edit`, { data: { account_id: 20133, change: { field: 'goals', operation: 'add', value: { type: 'travel', label: 'A family holiday', target_amount: 5000, target_months: 12 } }, replan: false } })
+  assert.ok(setup.ok())
+  await p.goto(base + '/twin')
+  await p.getByRole('button', { name: 'Update balances' }).click()
+  await p.getByRole('button', { name: 'Add asset', exact: true }).click()
+  await p.getByLabel('Description', { exact: true }).fill('Savings account')
+  await p.getByLabel('Amount (CAD)', { exact: true }).fill('8000')
+  await p.getByRole('button', { name: 'Add liability', exact: true }).click()
+  await p.getByLabel('Description', { exact: true }).nth(1).fill('Outstanding card balance')
+  await p.getByLabel('Amount (CAD)', { exact: true }).nth(1).fill('2000')
+  await p.getByRole('button', { name: 'Save balances', exact: true }).click()
+  await p.getByText('Difference for listed items', { exact: false }).waitFor()
+  await p.getByLabel('Already set aside for A family holiday', { exact: true }).fill('1250')
+  await p.getByRole('button', { name: 'Save progress', exact: true }).click()
+  await p.getByText('25%', { exact: true }).waitFor()
+  await p.reload()
+  await p.getByText('25%', { exact: true }).waitFor()
+  const result = await (await p.request.get(`${base}/api/customers/20133/overview`)).json()
+  assert.equal(result.position.asset_total, 8000)
+  assert.equal(result.position.difference, 6000)
+  assert.equal(result.goals.find(g => g.type === 'travel').saved, 1250)
+  await p.goto(base + '/briefings')
+  await p.getByRole('heading', { name: 'Your daily perspective' }).waitFor()
+  await p.getByRole('button', { name: 'Weekly summary', exact: true }).click()
+  await p.getByRole('heading', { name: 'Your week in perspective' }).waitFor()
+  await p.getByText(/Updated financial position/).waitFor()
+  assert.match(await p.locator('main').innerText(), /No new bank transactions/)
 })

@@ -14,7 +14,7 @@ npm --prefix frontend run test:e2e
 python docs/agents/validate_examples.py
 ```
 
-The last application-code verification on November 8, 2026 passed 126 backend tests, 13 browser tests and one voice-client test. Re-run the relevant commands for a new code change; do not preserve these counts as if they were a permanent contract.
+The last application-code verification on November 8, 2026 passed 137 backend tests, 14 browser tests and one voice-client test. Re-run the relevant commands for a new code change; do not preserve these counts as if they were a permanent contract.
 
 ## Isolation and requirements
 
@@ -61,3 +61,5 @@ These scripts can write derived/research artifacts. Run them intentionally and r
 ## Documentation checks
 
 `docs/agents/validate_examples.py` validates two historical synthetic blueprint fixtures, their arithmetic and local links in that package. It does not validate the production API schema. Check links across the whole documentation tree separately when reorganizing files, and keep proposed contracts clearly labeled.
+
+Financial overview coverage includes partial balance sheets, negative net positions, unknown versus zero savings, overfunded goals, date boundaries, invalid entries, saved progress persistence, and daily/weekly briefing navigation. Briefings are tested against saved context updates, not fabricated bank activity.

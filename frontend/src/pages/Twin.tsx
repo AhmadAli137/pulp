@@ -1,3 +1,4 @@
+import FinancialOverview from '../components/FinancialOverview'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type ContextDoc, type HistoryRow } from '../services/api'
@@ -52,6 +53,7 @@ export default function Twin() {
 
   return (
     <div className="stack">
+      <FinancialOverview />
       <div className="grid cols-2">
         <Card title={<span className="obs">From your account records</span>} right={<Chip>Recorded history</Chip>}>
           <KV rows={[
@@ -82,6 +84,7 @@ export default function Twin() {
         </Card>
       </div>
 
+      <details className="financial-section"><summary>Explore historical cash flow and liquidity</summary>
       <div className="grid cols-2">
         <Card title={<>Historical cash flow <Tip text="Monthly money_in and money_out from the summary file. Dashed lines are the medians I and S." /></>}>
           {history.length > 0 && <CashFlowChart history={history} I={profile.typical_inflow} S={profile.typical_spending} />}
@@ -91,6 +94,7 @@ export default function Twin() {
         </Card>
       </div>
 
+      </details>
       <div className="grid cols-2">
         <Card title={<>Financial vulnerability <Tip text="Official runway under several shocks. Bars past the 6-month line survive a six-month horizon." /></>}>
           {vuln.length > 0 && <VulnerabilityChart rows={vuln} />}

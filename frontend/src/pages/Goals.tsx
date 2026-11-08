@@ -1,3 +1,4 @@
+import FinancialOverview from '../components/FinancialOverview'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Comparison, type Snapshot, type Diff } from '../services/api'
@@ -56,6 +57,7 @@ export default function Goals() {
 
   return (
     <div className="stack">
+      <FinancialOverview goalsOnly />
       <div className="grid cols-2">
         <Card title="What you are working toward" right={<Chip tone="gold">Your priorities shape the comparison</Chip>}>
           <form className="stack" onSubmit={saveGoal}>

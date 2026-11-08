@@ -56,6 +56,8 @@ def build_decision_profile(monthly, row, summary: dict) -> dict:
             questions.append({"key": "goal_timing", "text": "When would you like to take that vacation?" if goal.get("type") == "travel" else "When would you like to reach that goal?", "why": "Timing changes how much you would need to put aside each month.", "value": 1.3})
         elif not goal.get("target_amount"):
             questions.append({"key": "goal_amount", "text": "What total budget would feel comfortable for that vacation?" if goal.get("type") == "travel" else "What total amount should we plan for?", "why": "We need your budget before choosing a saving amount or suggesting cuts.", "value": 1.25})
+        elif goal.get("saved_amount") is None:
+            questions.append({"key": "goal_saved", "text": "How much have you already set aside specifically for this goal?", "why": "Actual savings tell us the remaining gap; account cash may already have another purpose.", "value": 1.2})
     for o in sorted(observations, key=lambda o: -o["priority"]):
         if o["needs_answer"]:
             questions.append({"key": o["key"], "text": o["question"], "why": o["life_effect"], "value": o["priority"] / 100})

@@ -9,6 +9,7 @@ export const WORKSPACE = [
   { to: '/explore', label: 'Compare possibilities', icon: GitBranch, subtitle: 'Try a different cost, timing or commitment before choosing a direction.', next: '/goals', task: 'Adjust an assumption and compare the outcomes' },
   { to: '/goals', label: 'Goals & choices', icon: Target, subtitle: 'Connect what you want with the time, money and flexibility it needs.', next: '/roadmap', task: 'Set a goal and review the choices around it' },
   { to: '/roadmap', label: 'Your next steps', icon: Map, subtitle: 'A considered sequence of actions, with the trade-offs kept in view.', next: '/', task: 'Choose one next step you can actually take' },
+  { to: '/briefings', label: 'Briefings & summaries', icon: Activity, subtitle: 'A daily focus and a weekly review of your saved financial picture.', next: '/twin', task: 'Review what changed and choose your next conversation' },
   { to: '/settings', label: 'Preferences & data', icon: Settings, subtitle: 'Control your experience and understand the information behind it.', next: '/twin', task: 'Manage your preferences and saved details' },
 ]
 

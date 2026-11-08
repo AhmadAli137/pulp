@@ -10,6 +10,7 @@ import Goals from './pages/Goals'
 import Roadmap from './pages/Roadmap'
 import Insights from './pages/Insights'
 import Settings from './pages/Settings'
+import Briefings from './pages/Briefings'
 
 function Home() {
   const [intro, setIntro] = useState(() => !introSeen())
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="classic" element={<Navigate to="/" replace />} />
         <Route element={<Layout />}>
           <Route path="shock" element={<ShockLab />} />
+          <Route path="briefings" element={<Briefings />} />
           <Route path="twin" element={<Twin />} />
           <Route path="explore" element={<Explore />} />
           <Route path="goals" element={<Goals />} />

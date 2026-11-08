@@ -1,3 +1,4 @@
+import type { Overview, Briefing } from '../components/FinancialOverview'
 /* API client for the PULP backend. All numbers come from the deterministic backend. */
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') ?? ''
@@ -261,6 +262,8 @@ export const API_BASE = BASE
 
 // ------------------------------------------------------------------ calls
 export const api = {
+  overview: (id: number) => get<Overview>(`/api/customers/${id}/overview`),
+  briefing: (id: number, period: 'daily' | 'weekly') => get<Briefing>(`/api/customers/${id}/briefing?period=${period}`),
   session: (id: number) => get<{ plan: PlanResult | null; context_version: number; stale: boolean }>(`/api/agent/session/${id}`),
   health: () => get<Health>('/api/health'),
   samples: () => get<{ accounts: SampleAccount[]; total_accounts: number; id_range: [number, number] }>('/api/accounts/sample?n=6'),

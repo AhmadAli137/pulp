@@ -45,3 +45,14 @@ Use progressive detail: a practical question first, assumptions and source recor
 ## Responsive and interaction checks
 
 Every destination is checked at desktop and phone widths. Wide financial tables scroll within labeled regions. Comparison branches stack on narrow screens. Keyboard focus, dialog closing, message entry, account changes and mobile navigation must remain usable. The test suite checks important interactions and layout overflow; it does not establish complete accessibility certification or human usability validation.
+
+
+## Financial overview and briefings
+
+The financial picture starts with user-reported assets and liabilities, goal-progress rings and a proportional outflow allocation strip. Historical line charts are expandable. Balance comparisons use a shared scale; goal rings show unknown progress as a question mark rather than zero. All visual quantities have adjacent text. The design is implemented in `FinancialOverview.tsx` and its shared stylesheet.
+
+A balance sheet is explicitly dated and partial until the user marks it complete. Goal savings are allocations of assets, not additional assets. Goal deadlines derive from the original goal creation date plus its stated duration; monthly pace is a remaining-gap calculation, not an affordability guarantee. Savings observations keep their own date when other goal details change.
+
+`/briefings` provides a daily focus and a trailing seven-day summary. Both are generated when opened. They report the latest saved personal updates, goals, existing plan options and missing questions; they are not an immutable change log or a claim of new bank activity. No automatic delivery, notifications or email are scheduled. This matches the initial in-app delivery choice.
+
+The conversation profile tool includes reported balances and goal progress. Timing, budget and already-saved amounts inform follow-up questions. Proposed spoken or typed savings still require confirmation; the balance and progress forms save only on explicit submission. Saving details marks an existing plan stale. Strategy simulations retain their historical buffer assumptions: reported assets are not automatically treated as accessible cash, and current goal savings are not silently added to projected funds.

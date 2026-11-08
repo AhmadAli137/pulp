@@ -65,6 +65,7 @@ Strategist and Challenger are sequential in this workflow, not an ADK `ParallelA
 |---|---|
 | Status and account selection | `GET /api/health`, `GET /api/accounts/sample` |
 | Recorded profile | `GET /api/customers/{id}`, `/history`, `/cohort`, `/insights` beneath that customer |
+| Financial overview | `GET /api/customers/{id}/overview`, `GET /api/customers/{id}/briefing?period=daily` (or `weekly`) |
 | Conversation and trace | `GET /api/agent/stage`, `GET /api/agent/personas`, `GET /api/agent/deck`, `WS /api/agent/voice/{id}` |
 | Shared planning | `POST /api/agent/plan`, `GET /api/agent/session/{id}` |
 | Calculation | `POST /api/shocks/calculate`, `POST /api/scenarios/simulate`, `GET /api/scenarios/branches/{id}` |
@@ -78,3 +79,5 @@ Consult `/docs` and [`routes.py`](../backend/app/api/routes.py) for request sche
 ## Persistence and hosting
 
 The backend reads `.env` at the repository root. Context is stored as per-account JSON or through optional Redis REST support. Conversation history, proposals and active plans are separate from the immutable source records. The Docker service uses one worker and a context volume. Process-local locking is not a distributed transaction, and the public demo does not provide per-user account authorization. See [deployment](deployment.md) and [limitations](limitations.md).
+
+`financial_overview.py` combines dated, validated `financial_position` constraints, confirmed goals (`saved_amount`, `saved_as_of`), historical account aggregates and the saved plan. Balance entry validation also applies to partial context updates. It never derives outstanding debt from original loan principal. Briefings filter the latest saved item timestamps by UTC calendar date; there is no background scheduler or transaction-feed polling.

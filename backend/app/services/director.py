@@ -376,6 +376,12 @@ class _Tools:
                "baseline_runway": self.m.baseline_runway_label, "flags": [{k: f[k] for k in ("key", "label", "evidence")} for f in ins["flags"]],
                "archetype": ins["archetype"], "headline": ins["narrative"]["headline"],
                "decision_profile": ins.get("decision_profile", {})}
+        from .financial_overview import goal_progress
+        from datetime import datetime, timezone
+        ctx = cm.load_context(self.account_id)
+        out["goal_progress"] = goal_progress(ctx, datetime.now(timezone.utc).date())
+        out["reported_position"] = next((i["value"] for i in ctx.get("constraints", []) if i["value"].get("type") == "financial_position"), None)
+        out["position_note"] = "Reported balances are user entries, not live bank data. Goal savings are allocations, not additional assets. Historical buffer is not current net worth."
         self.results["get_profile"] = out
         return out
 
@@ -606,6 +612,9 @@ def _goal_follow_up(account_id: int, summary: dict, prefix: str = "") -> dict | 
     elif not goal.get("target_amount"):
         key = "goal_amount"
         question = "What total budget would feel comfortable for that vacation?" if goal.get("type") == "travel" else "Roughly how much would you like to set aside for that goal?"
+    elif goal.get("saved_amount") is None:
+        key = "goal_saved"
+        question = "How much have you already set aside specifically for this goal? It is fine if you are starting from zero."
     else:
         return None
     cm.record_question(account_id, key)

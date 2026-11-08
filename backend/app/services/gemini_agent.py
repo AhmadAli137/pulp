@@ -204,7 +204,16 @@ def offline_extract(text: str, summary: dict) -> AgentExtraction:
     if goal_found == "debt_payoff":
         concern_found = None
 
-    if goal_found:
+    savings_answer = bool(re.search(r"already saved|set aside|saved so far|starting from zero|haven.t saved", t))
+    last_asked = (summary.get("asked_questions") or [None])[-1]
+    numeric_reply = re.fullmatch(r"\s*\$?\s*([\d,]+(?:\.\d+)?)\s*(k|dollars)?\s*[.!]?\s*", t)
+    if last_asked == "goal_saved" and (numeric_reply or t.strip() in ("zero", "nothing", "none", "not yet")):
+        savings_answer = True
+        amounts = [float(numeric_reply[1].replace(",", "")) * (1000 if numeric_reply[2] == "k" else 1)] if numeric_reply else [0]
+    if savings_answer and summary.get("goals") and (amounts or re.search(r"zero|haven.t saved", t)):
+        goal = next((g for g in summary["goals"] if g.get("type") == goal_found), sorted(summary["goals"], key=lambda g: g.get("priority", 1))[0])
+        changes.append(ProposedChange(field="goals", operation="update", value={"type": goal["type"], "saved_amount": max(amounts) if amounts else 0}))
+    elif goal_found:
         v: dict[str, Any] = {"type": goal_found, "label": GOAL_LABELS.get(goal_found, "Goal"), "priority": 1}
         if months:
             v["target_months"] = months
@@ -393,7 +402,7 @@ Rules:
 Account id: {account_id}. Confirmed context so far: {context}. Questions already asked: {asked}."""
 
 EXTRACT_PROMPT = """From the user's latest message, extract structured updates to their profile. Output JSON matching the schema.
-Vocabulary: goals.value = {{type: one of {goal_types}, label, target_amount?, target_months?, priority: 1}};
+Vocabulary: goals.value = {{type: one of {goal_types}, label, target_amount?, target_months?, saved_amount? (only money explicitly already set aside for this goal; never its budget), priority: 1}};
 concerns.value = {{type: one of {concern_types}, label}};
 constraints.value = {{type: expected_rent|can_free_up_per_month|startup_budget|income_replacement|transfer_purpose|bill_date_flexibility|other_income|fee_conditions|protected_spending|extra_income_capacity|current_finances, amount?, fraction?, months?, value?, label?}};
 preferences.value = {{type: risk_preference, choice: safety|speed|balanced}};

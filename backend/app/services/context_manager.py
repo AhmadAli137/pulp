@@ -131,6 +131,25 @@ def propose(account_id: int, changes: list[dict], source: str = "model_inference
 
 def _apply_change(ctx: dict, change: dict, source: str) -> dict:
     field = change["field"]
+    value = change.get("value", {})
+    if change.get("operation") == "update" and field == "constraints":
+        existing = next((i for i in ctx[field] if i["id"] == change.get("target_id") or (value.get("type") and i["value"].get("type") == value["type"])), None)
+        if existing and existing["value"].get("type") == "financial_position":
+            value = {**existing["value"], **value}
+            change = {**change, "value": value}
+    if change.get("operation", "add") != "remove" and field == "constraints" and value.get("type") == "financial_position":
+        from .financial_overview import FinancialPosition
+        change = {**change, "value": FinancialPosition.model_validate(value).model_dump(mode="json")}
+    if change.get("operation", "add") != "remove" and field == "goals" and "saved_amount" in value:
+        import math
+        amount = value["saved_amount"]
+        if isinstance(amount, bool) or not isinstance(amount, (int, float)) or not math.isfinite(amount) or not 0 <= amount <= 1e12:
+            raise ValueError("Saved goal amount must be a finite non-negative number")
+        from datetime import date
+        saved_as_of = value.get("saved_as_of") or _now()[:10]
+        if date.fromisoformat(saved_as_of) > date.fromisoformat(_now()[:10]):
+            raise ValueError("Savings date cannot be in the future")
+        change = {**change, "value": {**value, "saved_as_of": saved_as_of}}
     if field not in LISTS:
         raise ValueError(f"unknown field {field}")
     op = change.get("operation", "add")
