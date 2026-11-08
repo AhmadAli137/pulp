@@ -397,6 +397,12 @@ def full_shock_report(m: OfficialMetrics, *, r: float, h: float, one_off: float,
         cash_path.append({"month": 0, "baseline": B, "after_shock": shocked["buffer_left"]})
     cash_path.append({"month": horizon_months, "baseline": baseline_verdict["cash_left_at_horizon"],
                       "after_shock": verdict["cash_left_at_horizon"]})
+    warnings: list[str] = []
+    if h and H == 0:
+        warnings.append("This account has no labelled household bills in the records, so the bills change does not alter spending. "
+                        "Use a one-time cost or lower income to test a cost increase here.")
+    if I == 0 and r != 1:
+        warnings.append("This account has no typical money in, so changing income retained has no effect.")
     return {
         "account_id": m.account_id,
         "baseline": baseline,
@@ -410,6 +416,7 @@ def full_shock_report(m: OfficialMetrics, *, r: float, h: float, one_off: float,
         "goal_plan": goal_plan(shocked, horizon_months),
         "backup_plan": backup_plan(shocked, horizon_months),
         "tipping_point": tipping_point(I, S, H, B, r=r, one_off=one_off, horizon_months=horizon_months),
+        "warnings": warnings,
         "assumptions": [
             "The specified cash flows continue unchanged through the selected period.",
             "Official runway follows the Tangerine definitions; the horizon verdict is kept separate from the runway display.",

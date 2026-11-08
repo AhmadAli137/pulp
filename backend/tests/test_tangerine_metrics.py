@@ -175,3 +175,15 @@ def test_full_report_shape():
     for k in ("baseline", "shocked", "verdict", "goal_plan", "backup_plan", "tipping_point", "explanation"):
         assert k in rep
     assert rep["shocked"]["runway_display"] == 4.0
+
+
+def test_bills_shock_warns_when_account_has_no_household_bills():
+    rows = _synthetic_monthly().copy()
+    rows["household_bills"] = 0.0
+    m = compute_metrics(rows, None, 1)
+    assert m.household_bills == 0.0
+    rep = full_shock_report(m, r=0.55, h=0.15, one_off=0.0, horizon_months=6)
+    assert any("no labelled household bills" in w for w in rep["warnings"])
+    # the formula itself is unchanged: bills +15% of 0 adds nothing
+    assert rep["shocked"]["spending_after"] == pytest.approx(m.typical_spending)
+    assert full_shock_report(compute_metrics(_synthetic_monthly(), None, 1), r=0.55, h=0.15, one_off=0.0, horizon_months=6)["warnings"] == []

@@ -161,7 +161,13 @@ def get_research_hunter():
 
 @router.get("/research/validation")
 def get_research_validation():
-    """Ground truth: our flags and the simulated layoff against the loans that actually went bad."""
+    """Ground truth: our flags and the simulated layoff against the loans that actually went bad.
+
+    Served from the committed Stage 1 run (data/derived/hunter_findings.json) so a page view never rebuilds the
+    feature table; computed live only when that snapshot is missing."""
+    snapshot = get_findings().get("validation")
+    if isinstance(snapshot, dict) and snapshot.get("available"):
+        return _clean(snapshot)
     f = get_features()
     return _clean(default_validation(f, get_store().loans, flag_matrix(f)))
 
