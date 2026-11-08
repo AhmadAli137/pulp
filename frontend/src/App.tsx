@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import { HarvestIntro, introSeen, markIntroSeen } from './components/PulpMascot'
 import AgentHome from './pages/AgentHome'
+import Stage from './pages/Stage'
 import ShockLab from './pages/ShockLab'
 import Twin from './pages/Twin'
 import Explore from './pages/Explore'
@@ -17,6 +18,18 @@ function Home() {
   const finish = () => { markIntroSeen(); setIntro(false) }
   return (
     <>
+      <div inert={intro}><Stage onReplayIntro={() => setIntro(true)} /></div>
+      {intro && <HarvestIntro onDone={finish} />}
+    </>
+  )
+}
+
+/* The previous conversation-first home, kept at /classic. */
+function Classic() {
+  const [intro, setIntro] = useState(false)
+  const finish = () => { markIntroSeen(); setIntro(false) }
+  return (
+    <>
       <div inert={intro}><AgentHome onReplayIntro={() => setIntro(true)} /></div>
       {intro && <HarvestIntro onDone={finish} />}
     </>
@@ -28,6 +41,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route index element={<Home />} />
+        <Route path="classic" element={<Classic />} />
         <Route element={<Layout />}>
           <Route path="shock" element={<ShockLab />} />
           <Route path="twin" element={<Twin />} />

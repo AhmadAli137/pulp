@@ -212,6 +212,41 @@ export type RunEvent =
   | { type: 'done'; data: { seconds: number } }
   | { type: 'error'; data: { message: string } }
 export interface HunterReplayStep { index: number; tool: string; args: Record<string, unknown>; finding?: HunterFinding }
+// ------------------------------------------------------------------ narrated stage (Director storyboard)
+export type VisualKind = 'picture' | 'cup' | 'river' | 'timeline' | 'fork' | 'calendar' | 'dial' | 'crowd' | 'ribbon' | 'cards' | 'math' | 'shuffle' | 'swarm' | 'podium' | 'none'
+export interface PictureParams { inflow: number; outflow: number; buffer: number; months_of_spending: number; runway_label: string; headline?: string }
+export interface CupParams { buffer: number; outflow: number; months_of_spending: number; label: string }
+export interface RiverParams { inflow: number; outflow: number; surplus: number; parts_in: Record<string, number>; parts_out: Record<string, number> }
+export interface TimelineParams { duration_months: number; income_before: number; income_after: number; spending_after: number; monthly_gap: number; buffer_start: number; runs_out_month: number | null; runway_label: string; verdict: string; events: { month: number; label: string }[] }
+export interface CalendarParams { neg_months: number; timing_share: number; months: number }
+export interface CrowdParams { n_total: number; archetype: { name: string; size: number; share: number; survive6_layoff_pct: number }; you: { survives6_layoff: boolean; runway_layoff: number | null } }
+export interface RibbonParams { months: number; spending_drift_pm: number; income_drift_pm: number; inflow: number; outflow: number }
+export interface CardsParams { cards: { key: 'layoff' | 'furnace' | 'combined' | 'random'; title: string; text: string }[] }
+export interface MathParams { lines: string[] }
+export interface ShuffleParams { deck: string[]; dealt: { key: string; title: string; text: string } }
+export interface SwarmCandidate { label: string; source: 'grid' | 'strategist'; score: number; prob_shortfall: number; buffer_path: number[]; best: boolean; flags: number }
+export interface SwarmParams { horizon_months: number; grid_size: number; candidates: SwarmCandidate[]; objective: string; weights: { resilience: number; goal: number } }
+export interface PodiumEntry { rank: number; label: string; source: string; score: number; prob_shortfall: number; goal_progress: number; levers: LeverDial; flags: { risk: string; severity: string; because: string }[]; why: string }
+export interface PodiumParams { top: PodiumEntry[]; objective: string; weights: { resilience: number; goal: number }; stay: { label: string; prob_shortfall: number; score: number } | null }
+export type Beat = { id: string; caption: string; duration_s: number; emphasis?: string } & (
+  | { visual: 'picture'; params: PictureParams }
+  | { visual: 'cup'; params: CupParams }
+  | { visual: 'river'; params: RiverParams }
+  | { visual: 'timeline'; params: TimelineParams }
+  | { visual: 'fork'; params: TwoFuturesParams }
+  | { visual: 'calendar'; params: CalendarParams }
+  | { visual: 'dial'; params: LeverParams }
+  | { visual: 'crowd'; params: CrowdParams }
+  | { visual: 'ribbon'; params: RibbonParams }
+  | { visual: 'cards'; params: CardsParams }
+  | { visual: 'math'; params: MathParams }
+  | { visual: 'shuffle'; params: ShuffleParams }
+  | { visual: 'swarm'; params: SwarmParams }
+  | { visual: 'podium'; params: PodiumParams }
+  | { visual: 'none'; params: Record<string, never> })
+export interface Storyboard { opening: boolean; source: string; beats: Beat[]; card?: unknown }
+export interface StageAgentEvent { t: number; agent: string; kind: 'tool_call' | 'tool_result' | 'text'; tool?: string; args?: Record<string, unknown>; summary?: string }
+export interface StageMemoryEvent { proposal: Proposal | null; context: ContextSummary; next_question: { key: string; text: string } | null; reply?: string | null }
 export const API_BASE = BASE
 
 // ------------------------------------------------------------------ calls
