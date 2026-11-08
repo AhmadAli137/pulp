@@ -545,5 +545,17 @@ def profile_doc(account_id: int, build: bool = True) -> dict:
     ctx = cm.load_context(account_id)
     S = float(get_features().loc[account_id, "S"]) if account_id in get_features().index else 0.0
     log = [{k: v for k, v in e.items() if k != "item_id"} for e in reversed(ctx.get("profile_log", []))]
-    return {"account_id": int(account_id), "persona": persona, "goals": profile_goals(ctx, S), "context": cm.summarize(ctx),
+    goals = profile_goals(ctx, S)
+    if persona:
+        from .persona_voice import quote_key, quotes_for
+        persona = dict(persona)
+        worries = [dict(w) for w in persona.get("worries", [])]
+        quotes = quotes_for(account_id, persona, goals, worries)
+        for g in goals:
+            g["quote"] = quotes.get(quote_key("goal", g))
+        for w in worries:
+            w["quote"] = quotes.get(quote_key("worry", w))
+        persona["worries"] = worries
+        persona.pop("quotes", None)
+    return {"account_id": int(account_id), "persona": persona, "goals": goals, "context": cm.summarize(ctx),
             "log": log, "version": ctx.get("context_version", 1), "refining": account_id in _BUILDING}

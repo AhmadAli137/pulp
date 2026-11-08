@@ -35,6 +35,28 @@ PATTERNS: list[tuple[str, re.Pattern, dict]] = [
      {"title": "A new baby", "r": 0.55, "h": 0.10, "duration": 12, "category": "family"}),
     ("family", re.compile(r"\b(support|help|look after|care for)\b.*\b(mom|mum|dad|parent|parents|family|sister|brother)\b", re.I),
      {"title": "Supporting family", "r": 1.0, "h": 0.0, "duration": 6, "one_off_S": 0.6, "category": "family"}),
+    ("wildfire", re.compile(r"\b(wildfire|forest fire|evacuat\w*)\b", re.I),
+     {"title": "A wildfire evacuation", "r": 0.8, "h": 0.0, "duration": 1, "one_off_S": 0.5, "category": "disaster"}),
+    ("flood", re.compile(r"\b(flood\w*|basement (?:is )?flooded)\b", re.I),
+     {"title": "A flood", "r": 1.0, "h": 0.0, "duration": 6, "one_off_S": 0.8, "category": "disaster"}),
+    ("storm", re.compile(r"\b(ice storm|hurricane|tornado|blizzard|power (?:outage|cut)|earthquake)\b", re.I),
+     {"title": "A storm and a power cut", "r": 0.9, "h": 0.0, "duration": 1, "one_off_S": 0.25, "category": "disaster"}),
+    ("recession", re.compile(r"\b(recession|downturn|economy (?:tanks|crashes|slows)|depression)\b", re.I),
+     {"title": "A recession", "r": 0.75, "h": 0.0, "duration": 9, "category": "economy"}),
+    ("tariffs", re.compile(r"\b(tariffs?|trade war)\b", re.I),
+     {"title": "A trade war raising prices", "r": 1.0, "h": 0.08, "duration": 12, "category": "economy"}),
+    ("conflict", re.compile(r"\b(war|conflict|invasion|sanctions)\b", re.I),
+     {"title": "A conflict abroad raising prices", "r": 1.0, "h": 0.12, "duration": 9, "category": "political"}),
+    ("inflation", re.compile(r"\b(inflation|prices? (?:are |keep )?(?:going|went|shooting) up|cost of living)\b", re.I),
+     {"title": "Prices rising fast", "r": 1.0, "h": 0.1, "duration": 12, "category": "economy"}),
+    ("lockdown", re.compile(r"\b(pandemic|lockdown|outbreak|covid)\b", re.I),
+     {"title": "A lockdown", "r": 0.6, "h": 0.0, "duration": 4, "category": "health"}),
+    ("strike", re.compile(r"\b(strike|walkout|picket)\b", re.I),
+     {"title": "A strike at work", "r": 0.4, "h": 0.0, "duration": 2, "category": "political"}),
+    ("market_drop", re.compile(r"\b(market crash|stock market|markets? (?:fall|drop|crash)\w*|bear market)\b", re.I),
+     {"title": "A market crash", "r": 1.0, "h": 0.0, "duration": 6, "one_off_S": 0.5, "category": "economy"}),
+    ("fraud", re.compile(r"\b(scam\w*|fraud|identity theft|hacked|stolen card)\b", re.I),
+     {"title": "Fraud on the account", "r": 1.0, "h": 0.0, "duration": 3, "one_off_S": 0.3, "category": "costs"}),
 ]
 DECISIONS: list[tuple[str, re.Pattern, str]] = [
     ("second_job", re.compile(r"second job|side (hustle|gig|job|business)|extra (job|work|shifts)|freelanc|start a business", re.I), "Taking on more work"),
@@ -99,7 +121,7 @@ def detect(text: str) -> dict | None:
             if key in ("hours_cut",) and pct:
                 v = float(pct.group(1)) / 100
                 d["r"] = max(0.0, 1 - v) if re.search(r"cut|reduc|less", t, re.I) and v < 0.9 else v
-            if key in ("bill", "repair", "health", "family") and amt:
+            if key in ("bill", "repair", "health", "family", "wildfire", "flood", "storm", "market_drop", "fraud") and amt:
                 d["one_off"] = amt
                 d.pop("one_off_S", None)
             if months:

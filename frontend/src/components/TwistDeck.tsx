@@ -22,7 +22,7 @@ const OFFICIAL: Record<string, Omit<DeckCard, 'key' | 'title' | 'text'>> = {
   furnace: { r: 1, h: 0, duration: 6, one_off: 0, one_off_months: 1 },
   combined: { r: 0.55, h: 0.15, duration: 6, one_off: 0, one_off_months: null },
 }
-const CATEGORY_LABEL: Record<string, string> = { income: 'Income', housing: 'Housing', health: 'Health', family: 'Family', transport: 'Transport', costs: 'Costs', opportunity: 'Opportunity' }
+const CATEGORY_LABEL: Record<string, string> = { income: 'Income', housing: 'Housing', health: 'Health', family: 'Family', transport: 'Transport', costs: 'Costs', opportunity: 'Opportunity', disaster: 'Natural disaster', economy: 'Economy', political: 'World events' }
 
 interface Prefetch { key: string; promise: Promise<ShockDeal>; value?: ShockDeal }
 

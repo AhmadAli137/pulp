@@ -28,13 +28,20 @@ CHARACTERS: list[dict] = [
     {"id": "meter_reader", "name": "The Meter Reader", "role": "watches the bills creep up", "fits": ["costs", "housing"]},
     {"id": "recruiter", "name": "The Recruiter", "role": "brings an offer somewhere else", "fits": ["opportunity"]},
     {"id": "relative", "name": "The Relative", "role": "needs a hand", "fits": ["family"]},
+    {"id": "emergency_official", "name": "The Emergency Official", "role": "issues the evacuation order", "fits": ["disaster"]},
+    {"id": "economist", "name": "The Economist", "role": "reads the numbers no one wants to hear", "fits": ["economy"]},
+    {"id": "reporter", "name": "The Reporter", "role": "brings the news from far away", "fits": ["political"]},
+    {"id": "health_officer", "name": "The Health Officer", "role": "decides what stays open", "fits": ["health"]},
 ]
 # Who naturally brings each scenario (deck keys, and personal keys without the p_ prefix).
 PREFERRED = {"layoff": "manager", "hours_cut": "manager", "combined": "manager", "client_loss": "client", "slow_season": "client",
              "rent_up": "landlord", "moving": "landlord", "roommate_leaves": "landlord", "furnace": "technician", "home_repair": "technician",
              "car": "mechanic", "car_repair": "mechanic", "health": "doctor", "sick_leave": "doctor", "dental": "dentist", "vet": "vet",
              "parental": "midwife", "rate_reset": "banker", "bills_inflation": "meter_reader", "pension_lag": "meter_reader",
-             "holidays": "meter_reader", "job_offer": "recruiter", "family_help": "relative"}
+             "holidays": "meter_reader", "job_offer": "recruiter", "family_help": "relative",
+             "wildfire": "emergency_official", "flood": "emergency_official", "ice_storm": "emergency_official", "recession": "economist",
+             "tariffs": "economist", "inflation_spike": "economist", "market_drop": "economist", "conflict": "reporter", "public_cuts": "reporter",
+             "strike": "reporter", "lockdown": "health_officer", "fraud": "banker"}
 CHAR_BY_ID = {c["id"]: c for c in CHARACTERS}
 TABLE = ("layoff", "furnace", "combined")  # the judges' three cards keep their official scenarios
 DECK_CATEGORY = {"layoff": "income", "furnace": "housing", "combined": "income", "hours_cut": "income", "rent_up": "housing",

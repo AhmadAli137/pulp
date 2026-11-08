@@ -95,11 +95,11 @@ No model ever produces a number. The engine is deterministic Python, tested agai
 | 1 | **Pattern Hunter** | Searches all 4,500 accounts for patterns, testing each with statistical tools. |
 | 1 | **Archetype Namer** | Names the six behavioural groups the clustering found. |
 | 1 | **Profile Narrator** | Writes the few sentences worth hearing about an account, one per flag. |
-| 1 | **Persona Builder** | Builds a realistic but fictional person for the account: occupation guess, household, weighted goals, worries and first questions. Amounts come from code. |
+| 1 | **Persona Builder** | Builds a realistic but fictional person for the account: occupation guess, household, weighted goals, worries and first questions, and a one-sentence quote in that person’s own voice for each goal and worry. Amounts come from code; the quotes may not add numbers. |
 | 2 | **Companion** | Turns what you say into profile updates, applied directly and logged; “no” undoes them. |
 | 2 | **Director** | Decides what to show each turn, writes what Pulp says, and starts Stage 3 when you mention a shock or a decision. |
 | 3 | **Shock Dealer** | Picks who reveals each twist card and, for the open card, which shock, from a fixed list, with a one-line reason. Never sets an amount. |
-| 3 | **Shock Generator** (code) | Picks shocks that fit this life: a lost client for a cash earner, a payment reset for a borrower, parental leave for a young family. |
+| 3 | **Shock Generator** (code) | Picks shocks that fit this life: a lost client for a cash earner, a payment reset for a borrower, parental leave for a young family, and world events ranked for this person (a recession, tariffs, a conflict abroad raising prices, wildfire, flood or an ice storm, a lockdown, a strike, a market drop, fraud). |
 | 3 | **Life Fit Assessor** (code) | Checks every decision against the person: age and physical capacity, the time a shared household leaves, whether a lodger or a move is realistic, whether gig work exists where they live. Rules out poor fits with the reason and adds options for their stage of life, such as paid advice in their field, work from home, or starting CPP at 60. |
 | 3 | **Life Planner** (code) | Generates and simulates hundreds of multi-step plans. |
 | 3 | **Strategist** and **Challenger** | Propose options from your life, and flag the ones you are unlikely to follow. |

@@ -41,7 +41,7 @@ export default function Profile() {
       {p && (
         <div className="pf-two">
           <Card title="What worries you">
-            <ul className="pf-list">{p.worries.map((w) => <li key={w.label}><strong>{w.label}</strong><small>{w.evidence}</small></li>)}</ul>
+            <ul className="pf-list">{p.worries.map((w) => <li key={w.label}><strong>{w.label}</strong>{w.quote && <span className="pf-said"><q className="pf-quote">{w.quote}</q><cite>{p.display_name.split(' ')[0]}</cite></span>}<small>{w.evidence}</small></li>)}</ul>
           </Card>
           <Card title="What Pulp will ask first">
             <ol className="pf-list numbered">{p.questions.map((q) => <li key={q.key}><strong>{q.text}</strong><small>Why: {q.why}</small></li>)}</ol>

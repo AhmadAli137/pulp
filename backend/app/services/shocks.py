@@ -17,6 +17,9 @@ from typing import Any
 from . import context_manager as cm
 
 
+DECK_VERSION = 2  # 2: world events (disasters, economy, politics, public health)
+
+
 def _f(row: Any, key: str, default: float = 0.0) -> float:
     try:
         v = float(row.get(key, default))
@@ -137,6 +140,9 @@ def generate(account_id: int, persona: dict | None = None) -> tuple[list[dict], 
         cards.append(_card("job_offer", "A better job in another city", f"An offer paying 15% more, but moving costs about {_m(_round(1.2 * S))} up front.",
                            1.15, 0, _round(1.2 * S), 12, "opportunity", "low",
                            "Not every shock is bad news; a good offer still strains the cushion." + (f" It would speed up {big['label'].lower()}." if big else "")))
+    world = world_events(row, S, I, H, P, B, age, cash, cv, pension, joint, urban, rising)
+    ev("tool_call", f"Considered {len(world)} world events for this life", items=[f"{c['title']} ({c['likelihood']})" for c in world])
+    cards += world
     rng = random.Random(account_id)
     rng.shuffle(cards)
     order = {"high": 0, "medium": 1, "low": 2}
@@ -146,12 +152,67 @@ def generate(account_id: int, persona: dict | None = None) -> tuple[list[dict], 
     return cards, trace
 
 
+def _price(key, title, text, pct, months, S, H, category, likelihood, why, _same_key=None):
+    """A price shock: as a household-bills rise when bills are labelled, else as the total extra spending over the period."""
+    if H > 0:
+        return _card(key, title, text + f" Household bills go up {pct:.0%} for {months} months.", 1.0, pct, 0, months, category, likelihood, why)
+    total = _round(pct * 0.35 * S * months)
+    return _card(key, title, text + f" About {_m(total)} more over {months} months.", 1.0, 0, total, months, category, likelihood,
+                 why + " (no labelled bills, so the rise is counted as extra spending)")
+
+
+def world_events(row, S, I, H, P, B, age, cash, cv, pension, joint, urban, rising) -> list[dict]:
+    """Political, economic, conflict, disaster and public-health events, sized from this account and ranked for this life.
+    Amounts are code-set multiples of S, I and B; the event text names what is assumed."""
+    rural = urban < 70
+    service = cash >= 0.8
+    out = []
+    # natural disasters
+    out.append(_card("wildfire", "Wildfire evacuation", f"An evacuation order: two weeks away from home, a month of lost pay at 80%, and about {_m(_round(0.5 * S))} for a hotel and food.",
+                     0.8, 0, _round(0.5 * S), 1, "disaster", "medium" if rural else "low",
+                     "Rural districts sit closer to the forest edge." if rural else "Smoke and evacuations reach towns too, less often."))
+    out.append(_card("flood", "Spring flood", f"Water in the basement: the insurance deductible and the clean-up come to about {_m(_round(0.8 * S))}.",
+                     1.0, 0, _round(0.8 * S), 6, "disaster", "medium" if rural else "low",
+                     "Flood claims are rising every year, and rural homes are hit more." if rural else "Basement floods follow heavy rain in cities as well."))
+    out.append(_card("ice_storm", "Ice storm, a week without power", f"Spoiled food, a hotel and lost shifts: about {_m(_round(0.25 * S))} and a month at 90% of income.",
+                     0.9 if not pension else 1.0, 0, _round(0.25 * S), 1, "disaster", "medium" if rural else "low",
+                     "Power cuts last longer outside the cities." if rural else "A common winter disruption."))
+    # economy and politics
+    out.append(_card("recession", "A recession hits your line of work", "Business slows across the region: income runs at 75% for nine months.",
+                     0.75 if not pension else 1.0, 0, 0, 9, "economy", "high" if (rising or service) and not pension else "medium" if not pension else "low",
+                     ("Unemployment in your district is already rising, " if rising else "") + ("and cash-paid service work is first to feel a slowdown." if service else "and a slowdown reaches most jobs.")))
+    out.append(_price("tariffs", "A trade war pushes prices up", "Tariffs on both sides raise the price of everyday goods.", 0.08, 12, S, H, "economy",
+                      "medium", "Tariffs pass straight into grocery and fuel prices.", "tariffs"))
+    out.append(_price("conflict", "A conflict abroad sends fuel and food up", "A war far away disrupts energy and grain.", 0.12, 9, S, H, "political",
+                      "medium" if pension or _f(row, "spending_ratio") >= 0.95 else "low",
+                      "With little left over each month, a price jump lands straight on the cushion." if _f(row, "spending_ratio") >= 0.95 else "Energy shocks reach every household budget.", "conflict"))
+    if pension:
+        out.append(_price("inflation_spike", "Inflation outruns the pension", "Prices jump while the pension is indexed once a year.", 0.1, 12, S, H, "economy",
+                          "high", f"{_f(row, 'pension_share'):.0%} of your income is a pension.", "inflation_spike"))
+    if not pension:
+        out.append(_card("lockdown", "A lockdown closes your workplace", "Public-health orders close workplaces for four months; income support covers part of it.",
+                         0.6 if service else 0.9, 0, 0, 4, "health", "medium" if service else "low",
+                         "In-person, cash-paid work closes first." if service else "Office work mostly moves home, so pay holds up better."))
+    if not pension and not service and _f(row, "transfer_in_share") >= 0.5:
+        out.append(_card("strike", "A long strike at work", "Picket lines for two months on strike pay of about 40% of normal income.",
+                         0.4, 0, 0, 2, "political", "low", "Salaried, regular pay suggests an employer large enough for a union."))
+        out.append(_card("public_cuts", "Government cuts reach your employer", "A budget freeze trims hours: income at 80% for six months.",
+                         0.8, 0, 0, 6, "political", "low", "Steady transfer income often comes from a large or public employer."))
+    if B >= 6 * S or age >= 55:
+        loss = _round(0.25 * max(0.0, B - 3 * S)) if B > 3 * S else _round(0.25 * S)
+        out.append(_card("market_drop", "Markets fall 25%", f"If part of your savings is invested, about {_m(loss)} of it is gone on paper, right when you might need it.",
+                         1.0, 0, loss, 6, "economy", "low", "A large cushion or nearing retirement means market swings matter more."))
+    out.append(_card("fraud", "Identity theft empties a card", f"A stolen card and a frozen account: about {_m(_round(0.3 * S))} gone until the bank refunds it, months later.",
+                     1.0, 0, _round(0.3 * S), 3, "costs", "low", "Fraud is now one of the most common money shocks of all."))
+    return out
+
+
 def personal_deck(account_id: int, rebuild: bool = False) -> dict:
     """The stored personal deck, built on first use from the persona."""
     ctx = cm.load_context(account_id)
     deck = ctx.get("deck")
     persona = ctx.get("persona")
-    if deck and not rebuild and deck.get("persona_built_at") == (persona or {}).get("built_at"):
+    if deck and not rebuild and deck.get("version") == DECK_VERSION and deck.get("persona_built_at") == (persona or {}).get("built_at"):
         return deck
     if persona is None:
         try:
@@ -160,7 +221,7 @@ def personal_deck(account_id: int, rebuild: bool = False) -> dict:
         except Exception:
             persona = None
     cards, trace = generate(account_id, persona)
-    deck = {"cards": cards, "source": "shock_generator (rules from Stage 1 signals and the persona)", "trace": trace,
+    deck = {"cards": cards, "version": DECK_VERSION, "source": "shock_generator (rules from Stage 1 signals and the persona)", "trace": trace,
             "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "persona_built_at": (persona or {}).get("built_at")}
     cm.set_doc(account_id, "deck", deck)
     return deck

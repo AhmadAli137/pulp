@@ -480,6 +480,10 @@ def get_goal_ideas(account_id: int, lens: str = Query("balanced", pattern="^(bal
     ctx = cm.load_context(account_id)
     have = {x.get("value", {}).get("type") for x in ctx.get("goals", [])}
     items = ranked(account_id, lens, have)
+    persona = ctx.get("persona") or {}
+    from ..services.persona_voice import draft_quote, quote_key
+    for it in items:
+        it["quote"] = (persona.get("quotes") or {}).get(quote_key("goal", it)) or draft_quote("goal", persona, it)
     picked = None
     if use_ai:
         from ..services.features import get_features

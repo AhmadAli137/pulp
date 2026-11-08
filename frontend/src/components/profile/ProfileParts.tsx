@@ -64,7 +64,7 @@ export function GoalsTable({ goals }: { goals: PersonaGoal[] }) {
         <tbody>
           {sorted.map((g, i) => (
             <tr key={`${g.id}-${i}`}>
-              <td><strong>{g.label}</strong>{g.personal && <span className="pf-personal">From your records</span>}{g.why && <small>{g.why}</small>}{g.evidence && <small className="pf-ev">Evidence: {g.evidence}</small>}</td>
+              <td><strong>{g.label}</strong>{g.personal && <span className="pf-personal">From your records</span>}{g.quote ? <q className="pf-quote">{g.quote}</q> : g.why && <small>{g.why}</small>}{g.evidence && <small className="pf-ev">Evidence: {g.evidence}</small>}</td>
               <td><span className={`pf-size ${g.size}`}>{g.size}</span></td>
               <td>{HORIZON[g.horizon] ?? g.horizon}</td>
               <td><Dots n={Math.round(g.importance)} /></td>

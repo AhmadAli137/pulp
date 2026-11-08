@@ -85,7 +85,7 @@ export default function GoalIdeas({ accountId, onAdded }: { accountId: number; o
                 </span>
               </div>
               <h3>{i.label}</h3>
-              <p className="gi-why">{i.why}</p>
+              {i.quote ? <q className="pf-quote">{i.quote}</q> : <p className="gi-why">{i.why}</p>}
               <p className="gi-ev"><strong>From your records:</strong> {i.evidence}</p>
               <div className="gi-foot">
                 <span className="gi-target">{money(i.target_amount)} <small>in {i.target_months} months · {HORIZON[i.horizon]} · importance {i.importance} of 5</small></span>

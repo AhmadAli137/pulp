@@ -294,6 +294,8 @@ export interface PersonaGoal {
   why: string; evidence: string; source: 'persona' | 'conversation' | 'user'
   /** Tied to a specific signal in this account's records (a loan's end date, a lease, overdraft interest), not a general goal. */
   personal?: boolean
+  /** One sentence in the persona's own (fictional) voice on why this goal matters to them. */
+  quote?: string
 }
 export type GoalLens = 'balanced' | 'safety' | 'ambitious' | 'life' | 'habits'
 /** A personal goal idea from the records, ranked through a lens. Amounts are code-set from the account's own figures. */
@@ -312,7 +314,8 @@ export interface LifePersona {
   occupation: { label: string; confidence: number; evidence: string }
   household: string; home: string; story: string
   goals: PersonaGoal[]
-  worries: { label: string; type: string; evidence: string }[]
+  /** quote: one sentence in the persona's own (fictional) voice on why this worries them. */
+  worries: { label: string; type: string; evidence: string; quote?: string }[]
   questions: { key: string; text: string; why: string }[]
   /** What makes this person unusual: a measure, its value, and where it sits among all accounts (0-100). */
   traits: { label: string; value: string; percentile: number | null; note: string }[]
@@ -328,7 +331,7 @@ export interface ProfileDoc { account_id: number; persona: LifePersona | null; g
 /** Stage 3 Shock Generator: shocks that fit this person's life, with numbers set by code from the account. */
 export interface PersonalShock {
   key: string; title: string; text: string; r: number; h: number; one_off: number; duration: number
-  category: 'income' | 'housing' | 'health' | 'family' | 'transport' | 'costs' | 'opportunity'
+  category: 'income' | 'housing' | 'health' | 'family' | 'transport' | 'costs' | 'opportunity' | 'disaster' | 'economy' | 'political'
   likelihood: 'low' | 'medium' | 'high'; why_you: string; source: string
 }
 /** A step in a multi-step plan: a real-life decision active over a range of months. */

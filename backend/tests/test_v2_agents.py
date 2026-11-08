@@ -325,3 +325,36 @@ def test_a_bill_with_an_amount_is_a_one_off_cost_not_time_off():
     d = detect("if i get a hospital bill of 4000 tomorrow what will happen to me?")
     assert d["key"] == "bill" and d["r"] == 1.0 and d["one_off"] == 4000 and d["timing"] == "now"
     assert detect("I need surgery and will be off work")["r"] == 0.55
+
+
+# ----------------------------------------------------------------------------- persona voice and world events
+def test_goals_and_worries_carry_a_first_person_quote():
+    d = client.get(f"/api/profile/{BORROWER}").json()
+    assert all(g.get("quote") for g in d["goals"])
+    assert all(w.get("quote") for w in d["persona"]["worries"])
+    assert all(" I " in f" {g['quote']} " or " we " in f" {g['quote'].lower()} " or g["quote"].startswith(("I", "If", "When", "Every", "Some", "People", "The", "Repairs", "Seeing"))
+               for g in d["goals"])
+
+
+def test_model_quotes_cannot_add_numbers():
+    from app.services.persona_voice import _digits
+    assert not (_digits("I want 6 months covered") <= _digits("I want the bills covered"))
+
+
+def test_world_events_are_in_the_personal_deck_and_ranked_for_the_life():
+    from app.services.shocks import generate
+    rural_cards, _ = generate(74916, None)
+    cats = {c["category"] for c in rural_cards}
+    assert {"disaster", "economy", "political"} <= cats
+    wildfire = next(c for c in rural_cards if c["key"] == "p_wildfire")
+    assert wildfire["likelihood"] == "medium" and wildfire["one_off"] > 0
+    urban_cards, _ = generate(47788, None)
+    assert next(c for c in urban_cards if c["key"] == "p_wildfire")["likelihood"] == "low"
+
+
+@pytest.mark.parametrize("text,key", [("what if a recession hits next year", "recession"), ("tariffs are making everything more expensive", "tariffs"),
+                                      ("we might have to evacuate for the wildfire", "wildfire"), ("what if there is another lockdown", "lockdown"),
+                                      ("I might lose my job in the recession", "layoff")])
+def test_world_events_are_recognised_in_conversation(text, key):
+    from app.services.stage3 import detect
+    assert detect(text)["key"] == key
