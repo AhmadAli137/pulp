@@ -21,3 +21,14 @@ def test_finance_unknown_and_cancel():
 
 def test_invalid_range_reprompts():
     assert play(["buy a car","$8000 to $5000"])[1]["next"]=="price"
+
+def test_switch_purchase_and_correct_price():
+    reply, state = play(["buy a car", "Actually I want to buy a laptop instead"])
+    assert state["topic"] == "laptop" and "laptop" in reply
+    reply, state = play(["buy a laptop", "around $800", "my price is $900", "cash",
+                         "1000", "200", "zero", "25", "none"])
+    assert state is None and "$900.00 upfront" in reply and "$175.00 per month" in reply
+
+def test_social_aside_preserves_question():
+    reply, state = play(["buy a bike", "I won a golf game"])
+    assert state["next"] == "price" and "bike" in reply

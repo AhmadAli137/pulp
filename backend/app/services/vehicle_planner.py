@@ -22,7 +22,37 @@ def starts(text):
                 not re.search(r"\b(bought|already purchased)\b",text,re.I))
 
 
+def purchase_topic(text):
+    if starts(text):
+        return "vehicle"
+    match = re.search(
+        r"\b(?:buy(?:ing)?|purchas(?:e|ing)|sav(?:e|ing) (?:up )?for|budget(?:ing)? for|afford)\s+"
+        r"(?:(?:a|an|the|my)\s+)?(.+?)\s*[?.!]*$", text, re.I)
+    if re.search(r"\b(?:home|house|mortgage|retirement|emergency fund|tuition)\b", text, re.I):
+        return None
+    if not match or re.search(r"\b(?:already|bought|can't|cannot|don't|not to)\b", text, re.I):
+        return None
+    topic = re.split(r"\s+(?:for|with|instead|at|under)\b|\s*\$", match[1], maxsplit=1, flags=re.I)[0].strip()
+    if topic.lower() in ("it", "this", "that", "one", "to") or not topic:
+        return None
+    return topic[:100]
+
+
+def plan_questions(topic):
+    questions = QUESTIONS.copy()
+    if topic != "vehicle":
+        questions.pop("model")
+        questions["price"] = f"What total price or range are you considering for {topic}, including fees?"
+        questions["budget"] = "In the month you want to plan around, how much is left after current expenses?"
+        questions["commute"] = "Which current costs would go away, and how much would that save each month? Zero is fine."
+        questions["operating"] = "How much would this add each month beyond any loan payment, such as upkeep or a subscription? Say zero or unknown if appropriate."
+    return questions
+
+
 def amount(text, signed=False):
+    text = re.sub(r"^(?:about|around|roughly|probably|i think|it would be|i have)\s+", "", text.strip(), flags=re.I)
+    if text.lower() in ("none", "zero"):
+        return 0
     m=re.fullmatch((r"(-?)" if signed else "")+MONEY+r"(?:\s*(?:/mo|a month|per month|monthly|CAD))?",text.strip(),re.I)
     if not m: raise ValueError
     n=float(m.groups()[-2].replace(",",""))*(1000 if m.groups()[-1] else 1)
@@ -40,8 +70,26 @@ def prices(text):
 
 def run(text,state,metrics):
     t=text.strip(); s=dict(state or {})
+    new_topic = purchase_topic(t)
+    if new_topic and new_topic != s.get("topic", "vehicle"):
+        state = None
+        s = {}
+    topic = new_topic or s.get("topic", "vehicle")
+    s["topic"] = topic
+    questions = plan_questions(topic)
+    if state and (re.fullmatch(r"(?:hi|hey|hello|thanks)[!. ]*", t, re.I) or re.match(r"i (?:won|played|watched)\b", t, re.I)):
+        return "We can pick this up whenever you like. " + questions[s["next"]], s
+    correction = re.match(r"(?:actually[, ]+)?(?:change |update |my )?(?:the )?(?:price|budget range) (?:is |to )?(.+)", t, re.I)
+    if state and correction:
+        try:
+            s["price"] = prices(correction[1])
+        except ValueError:
+            return questions["price"], state
+        if s.get("down", 0) > max(s["price"]):
+            s.pop("down")
+        state = None
     if t.lower() in ("cancel","stop","never mind"):
-        return "Car planning cancelled.",None
+        return "Purchase planning cancelled.",None
     if not state:
         # Only prefill an explicitly currency-marked purchase price, never an inferred car value.
         match=re.search(r"(?:\bfor\s+|\bbudget(?: of)?\s+|\bpriced at\s+)(\$[\d,.]+[kK]?(?:\s*(?:-|to)\s*\$?[\d,.]+[kK]?)?)",t,re.I)
@@ -67,8 +115,8 @@ def run(text,state,metrics):
             else:s[k]=amount(t,signed=k=="budget")
             if k=="down" and s[k]>max(s["price"]):raise ValueError
         except ValueError:
-            return "Could you clarify? "+QUESTIONS[k],state
-    for k,q in QUESTIONS.items():
+            return "Could you clarify? "+questions[k],state
+    for k,q in questions.items():
         if k in ("down","payment") and s.get("method")!="finance":continue
         if k not in s:
             s["next"]=k
@@ -78,12 +126,13 @@ def run(text,state,metrics):
         sign = "-" if value < 0 else ""
         return f"{sign}${abs(value):,.2f}"
     upfront=[s["down"]] if s["method"]=="finance" else s["price"]
-    lines=[f"Vehicle: {s['model']}. Using the account's historical buffer of {fmt(metrics.buffer)} and your protected reserve of {fmt(s['reserve'])}:"]
+    label = f"Vehicle: {s['model']}" if topic == "vehicle" else f"Plan for {topic}"
+    lines=[f"{label}. Using the account's historical buffer of {fmt(metrics.buffer)} and your protected reserve of {fmt(s['reserve'])}:"]
     for cost in dict.fromkeys(upfront):
         room=metrics.buffer-cost-s["reserve"]
         lines.append(f"After {fmt(cost)} upfront, you have {fmt(room)} above your reserve." if room>=0 else
                      f"Paying {fmt(cost)} upfront leaves you {fmt(-room)} below your reserve.")
-    lines.append(f"Monthly inputs: {fmt(s['budget'])} left today + {fmt(s['commute'])} commuting costs avoided - {fmt(pay)} loan payment.")
+    lines.append(f"Monthly inputs: {fmt(s['budget'])} left today + {fmt(s['commute'])} existing costs avoided - {fmt(pay)} loan payment.")
     if s["operating"] is None:
         lines.append(f"Running costs are unknown. You have {fmt(available)} per month available for them." if available>=0 else f"You are already short {fmt(-available)} per month before running costs.")
     else:
