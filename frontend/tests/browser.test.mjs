@@ -172,3 +172,18 @@ test('agent flow defaults closed and shows observed handoffs; questions stand ou
   await p.reload()
   assert.equal(await flow.count(), 0)
 })
+
+
+test('vacation confirmation continues with one useful question', { timeout: 45000 }, async t => {
+  const p = await pageFor(t, 20133); await p.goto(base)
+  const input = p.getByRole('textbox', { name: 'Message', exact: true })
+  await input.fill('go on vacation')
+  await p.getByRole('button', { name: 'Send', exact: true }).click()
+  await p.getByRole('button', { name: 'Confirm', exact: true }).waitFor()
+  await input.fill('yes')
+  await p.getByRole('button', { name: 'Send', exact: true }).click()
+  await p.getByText('When would you like to take that vacation?', { exact: true }).waitFor()
+  const result = await (await p.request.get(`${base}/api/context/20133`)).json()
+  assert.ok(result.summary.goals.some(g => g.type === 'travel'))
+  assert.equal(await p.getByText('Here is how that looks in your numbers.', { exact: true }).count(), 0)
+})

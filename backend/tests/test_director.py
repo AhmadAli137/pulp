@@ -79,3 +79,56 @@ def test_completed_reply_does_not_force_intake_question(monkeypatch):
     assert len(boards[0]["beats"]) == 1
     assert boards[0]["beats"][0]["visual"] == "none"
     assert boards[0]["beats"][0]["caption"] == "You're welcome."
+
+
+def _turn(message, use_ai=False):
+    import asyncio
+    async def collect():
+        return [data async for kind, data in D.stage_stream(1, message, use_ai=use_ai) if kind == "storyboard"]
+    return asyncio.run(collect())[-1]["beats"]
+
+
+def test_vacation_yes_continues_even_with_existing_plan(monkeypatch):
+    from app.services import context_manager as cm, planning_session as ps
+    monkeypatch.setattr(D, "get_metrics", lambda _: _m())
+    monkeypatch.setattr(ps, "rerun", lambda *args: {"recommended": "trim spending 5.0%"})
+    proposal = cm.propose(1, [{"field": "goals", "value": {"type": "travel", "label": "Go on vacation"}}])
+    beats = _turn("yes")
+    assert "When would you like to take that vacation?" in beats[0]["caption"]
+    assert beats[0]["visual"] == "none"
+    assert cm.load_context(1)["proposals"][0]["status"] == "confirmed"
+    # A repeated yes, or yes after pressing Confirm, cannot fall into generic model filler.
+    beats = _turn("yes")
+    assert "When would you like to take that vacation?" in beats[0]["caption"]
+    assert cm.load_context(1)["context_version"] == 2
+
+
+def test_confirmed_vacation_timing_leads_to_budget(monkeypatch):
+    from app.services import context_manager as cm
+    monkeypatch.setattr(D, "get_metrics", lambda _: _m())
+    cm.direct_edit(1, {"field": "goals", "value": {"type": "travel", "target_months": 6}})
+    beats = _turn("yes")
+    assert "total budget" in beats[0]["caption"]
+
+
+def test_ungrounded_plain_reply_recovers_without_empty_visual_promise(monkeypatch):
+    from app.services import context_manager as cm, gemini_agent as g
+    cm.direct_edit(1, {"field": "goals", "value": {"type": "travel"}})
+    monkeypatch.setattr(D, "get_metrics", lambda _: _m())
+    monkeypatch.setattr(g, "chat", lambda *args: {"reply": "", "proposal": None})
+    monkeypatch.setattr(D, "adk_available", lambda: True)
+    monkeypatch.setattr(D, "LlmAgent", lambda **kwargs: object())
+    async def events(*args, **kwargs):
+        yield {"type": "result", "state": {"director": {"beats": [
+            {"visual": "none", "caption": "Your vacation will cost $999,999."}]}}, "texts": {}}
+    monkeypatch.setattr(D, "run_agent_events_async", events)
+    beats = _turn("Help me plan the trip", use_ai=True)
+    assert "vacation?" in beats[0]["caption"]
+    assert all("999,999" not in b["caption"] and "Here is how" not in b["caption"] for b in beats)
+
+
+def test_extraction_does_not_mark_unspoken_questions_as_asked(monkeypatch):
+    from app.services import context_manager as cm, gemini_agent as g
+    monkeypatch.setattr(g, "offline_reply", lambda *args: ("", []))
+    g.chat(1, "go on vacation", prefer_offline=True, record_history=False)
+    assert cm.summarize(cm.load_context(1))["asked_questions"] == []

@@ -521,7 +521,7 @@ def chat(account_id: int, text: str, prefer_offline: bool = False, record_histor
     if extraction.proposed_changes:
         proposal = cm.propose(account_id, [c.model_dump() for c in extraction.proposed_changes],
                               source=mode if mode in AI_MODES else "offline_extractor", rationale=extraction.rationale or "Extracted from conversation")
-    if question and question.get("key") and question["key"] != "gemini_follow_up":
+    if record_history and question and question.get("key") and question["key"] != "gemini_follow_up":
         cm.record_question(account_id, question["key"])
     if record_history:
         cm.record_turn(account_id, "assistant", reply, {"mode": mode})

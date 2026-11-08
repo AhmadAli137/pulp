@@ -553,6 +553,24 @@ def _ask_beat(account_id: int, summary: dict, pending: list[dict], insights: dic
     return _beat("ask", "none", text, {"question_key": q["key"]}, 7)
 
 
+def _goal_follow_up(account_id: int, summary: dict, prefix: str = "") -> dict | None:
+    """Keep a confirmed goal moving before switching to general intake."""
+    goals = summary.get("goals") or []
+    if not goals:
+        return None
+    goal = goals[-1]
+    if not goal.get("target_months"):
+        key = "goal_timing"
+        question = "When would you like to take that vacation?" if goal.get("type") == "travel" else "When would you ideally like to reach that goal?"
+    elif not goal.get("target_amount"):
+        key = "goal_amount"
+        question = "What total budget would feel comfortable for that vacation?" if goal.get("type") == "travel" else "Roughly how much would you like to set aside for that goal?"
+    else:
+        return None
+    cm.record_question(account_id, key)
+    return _beat("ask", "none", f"{prefix} {question}".strip(), {"question_key": key}, 5)
+
+
 async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -> AsyncIterator[tuple[str, dict]]:
     """Yields ("agent", ev), ("handoff", ev), ("memory", ...), ("storyboard", {...}) for one stage turn.
 
@@ -645,6 +663,9 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
                 yield et, ev
             set_pending_twist(account_id, None)
             return
+        if not rest and (follow_up := _goal_follow_up(account_id, summary, "Saved.")):
+            yield "storyboard", {"opening": False, "source": "intake", "beats": [follow_up]}
+            return
         if not rest and updated_plan:
             yield "storyboard", {"opening": False, "source": "council", "beats": [
                 _beat("replanned", "none", f"Saved. I reviewed the same scenario with your updated priorities. The leading option is {updated_plan['recommended']}.", {}, 5)]}
@@ -675,6 +696,15 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
         async for et, ev in _twist_turn(account_id, m, pt, t0, use_ai):
             yield et, ev
         set_pending_twist(account_id, None)
+        return
+
+    # A repeated yes (including after a button confirmation) still advances the conversation.
+    if kind == "affirm" and not pending and not rest:
+        ask = _goal_follow_up(account_id, summary, "Let's work out the next detail.")
+        if not ask:
+            ask = _ask_beat(account_id, summary, [], insights_fast(), prefix="Let's keep going.")
+        yield "storyboard", {"opening": False, "source": "intake", "beats": [ask] if ask else [
+            _beat("ask", "none", "What would you like to work through next?", {}, 5)]}
         return
 
     # 4. free text: memory (offline extraction, instant) + the Director agent with tools
@@ -726,15 +756,26 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
             caption = str(b.get("caption") or "").strip()[:260]
             if not caption:
                 continue
-            if not caption_is_grounded(caption, params, json.dumps(tools.results, default=float)):
-                caption = tools.template_caption(b["visual"]) or "Here is how that looks in your numbers."
+            evidence = {"visual": params, "tools": tools.results,
+                        "official": {"inflow": m.typical_inflow, "spending": m.typical_spending, "buffer": m.buffer},
+                        "confirmed_context": ctx_summary}
+            if not caption_is_grounded(caption, evidence):
+                caption = tools.template_caption(b["visual"])
+                if not caption:
+                    continue
             beats.append(_beat(f"d{i}", b["visual"], caption, params, 9 if b["visual"] != "none" else 5))
         if beats:
             source = f"google-adk/{config.GEMINI_MODEL}"
-    if not beats:
+    # A new proposal gets a clear restatement below, without fallback filler.
+    if not beats and not proposal:
         beats = _fallback_beats(tools, msg)
         if mem.get("reply") and beats and beats[0]["visual"] == "none":
             beats[0]["caption"] = str(mem["reply"])[:260]
+        elif beats and beats[0]["visual"] == "none":
+            current_summary = cm.summarize(cm.load_context(account_id))
+            follow_up = _goal_follow_up(account_id, current_summary)
+            if follow_up:
+                beats = [follow_up]
 
     # 5. close the turn: say back what was learned (a yes confirms it), or ask the next sharpest question
     ctx = cm.load_context(account_id)

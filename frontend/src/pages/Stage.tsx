@@ -254,7 +254,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
     let cancelled = false
     if (id) api.context(id).then(({ context }) => {
       if (cancelled || interacted.current) return
-      const history = context.conversation.slice(-16).map((m) => ({ id: nid('h'), kind: m.role === 'user' ? 'user' as const : 'pulp' as const, text: m.text }))
+      const history = context.conversation.slice(-16).map((m) => ({ id: nid('h'), kind: m.role === 'user' ? 'user' as const : 'pulp' as const, text: m.role === 'user' ? userText(m.text) : m.text }))
       if (history.length) setThread(history)
     }).catch(() => undefined)
     return () => { cancelled = true; endVoice(); source.current?.close(); source.current = null; stopPump() }
