@@ -78,10 +78,55 @@ SHOCK_DECK: list[dict] = [
 ]
 DECK_BY_KEY = {c["key"]: c for c in SHOCK_DECK}
 
+# v2: stage, symbol and analogy for every agent, plus the Stage 1 pipeline and the three new agents.
+_AGENT_META = {
+    "companion": (2, "ear", "a note-taker"), "narrator": (1, "quill", "a storyteller"), "director": (2, "compass", "a show director"),
+    "engine": (0, "gear", "a calculator"), "strategist": (3, "knight", "a chess player"), "challenger": (3, "shield", "a sceptic"),
+    "validator": (3, "scales", "a referee"),
+}
+for _p in PERSONAS:
+    _p["stage"], _p["symbol"], _p["analogy"] = _AGENT_META[_p["key"]]
+PERSONAS[:0] = [
+    {"key": "schema_scout", "name": "Schema Scout", "kind": "code", "runs_on": "Python", "stage": 1, "symbol": "map", "analogy": "a surveyor",
+     "role": "Maps the bank's columns to roles (money in, money out, bills, balance) so the rest works on any bank's export.",
+     "reads": ["the CSV headers"], "writes": ["a role map"], "guardrail": "deterministic; unknown columns are left out, never guessed"},
+    {"key": "feature_forge", "name": "Feature Forge", "kind": "code", "runs_on": "Python (pandas)", "stage": 1, "symbol": "anvil", "analogy": "a lab",
+     "role": "Turns months of records into about 78 signals per account: regularity, timing, habits, past income drops, loans, place.",
+     "reads": ["monthly summaries", "transactions", "loans", "clients and districts"], "writes": ["the feature table"], "guardrail": "every signal is documented and recomputable"},
+    {"key": "pattern_hunter", "name": "Pattern Hunter", "kind": "ai", "runs_on": "Gemini on Google ADK", "stage": 1, "symbol": "magnifier", "analogy": "a detective",
+     "role": "Searches across all 4,500 accounts for patterns worth knowing, testing each one with statistical tools.",
+     "reads": ["the feature table through tools"], "writes": ["findings with strength and caveats"], "guardrail": "can only cite numbers its tools returned"},
+    {"key": "archetype_namer", "name": "Archetype Namer", "kind": "ai", "runs_on": "Gemini on Google ADK", "stage": 1, "symbol": "tags", "analogy": "a librarian",
+     "role": "Names the six behavioural groups the clustering found and guesses a life stage and occupation for each, with confidence.",
+     "reads": ["cluster statistics"], "writes": ["names, descriptions, guesses"], "guardrail": "clusters and sizes come from code"},
+    {"key": "persona_builder", "name": "Persona Builder", "kind": "ai", "runs_on": "code template, refined by Gemini on Google ADK", "stage": 1, "symbol": "id-card", "analogy": "a biographer",
+     "role": "Builds a realistic but fictional person for the account: occupation guess, household, goals weighted by importance and time, worries, the first questions to ask.",
+     "reads": ["signals", "flags", "archetype"], "writes": ["the persona", "starting goals and worries in the profile"], "guardrail": "amounts come from code; marked fictional; every change is logged and undoable"},
+]
+PERSONAS += [
+    {"key": "shock_dealer", "name": "Shock Dealer", "kind": "ai", "runs_on": "Gemini on Google ADK, with a local draw as fallback", "stage": 3, "symbol": "cards", "analogy": "a card dealer",
+     "role": "Decides who brings the next twist card and, for the open slot, which scenario is dealt, with a one-line reason.",
+     "reads": ["allowed character and scenario IDs", "the previous pick", "a few account facts"], "writes": ["a character, a scenario id, a reason"], "guardrail": "chooses IDs only, never amounts; anything outside the allowed IDs falls back to a local draw"},
+    {"key": "shock_generator", "name": "Shock Generator", "kind": "code", "runs_on": "Python rules from Stage 1 signals", "stage": 3, "symbol": "storm", "analogy": "a risk officer",
+     "role": "Chooses the shocks that fit this life: a lost client for a cash earner, a payment reset for a borrower, parental leave for a young family.",
+     "reads": ["signals", "the persona", "district unemployment"], "writes": ["a personal deck with likelihood and why"], "guardrail": "numbers set by code from the account"},
+    {"key": "life_planner", "name": "Life Planner", "kind": "code", "runs_on": "Python search, phrased by Gemini when available", "stage": 3, "symbol": "route", "analogy": "a route planner",
+     "role": "Builds hundreds of multi-step plans from real decisions (a second job, a move, delaying a goal, refinancing, investing), simulates each month by month and keeps four distinct finalists.",
+     "reads": ["the shock", "goals with weights", "signals"], "writes": ["finalists with step-by-step reasons", "plans that fall short"], "guardrail": "one stated objective; every step's effect is measured by rerunning without it"},
+]
 
-def deal_card(key: str = "random", seed: int | None = None) -> dict:
+
+def deal_card(key: str = "random", seed: int | None = None, account_id: int | None = None) -> dict:
     if key in DECK_BY_KEY:
         return dict(DECK_BY_KEY[key])
+    if account_id is not None:
+        try:
+            from .shocks import find_card
+            card = find_card(account_id, key, seed)
+            if card:
+                return card
+        except Exception:
+            pass
     rng = random.Random(seed if seed is not None else time.time_ns())
     return dict(rng.choice(SHOCK_DECK))
 
@@ -426,7 +471,7 @@ class _Tools:
                           one_off_cost: float = 0.0, duration_months: int = 6) -> dict:
         """Set the shock to study. card_key: a deck card (layoff, furnace, combined, hours_cut, rent_up, bills_inflation, car_repair, dental, vet, sick_leave, parental, moving, random) or 'custom' with explicit numbers: income_fraction (0.55 = 55% of income kept), bills_increase (0.15 = bills up 15%; a dollar amount per month is also accepted), one_off_cost in dollars, duration_months. Returns the official shock result."""
         if card_key != "custom":
-            self.card = deal_card(card_key)
+            self.card = deal_card(card_key, account_id=self.account_id)
             self.shock = card_shock(self.card, self.m.typical_spending)
         else:
             r, h, note = float(income_fraction), float(bills_increase), None
@@ -572,8 +617,31 @@ def _fallback_beats(tools: _Tools, message: str) -> list[dict]:
 
 async def _twist_turn(account_id: int, m, key: str, t0: float, use_ai: bool):
     """Deal (or pick) a card, run the council with its events streaming, and tell the story."""
-    card = deal_card(key)
+    from starlette.concurrency import run_in_threadpool
+    character = None
+    if "@" in key:  # a card already resolved on the Shocks page, with the character that revealed it
+        key, char_id = key.split("@", 1)
+        from .shock_dealer import CHAR_BY_ID
+        if char_id in CHAR_BY_ID:
+            character = {k: CHAR_BY_ID[char_id][k] for k in ("id", "name", "role")}
+    if key in ("random", "personal", "dealer"):
+        from .shock_dealer import deal
+        last = cm.load_context(account_id).get("last_deal") or {}
+        d = await run_in_threadpool(lambda: deal(account_id, 4, None, last.get("character"), last.get("scenario"), use_ai))
+        cm.set_doc(account_id, "last_deal", {"character": d["character"]["id"], "scenario": d["card"]["key"]})
+        card, character = d["card"], d["character"]
+        yield "trace", {"t": round(time.perf_counter() - t0, 2), "stage": 3, "agent": "shock_dealer", "kind": "output",
+                        "title": f"{d['character']['name']} deals {d['card']['title'].lower()}", "to": "engine",
+                        "items": [d["reason"], f"source: {'Gemini' if d['source'] != 'local' else 'local draw (no model)'}", f"{d['ms']} ms"],
+                        "data": {"character": d["character"]["id"], "scenario": d["card"]["key"], "source": d["source"]}}
+    else:
+        card = deal_card(key, account_id=account_id)
+    if character:
+        card = {**card, "character": character}
     shock = card_shock(card, m.typical_spending)
+    if card.get("source") == "shock_generator":
+        yield "trace", {"t": 0.0, "stage": 3, "agent": "shock_generator", "kind": "output", "title": f"Dealt from your personal deck: {card['title']}",
+                        "items": [card["text"], f"why you: {card.get('why_you', '')}", f"likelihood: {card.get('likelihood', '')}"]}
     yield "agent", {"t": 0.0, "agent": "director", "kind": "tool_call", "tool": "deal_or_set_shock", "args": {"card": card["key"]}}
     shock_bits = f"income x{shock['r']:.2f}" + (f", bills +{shock['h']:.0%}" if shock["h"] else "") + (f", one-off ${shock['one_off']:,.0f}" if shock["one_off"] else "") + f", {shock['duration']} months"
     yield "handoff", {"t": 0.0, "from": "director", "to": "engine", "title": f"Twist: {card['title']}", "items": [card["text"], shock_bits]}
@@ -591,10 +659,88 @@ async def _twist_turn(account_id: int, m, key: str, t0: float, use_ai: bool):
         return
     from .planning_session import publish
     publish(account_id, plan)
-    beats = twist_storyboard(account_id, m, card, plan, dealt_randomly=(key == "random"))
+    beats = twist_storyboard(account_id, m, card, plan, dealt_randomly=(key in ("random", "personal", "dealer")))
+    reply, reply_source = await _short_reply(account_id, m, card, shock, plan, use_ai)
     yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats",
                       "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
-    yield "storyboard", {"opening": False, "source": "deck+council", "beats": beats, "card": card}
+    async for et, ev in _life_plans(account_id, {"income_fraction": shock["r"], "bills_increase": shock["h"], "one_off_cost": shock["one_off"],
+                                                 "shock_duration": shock["duration"], "label": card["title"]}, f"Twist card: {card['title']}", 1):
+        yield et, ev
+    yield "storyboard", {"opening": False, "source": "deck+council", "beats": beats, "card": card, "reply": reply,
+                         "reply_source": reply_source, "council_mode": plan.get("mode")}
+
+
+REPLY_INSTRUCTION = """You are Pulp, texting one bank customer. In one or two short sentences (at most 45 words), say what
+this shock means for their account and the single most useful move. Use only numbers that appear in the facts, written the
+same way. No greeting, no question unless essential. Reply with the text only."""
+
+
+async def _short_reply(account_id: int, m, card: dict, shock: dict, plan: dict, use_ai: bool) -> tuple[str, str]:
+    """A short, real reply about this shock for this account: the model when available (grounded), else the template."""
+    tl = timeline_params(m, shock, card)
+    best = (plan.get("ranked") or [{}])[0]
+    action = best.get("action") or plan.get("recommended") or ""
+    who = f"{card['character']['name']} brings it: " if card.get("character") else ""
+    gap = tl["monthly_gap"]
+    if tl["runs_out_month"] is not None:
+        base = f"{who}{card['title']}. Money in falls to {_m(tl['income_after'])} against {_m(tl['spending_after'])} out, so the cushion runs out after {tl['runs_out_month']} months."
+    elif gap > 0:
+        base = f"{who}{card['title']}. You would be {_m(gap)} short each month, but the cushion lasts the {shock['duration']} months (runway {tl['runway_label']})."
+    else:
+        base = f"{who}{card['title']}. Money in still covers spending, so the cushion holds."
+    template = (base + (f" Best move: {action[0].lower()}{action[1:]}." if action else "")).replace("..", ".")
+    if not (use_ai and adk_available()):
+        return template, "template"
+    import asyncio
+    from starlette.concurrency import run_in_threadpool
+    facts = {"card": card.get("title"), "card_text": card.get("text"), "income_after": _m(tl["income_after"]), "spending_after": _m(tl["spending_after"]),
+             "monthly_gap": _m(max(0.0, gap)), "runway": tl["runway_label"], "runs_out_month": tl["runs_out_month"], "duration_months": shock["duration"],
+             "verdict": tl["verdict"], "best_move": action, "council_mode": plan.get("mode")}
+    try:
+        from .adk_runtime import run_agent
+        agent = LlmAgent(name="pulp_reply", model=config.GEMINI_MODEL, instruction=REPLY_INSTRUCTION)
+        out = await asyncio.wait_for(run_in_threadpool(run_agent, agent, json.dumps(facts, default=str), user_id=f"reply-{account_id}"), timeout=8)
+        text = " ".join(out.get("texts", {}).get("pulp_reply", [])).strip()
+        if 10 < len(text) < 400 and caption_is_grounded(text, tl, json.dumps(facts, default=str)):
+            return text, f"google-adk/{config.GEMINI_MODEL}"
+    except Exception:
+        pass
+    return template, "template"
+
+
+async def _life_plans(account_id: int, shock_in: dict | None, trigger: str, starts_in: int | None, mode: str = "shock",
+                     use_ai: bool = False) -> AsyncIterator[tuple[str, dict]]:
+    """Run the Life Planner search and stream its trace, then the result. Never raises."""
+    from starlette.concurrency import run_in_threadpool
+    try:
+        from .life_planner import run as plan_run
+        result = await run_in_threadpool(lambda: plan_run(account_id, shock_in, mode=mode, shock_starts_in=starts_in,
+                                                          trigger=trigger, use_ai=use_ai))
+    except Exception as exc:
+        yield "agent", {"t": 0.0, "agent": "life_planner", "kind": "text", "summary": f"planner unavailable: {type(exc).__name__}"}
+        return
+    for e in result.get("trace", []):
+        yield "trace", e
+    yield "lifeplans", result
+
+
+def _profile_event(changes: list[dict], spoken: str, account_id: int) -> dict:
+    ctx = cm.load_context(account_id)
+    return {"changes": [{k: v for k, v in c.items() if k != "item_id"} for c in changes], "context": cm.summarize(ctx),
+            "version": ctx.get("context_version", 1), "spoken": spoken}
+
+
+def _auto_apply(account_id: int, proposal: dict) -> list[dict]:
+    """Apply a companion proposal immediately (v2: agents update the profile directly; 'no' undoes)."""
+    res = cm.apply_now(account_id, [{**c, "reason": proposal.get("rationale") or "You said so in conversation"} for c in proposal.get("changes", [])],
+                       agent="companion", reason=proposal.get("rationale") or "Heard in conversation")
+    with cm._LOCK:
+        ctx = cm.load_context(account_id)
+        for p in ctx.get("proposals", []):
+            if p["id"] == proposal["id"]:
+                p["status"], p["resolved_at"] = "applied", cm._now()
+        cm.save_context(ctx)
+    return res["changes"]
 
 
 def _ask_beat(account_id: int, summary: dict, pending: list[dict], insights: dict | None, prefix: str = "") -> dict | None:
@@ -652,6 +798,19 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
 
     # 1. opening (only when asked for)
     if msg == "__intro__":
+        try:
+            from .persona import get_persona
+            had = bool(ctx.get("persona"))
+            persona = await run_in_threadpool(get_persona, account_id)
+            fresh = cm.load_context(account_id)
+            for e in fresh.get("persona_trace", []):
+                yield "trace", e
+            if not had and persona:
+                seeded = [e for e in fresh.get("profile_log", []) if e["agent"] == "persona_builder"]
+                yield "profile", _profile_event(seeded, f"I sketched a starting picture of {persona['display_name'].split()[0]}, a fictional person "
+                                                       f"who fits these records, with {len(persona['goals'])} goals to check.", account_id)
+        except Exception:
+            pass
         insights = await run_in_threadpool(narrative_for, account_id, use_ai)
         yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "engine", "to": "narrator", "title": f"{len(insights['flags'])} flag(s) and the archetype",
                           "items": [f"{f['label']}: {f['evidence']}" for f in insights["flags"][:5]]
@@ -660,9 +819,19 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
                           "items": [f"[{i['flag']}] {i['text']}" for i in insights["narrative"]["insights"]] + [f"written by {insights['narrative']['source']}"]}
         profile = insights.get("decision_profile", {})
         observations = profile.get("observations", [])
+        try:
+            from .discovery import discovery as _disc
+            top = (await run_in_threadpool(_disc, account_id)).get("discovery")
+        except Exception:
+            top = None
+        if top:
+            yield "trace", {"t": round(time.perf_counter() - t0, 2), "stage": 1, "agent": "narrator", "kind": "output", "to": "director",
+                            "title": f"Biggest discovery: {top['title'].lower()}", "items": [top["evidence"], top["rarity"], top["action"]]}
         if observations:
             observation = max(observations, key=lambda o: o["priority"])
             intro = observation["evidence"] + " " + observation["life_effect"]
+            if top:
+                intro = f"The biggest thing I found: {top['plain'][0].lower()}{top['plain'][1:]} {top['action']}"
             beats = [_beat("intro", "none", intro, {}, 5)]
             q = next((q for q in profile.get("questions", []) if q["key"] == observation["key"]), None)
             if q:
@@ -671,6 +840,8 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
         else:
             beats = opening_storyboard(account_id, m, insights)
             beats = [_beat("intro", "none", " ".join(b["caption"] for b in beats[:2]), {}, 5)]
+            if top:
+                beats = [_beat("intro", "none", f"The biggest thing I found: {top['plain'][0].lower()}{top['plain'][1:]} {top['action']}", {}, 5)]
         if not observations and is_cold(summary):
             ask = _ask_beat(account_id, summary, pending, insights, prefix="That is what the numbers say. Now I'd like to know you a little, so anything we plan fits your life.")
             if ask:
@@ -764,6 +935,21 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
             return
         msg = rest
         pending = []
+    elif kind == "negate" and not pending and _last_turn_updated(ctx):
+        undone = []
+        for cid in cm.last_change_ids(ctx):
+            try:
+                r = cm.undo(account_id, cid, agent="companion")
+                if r.get("change"):
+                    undone.append(r["change"])
+            except Exception:
+                pass
+        if undone:
+            yield "profile", _profile_event(undone, "Okay, I've taken that back out.", account_id)
+            if not rest:
+                yield "storyboard", {"opening": False, "source": "intake", "beats": [_beat("ask", "none", "Okay, I've taken that back out. What did I get wrong?", {}, 6)]}
+                return
+            msg = rest
     elif wants_skip(msg) and get_pending_twist(ctx):
         pt = get_pending_twist(ctx)
         async for et, ev in _twist_turn(account_id, m, pt, t0, use_ai):
@@ -796,9 +982,61 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
         mem = {"reply": None}
         yield "memory", {"proposal": None, "context": None, "next_question": None, "error": f"{type(exc).__name__}"[:80]}
 
+    applied_changes: list[dict] = []
+    if proposal:
+        try:
+            applied_changes = _auto_apply(account_id, proposal)
+        except Exception:
+            applied_changes = []
+        if applied_changes:
+            yield "profile", _profile_event(applied_changes, _noted(proposal), account_id)
+            yield "trace", {"t": round(time.perf_counter() - t0, 2), "stage": 2, "agent": "companion", "kind": "output",
+                            "title": f"Updated your profile ({len(applied_changes)} change{'s' if len(applied_changes) != 1 else ''})",
+                            "items": [f"{c['kind']} {c['field']}: {c['label']}" for c in applied_changes]}
+
     beats: list[dict] = []
     source = "template"
-    if use_ai and adk_available():
+    from .stage3 import detect, shock_inputs, summary_line
+    detected = detect(msg)
+    if detected:
+        yield "trace", {"t": round(time.perf_counter() - t0, 2), "stage": 3, "agent": "director", "kind": "handoff",
+                        "title": f"Heard a {'shock' if detected['kind'] == 'shock' else 'decision'}: {detected['title'].lower()}",
+                        "items": [f"timing: {detected['timing']}"], "to": "life_planner"}
+        result = None
+        if detected["kind"] == "shock":
+            si = shock_inputs(detected, m)
+            if si.get("note"):
+                yield "trace", {"t": round(time.perf_counter() - t0, 2), "stage": 3, "agent": "engine", "kind": "note", "title": si["note"]}
+            try:
+                tools.deal_or_set_shock("custom", si["income_fraction"], si["bills_increase"], si["one_off_cost"], si["shock_duration"])
+            except Exception:
+                pass
+            async for et, ev in _life_plans(account_id, si, f"You said: {msg[:120]}", 1 if detected["timing"] == "now" else 3):
+                if et == "lifeplans":
+                    result = ev
+                yield et, ev
+            if result:
+                params = tools.params_for("timeline", "deal_or_set_shock")
+                if params:
+                    cap = tools.template_caption("timeline")
+                    if cap:
+                        beats.append(_beat("stage3", "timeline", cap, params, 9))
+                beats.append(_beat("plans", "none", summary_line(result, detected), {}, 6))
+        else:
+            async for et, ev in _life_plans(account_id, None, f"You asked about: {detected['title'].lower()}", None, mode="long_term"):
+                if et == "lifeplans":
+                    result = ev
+                yield et, ev
+            if result:
+                line = summary_line(result, detected)
+                fam = detected["key"].split("_")[0]
+                fin = [p for p in result.get("plans", []) if any(fam in st["decision"] for st in p["steps"])]
+                if fin:
+                    line += f" {detected['title']} is part of the plan that is {fin[0]['role_label'].lower()}."
+                beats.append(_beat("plans", "none", line, {}, 6))
+        if beats:
+            source = "stage3"
+    if use_ai and adk_available() and not beats:
         ctx_summary = cm.summarize(cm.load_context(account_id))
         payload = json.dumps({"message": msg, "confirmed_context": {k: ctx_summary.get(k, []) for k in ("goals", "concerns", "constraints", "preferences", "upcoming_events")},
                               "active_scenario": tools.shock, "current_recommendation": (tools.plan or {}).get("recommended"),
@@ -854,7 +1092,14 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
     ctx = cm.load_context(account_id)
     summary = cm.summarize(ctx)
     pt = get_pending_twist(ctx)
-    if proposal:
+    if proposal and applied_changes:
+        beats.append(_beat("noted", "none", _noted(proposal), {"profile_changes": [c["id"] for c in applied_changes]}, 6))
+        if pt:
+            async for et, ev in _twist_turn(account_id, m, pt, t0, use_ai):
+                yield et, ev
+            set_pending_twist(account_id, None)
+            pt = None
+    elif proposal:
         text = restate(proposal)
         if pt:
             text = text.replace(" Did I get that right?", f" Say yes and I will run the {DECK_BY_KEY.get(pt, {}).get('title', 'twist').lower()} card right after.")
@@ -866,7 +1111,17 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
     yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats ({'from the model' if source != 'template' else 'template'})",
                       "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
     yield "storyboard", {"opening": False, "source": source, "beats": beats, "seconds": round(time.perf_counter() - t0, 2),
-                         "pending_proposal": proposal["id"] if proposal else None, "pending_twist": pt}
+                         "pending_proposal": proposal["id"] if (proposal and not applied_changes) else None, "pending_twist": pt}
+
+
+def _noted(proposal: dict) -> str:
+    said = restate(proposal).replace(" Did I get that right?", "").strip()
+    return f"{said} I've added that to your profile. Say no if I got it wrong."
+
+
+def _last_turn_updated(ctx: dict) -> bool:
+    last = next((t for t in reversed(ctx.get("conversation", [])[:-1]) if t.get("role") == "assistant"), None)
+    return bool(last and "Say no if I got it wrong" in last.get("text", ""))
 
 
 async def stage_stream(account_id: int, message: str, *, use_ai: bool = True):

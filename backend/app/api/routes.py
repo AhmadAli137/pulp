@@ -8,6 +8,7 @@ from typing import Any
 import json
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
@@ -410,9 +411,120 @@ async def get_agent_run(account_id: int, income_fraction: float = Query(0.55, ge
 
 
 @router.get("/agent/deck")
-def get_deck():
-    """The twist deck: realistic Canadian shocks the stage can deal."""
+def get_deck(account_id: int | None = None):
+    """The twist deck. With account_id: the Shock Generator's personal deck for that life (built on first use)."""
+    if account_id is not None:
+        _known(account_id)
+        from ..services.shocks import personal_deck
+        deck = personal_deck(account_id)
+        return {"account_id": account_id, "cards": deck["cards"], "source": deck["source"]}
     return {"cards": [{k: c[k] for k in ("key", "title", "text", "r", "h", "duration")} | {"one_off": c.get("one_off", 0.0), "one_off_months": c.get("one_off_months")} for c in SHOCK_DECK]}
+
+
+def _known(account_id: int) -> None:
+    from ..services.features import get_features
+    if account_id not in get_features().index:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} is not in the dataset.")
+
+
+class DealRequest(BaseModel):
+    account_id: int | None = None
+    slot: int = Field(4, ge=1, le=4)
+    scenario: str | None = Field(None, max_length=40)
+    exclude_character: str | None = Field(None, max_length=40)
+    exclude_scenario: str | None = Field(None, max_length=40)
+    use_ai: bool = True
+    pool: str = Field("personal", pattern="^(personal|deck)$")
+
+
+@router.post("/agent/shock-dealer")
+def post_shock_dealer(req: DealRequest):
+    """Who reveals the next twist card and, for the open slot, which scenario. IDs only; amounts come from the deck and engine."""
+    if req.account_id is not None:
+        _known(req.account_id)
+    from ..services.shock_dealer import deal
+    return deal(req.account_id, req.slot, req.scenario, req.exclude_character, req.exclude_scenario, req.use_ai, req.pool)
+
+
+@router.get("/agent/characters")
+def get_characters():
+    from ..services.shock_dealer import characters
+    return {"characters": characters()}
+
+
+@router.get("/customers/{account_id}/discovery")
+def get_discovery(account_id: int):
+    """The single finding most worth telling this person, ranked by severity, rarity across all accounts and how
+    unlikely they are to notice it themselves; with the evidence, how rare it is, and one thing to do about it."""
+    _known(account_id)
+    from ..services.discovery import discovery
+    return discovery(account_id)
+
+
+@router.get("/profile/{account_id}")
+def get_profile_doc(account_id: int):
+    """The person behind the account: the fictional persona (built and seeded on first call), weighted goals, and the log
+    of every change agents or the user made."""
+    _known(account_id)
+    from ..services.persona import profile_doc
+    return profile_doc(account_id)
+
+
+@router.post("/profile/{account_id}/undo/{change_id}")
+def undo_profile_change(account_id: int, change_id: str):
+    _known(account_id)
+    from ..services import context_manager as cm
+    from ..services.persona import profile_doc
+    try:
+        cm.undo(account_id, change_id, agent="you")
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"No change {change_id}") from exc
+    return profile_doc(account_id, build=False)
+
+
+@router.post("/profile/{account_id}/rebuild")
+def rebuild_profile(account_id: int):
+    """Build the persona again (used after a reset)."""
+    _known(account_id)
+    from ..services.persona import profile_doc, rebuild
+    rebuild(account_id)
+    return profile_doc(account_id)
+
+
+class LifePlansRequest(BaseModel):
+    account_id: int
+    income_fraction: float | None = Field(None, ge=0, le=3)
+    bills_increase: float | None = Field(None, ge=0, le=5)
+    one_off_cost: float | None = Field(None, ge=0, le=1e9)
+    shock_duration: int | None = Field(None, ge=1, le=36)
+    use_ai: bool = False
+    mode: str = Field("shock", pattern="^(shock|long_term)$")
+    shock_starts_in: int | None = Field(None, ge=1, le=24)
+    horizon_months: int | None = Field(None, ge=6, le=120)
+    trigger: str | None = Field(None, max_length=200)
+
+
+@router.post("/agent/life-plans")
+def post_life_plans(req: LifePlansRequest):
+    """Stage 3 search: generate many multi-step plans, screen, rank by the stated objective, keep four distinct finalists."""
+    _known(req.account_id)
+    from starlette.concurrency import run_in_threadpool  # noqa: F401  (sync route runs in the threadpool already)
+    from ..services.life_planner import run
+    shock = None
+    if req.mode == "shock":
+        shock = {"income_fraction": 0.55 if req.income_fraction is None else req.income_fraction,
+                 "bills_increase": req.bills_increase or 0.0, "one_off_cost": req.one_off_cost or 0.0,
+                 "shock_duration": req.shock_duration or 6}
+    return run(req.account_id, shock, mode=req.mode, horizon=req.horizon_months, shock_starts_in=req.shock_starts_in,
+               trigger=req.trigger or ("Long-term plan requested" if req.mode == "long_term" else "Shock plans requested"),
+               use_ai=req.use_ai)
+
+
+@router.get("/plans/history/{account_id}")
+def get_plan_history(account_id: int):
+    _known(account_id)
+    from ..services.life_planner import history
+    return {"account_id": account_id, "history": history(account_id)}
 
 
 @router.get("/agent/personas")

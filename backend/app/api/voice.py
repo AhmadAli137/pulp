@@ -34,8 +34,17 @@ async def voice(ws: WebSocket, account_id: int):
         from ..services.director import stage_stream
         ctx = cm.load_context(account_id)
         insights = await asyncio.to_thread(narrative_for, account_id, False)
+        try:
+            from ..services.persona import get_persona
+            _p = await asyncio.to_thread(get_persona, account_id) or {}
+            persona_brief = {'fictional': True, 'name': _p.get('display_name'), 'life_stage': _p.get('life_stage'),
+                             'occupation_guess': (_p.get('occupation') or {}).get('label'),
+                             'goals': [g.get('label') for g in _p.get('goals', [])],
+                             'ask_first': [q.get('text') for q in _p.get('questions', [])]}
+        except Exception:
+            persona_brief = {}
         declarations = [dict(name='conversation_turn',
-            description='Process every user request through the shared intake, confirmation and planning workflow. Pass their complete words unchanged. This retrieves context, proposes changes, confirms explicit approval, calculates and reviews plans, and selects optional visuals.',
+            description='Process every user request through the shared intake and planning workflow. Pass their complete words unchanged. This retrieves context, updates the profile directly (the user can say no to undo), runs the shock planners when they mention a current or future shock or a big decision, calculates and reviews plans, and selects optional visuals.',
             parameters={'type': 'OBJECT', 'properties': {'message': {'type': 'STRING'}}, 'required': ['message']})]
         config=types.LiveConnectConfig(response_modalities=['AUDIO'],input_audio_transcription={},output_audio_transcription={},
             speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=GEMINI_LIVE_VOICE))),
@@ -46,8 +55,11 @@ async def voice(ws: WebSocket, account_id: int):
                 "Use one or two sentences for ordinary conversation. Ask only the tool's necessary question. "
                 "Visuals arrive alongside you automatically; never narrate a slideshow. Speak longer only for a requested comparison. "
                 "If a tool fails, say so and invite a retry. The account is anonymized demonstration data. "
+                "A fictional starting persona was built from the records; treat its goals as a draft to check, and when there is "
+                "nothing else to discuss, ask the first of its ask_first questions. Whenever the user mentions something that has "
+                "happened or might happen (a job loss, rent rising, a repair, a baby, a move) or a big decision, pass it to the tool. "
                 "Current context and recent conversation: " + json.dumps({'context': cm.summarize(ctx),
-                    'recent': ctx.get('conversation', [])[-12:], 'insights': insights.get('narrative', {})}, default=str)),
+                    'recent': ctx.get('conversation', [])[-12:], 'insights': insights.get('narrative', {}), 'persona': persona_brief}, default=str)),
             tools=[types.Tool(function_declarations=declarations)])
         async with client.aio.live.connect(model=GEMINI_LIVE_MODEL, config=config) as session:
             await ws.send_json(dict(type='ready',model=GEMINI_LIVE_MODEL,voice=GEMINI_LIVE_VOICE))
@@ -93,7 +105,7 @@ async def voice(ws: WebSocket, account_id: int):
                                                     await ws.send_json(dict(type='visual', beat=visuals[0]))
                                             elif event == 'memory' and data.get('proposal'):
                                                 await ws.send_json(dict(type='context_proposal', proposal=data['proposal']))
-                                            elif event in ('agent', 'handoff'):
+                                            elif event in ('agent', 'handoff', 'trace', 'profile', 'lifeplans'):
                                                 await ws.send_json(dict(type='pipeline_event', event=event, data=data))
                                             elif event == 'error':
                                                 reply.append(data.get('message', 'Planning is unavailable. Please try again.'))

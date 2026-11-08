@@ -458,12 +458,18 @@ async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h
                 best_grid=run.candidates[0]["label"] if run.candidates else None)
     req = run.req
     ctx_bits = ", ".join(f"{k} {len(v)}" for k, v in req["confirmed_context"].items() if v)
-    yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "engine", "to": "strategist", "title": "Frozen request",
-                      "items": [f"I {req['metrics']['I']:,.0f} / S {req['metrics']['S']:,.0f} / B {req['metrics']['B']:,.0f}", req["shock"]["label"],
+    frozen_items = [f"I {req['metrics']['I']:,.0f} / S {req['metrics']['S']:,.0f} / B {req['metrics']['B']:,.0f}", req["shock"]["label"],
                                 f"goal: {req['goal']['label']} ({req['goal']['target_months']} months)",
                                 f"weights: safety {req['weights']['resilience']:.0%} / goal {req['weights']['goal']:.0%}",
                                 ("confirmed context: " + ctx_bits) if ctx_bits else "confirmed context: none yet",
-                                (f"grid: {len(run.candidates)} candidates, best '{run.candidates[0]['label']}'" if run.candidates else "grid: empty")]}
+                                (f"grid: {len(run.candidates)} candidates, best '{run.candidates[0]['label']}'" if run.candidates else "grid: empty")]
+    if run.use_ai:
+        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "engine", "to": "strategist", "title": "Frozen request",
+                          "items": frozen_items, "mode": "adk"}
+    else:
+        # Offline: no Strategist or Challenger runs, so the grid goes straight to the Ranker. Say so plainly.
+        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "engine", "to": "ranker", "title": "Offline run: engine grid only",
+                          "items": frozen_items + ["no model available: the Strategist and Challenger did not run"], "mode": "offline"}
     if run.use_ai:
         yield stage("council", "start", "Strategist proposes levers; Challenger then reviews scored candidates")
         try:
@@ -476,6 +482,8 @@ async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h
             run.error = f"{type(exc).__name__}: {exc}"[:500]
             run.mode = "offline"
             yield stage("council", "done", f"Agents unavailable ({type(exc).__name__}); continuing with the grid")
+            yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "strategist", "to": "ranker", "title": "Agents unavailable: engine grid only",
+                              "items": [f"{type(exc).__name__}: the Strategist did not return levers"], "mode": "offline"}
         else:
             levers = [l for l in ((run.strategist_out or {}).get("levers") or []) if isinstance(l, dict)]
             flags = [f for f in ((run.challenger_out or {}).get("flags") or []) if isinstance(f, dict)]
@@ -520,7 +528,8 @@ async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h
     result = run.rank()
     yield stage("rank", "done", f"Recommended: {result['recommended']}", recommended=result["recommended"])
     top = result["ranked"][:3]
-    yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "ranker", "to": "director", "title": f"Ranked {len(result['ranked'])} plans",
+    yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "ranker", "to": "director", "mode": run.mode,
+                      "title": f"Ranked {len(result['ranked'])} plans" + (" (offline)" if run.mode != "adk" else ""),
                       "items": [f"#{i + 1} {c['label']} / P(shortfall) {c['prob_shortfall_under_stress']:.0%} / score {c['adjusted_score']:.2f}"
                                 + (f" / {len(c['flags'])} flag" if c["flags"] else "") for i, c in enumerate(top)]
                                + ([f"dropped: {n}" for n in run.validation_notes[:2]] if run.validation_notes else [])}

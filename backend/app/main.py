@@ -12,6 +12,8 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 from .api.decision import router as decision_router
 from .api.voice import router as voice_router
+from .api.reports import router as reports_router
+from .api.insights import router as insights_router
 
 from .api.routes import router
 from .services.data_store import get_store
@@ -66,6 +68,8 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(decision_router)
 app.include_router(voice_router)
+app.include_router(reports_router)
+app.include_router(insights_router)
 WEB = Path(__file__).resolve().parents[2] / 'frontend' / 'dist'
 if (WEB / 'assets').exists():
     app.mount('/assets', StaticFiles(directory=WEB / 'assets'), name='assets')

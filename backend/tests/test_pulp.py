@@ -170,7 +170,9 @@ def test_native_voice_protocol_and_server_bound_tools(monkeypatch):
         assert result['result']['reply'] == 'What is your target?'
     assert captured['account_id'] == 20111
     assert captured['message'] == 'I want to save for a home'
-    assert cm.load_context(20111)['context_version']==1
+    # The relay itself saves nothing: only the Persona Builder's starting profile may exist after a voice session.
+    assert all(e['agent'] == 'persona_builder' for e in cm.load_context(20111).get('profile_log', []))
+    assert all(p['status'] == 'pending' for p in cm.load_context(20111).get('proposals', []))
 
 def test_invalid_gemini_json_falls_back_without_mutation(monkeypatch):
     from google import genai

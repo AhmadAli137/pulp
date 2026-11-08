@@ -263,3 +263,118 @@ def summarize(ctx: dict) -> dict:
         "pending_proposals": [p for p in ctx.get("proposals", []) if p["status"] == "pending"],
         "asked_questions": [q["key"] for q in ctx.get("asked_questions", [])],
     }
+
+
+# ----------------------------------------------------------------------------- v2: direct updates with a log
+# Agents update the profile directly. Every change is logged (agent, reason, before, after) and can be undone.
+LOG_LIMIT = 200
+
+
+def _label(value: Any) -> str:
+    if isinstance(value, dict):
+        return str(value.get("label") or value.get("text") or value.get("type") or "")[:120]
+    return str(value)[:120] if value is not None else ""
+
+
+def _find(ctx: dict, field: str, item_id: str | None, vtype: str | None) -> dict | None:
+    for x in ctx.get(field, []):
+        if (item_id and x.get("id") == item_id) or (vtype and x.get("value", {}).get("type") == vtype):
+            return x
+    return None
+
+
+def _log_entry(ctx: dict, agent: str, kind: str, field: str, label: str, before: Any, after: Any, reason: str,
+               item_id: str | None = None) -> dict:
+    entry = {"id": uuid.uuid4().hex[:10], "at": _now(), "version": ctx["context_version"], "agent": agent,
+             "kind": kind, "field": field, "label": label, "before": before, "after": after, "reason": reason,
+             "item_id": item_id, "undone": False}
+    ctx.setdefault("profile_log", []).append(entry)
+    ctx["profile_log"] = ctx["profile_log"][-LOG_LIMIT:]
+    return entry
+
+
+def apply_now(account_id: int, changes: list[dict], agent: str, reason: str = "", kind: str | None = None) -> dict:
+    """Apply changes immediately (no confirmation) and log each one. Returns {context, changes}.
+
+    `kind` overrides the log kind (e.g. 'seed' for the persona); otherwise add/update/remove from the operation.
+    Invalid changes are skipped and reported in `errors`."""
+    with _LOCK:
+        ctx = load_context(account_id)
+        logged, errors = [], []
+        for ch in changes:
+            field = ch.get("field")
+            value = ch.get("value", {}) or {}
+            op = ch.get("operation", "add")
+            try:
+                prior = _find(ctx, field, ch.get("target_id"), value.get("type")) if field in LISTS else None
+                before = dict(prior["value"]) if prior else None
+                res = _apply_change(ctx, ch, agent)
+                if op == "remove":
+                    if not res.get("removed"):
+                        continue
+                    after, item_id = None, prior["id"] if prior else None
+                else:
+                    after, item_id = dict(res["value"]), res["id"]
+                if before == after:
+                    continue
+                k = kind or ("update" if (before is not None and op != "remove") else op)
+                logged.append(_log_entry(ctx, agent, k, field, _label(after or before), before, after,
+                                         ch.get("reason") or reason, item_id))
+            except Exception as e:  # keep going: one bad change must not block the rest
+                errors.append(f"{field}: {e}")
+        if logged:
+            ctx["context_version"] += 1
+            for e in logged:
+                e["version"] = ctx["context_version"]
+        save_context(ctx)
+        return {"context": ctx, "changes": logged, "errors": errors}
+
+
+def undo(account_id: int, change_id: str, agent: str = "you") -> dict:
+    """Revert one logged change. Returns {context, change} where change is the new 'undo' log entry."""
+    with _LOCK:
+        ctx = load_context(account_id)
+        entry = next((e for e in ctx.get("profile_log", []) if e["id"] == change_id), None)
+        if entry is None:
+            raise KeyError(change_id)
+        if entry.get("undone") or entry["kind"] == "undo":
+            return {"context": ctx, "change": None}
+        field, before, after, item_id = entry["field"], entry["before"], entry["after"], entry.get("item_id")
+        if field in LISTS:
+            items = ctx.setdefault(field, [])
+            current = next((x for x in items if x.get("id") == item_id), None) if item_id else None
+            if before is None:  # it was an add: remove it
+                ctx[field] = [x for x in items if x.get("id") != item_id]
+            elif current is not None:  # it was an update: restore
+                current["value"] = dict(before)
+                current["updated_at"] = _now()
+            else:  # it was a remove: put it back
+                items.append({"id": item_id or uuid.uuid4().hex[:8], "value": dict(before), "source": "user_confirmed",
+                              "proposed_by": agent, "confirmed": True, "created_at": _now(), "updated_at": _now()})
+        entry["undone"] = True
+        ctx["context_version"] += 1
+        new = _log_entry(ctx, agent, "undo", field, entry["label"], after, before, f"Undid: {entry['label']}", item_id)
+        new["undoes"] = change_id
+        save_context(ctx)
+        return {"context": ctx, "change": new}
+
+
+def last_change_ids(ctx: dict, within_versions: int = 1) -> list[str]:
+    """Ids of the not-undone changes made in the most recent version(s), for 'no, that's wrong'."""
+    log = [e for e in ctx.get("profile_log", []) if e["kind"] != "undo" and not e.get("undone")]
+    if not log:
+        return []
+    top = max(e["version"] for e in log)
+    return [e["id"] for e in log if e["version"] > top - within_versions and e["agent"] not in ("you",)]
+
+
+def set_doc(account_id: int, key: str, value: Any) -> None:
+    """Store an agent document (persona, persona_trace, deck, life_plans) on the context."""
+    with _LOCK:
+        ctx = load_context(account_id)
+        ctx[key] = value
+        save_context(ctx)
+
+
+def get_doc(account_id: int, key: str, default: Any = None) -> Any:
+    return load_context(account_id).get(key, default)
