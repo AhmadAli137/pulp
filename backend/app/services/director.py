@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import json
+import math
 import random
 import re
 import time
@@ -285,7 +286,9 @@ def twist_storyboard(account_id: int, m, card: dict, plan: dict, *, dealt_random
     if tf:
         beats.append(_beat("fork", "fork", tf["narration"], tf["params"], 10))
     beats.append(_beat("math", "math", "If you want the arithmetic, this is the same runway formula the judges use.", math_params(m, shock), 8))
-    beats.append(_beat("ask2", "none", "Push back on any of this. Tell me what you would or would not do, and I will run it again.", {}, 5))
+    best = (plan.get("ranked") or [{}])[0]
+    next_question = (best.get("needs_context") or ["Which option fits your life, and what would you want to keep unchanged?"])[0]
+    beats.append(_beat("ask2", "none", next_question, {}, 5))
     return [b for b in beats if b["visual"] in ("timeline", "fork", "none") or b["id"] == "actions"][:4]
 
 
@@ -338,8 +341,16 @@ comparison makes a financial decision materially easier to understand. Never dec
 clarification or acknowledgement with charts. Keep supporting visuals alongside the explanation, not a slideshow.
 Use none for ordinary conversation, timeline for a shock, fork or podium for comparisons, actions for mitigation,
 and math only when explicitly asked. Ask at most one question only when needed to proceed; do not prolong a completed answer.
-If the person describes a life event with money consequences, call deal_or_set_shock with the numbers you can
-justify from their words and then run_council on it. Use the active scenario for follow-ups; do not replace it with default numbers. Never claim anything has been saved or applied."""
+For a life decision, first read get_profile and its decision_profile. Translate an observation into what it
+changes in daily life, name the uncertainty, then ask the ONE missing question that changes the choice.
+Never treat card or cash totals as optional purchases, unlabelled transfers as savings, or a pension as employment.
+Use the confirmed goal and protected costs. Do not guess a trip budget, rent, deadline, willingness to work,
+or permission to cut a category. Ask if any are missing. Ask whether historical income and essential costs still fit
+before describing an option as affordable. Comparisons must name concrete alternatives (keep the date with a smaller
+trip versus wait for the same trip; add a monthly service versus keep that amount for a goal), their dollar effects,
+and what each choice gives up. Use compare_purchase for a cost the user supplied, and explain its limitations.
+Only call deal_or_set_shock and run_council when a shock or mitigation comparison is relevant and the inputs are known.
+A personal goal is not automatically an immediate financial shock. Use the active scenario for follow-ups; do not replace it with default numbers. Never claim anything has been saved or applied."""
 
 VISUALS = ["picture", "cup", "river", "timeline", "fork", "calendar", "dial", "crowd", "ribbon", "cards", "shuffle", "swarm", "podium", "actions", "math", "none"]
 
@@ -348,6 +359,7 @@ class _Tools:
     def __init__(self, account_id: int, m):
         self.account_id, self.m = account_id, m
         self.results: dict[str, Any] = {}
+        self.user_message = ""
         self.shock: dict | None = None
         self.card: dict | None = None
         self.plan: dict | None = cm.load_context(account_id).get("active_plan")
@@ -362,9 +374,34 @@ class _Tools:
         ins = narrative_for(self.account_id, use_ai=False)
         out = {"I": self.m.typical_inflow, "S": self.m.typical_spending, "H": self.m.household_bills, "B": self.m.buffer,
                "baseline_runway": self.m.baseline_runway_label, "flags": [{k: f[k] for k in ("key", "label", "evidence")} for f in ins["flags"]],
-               "archetype": ins["archetype"], "headline": ins["narrative"]["headline"]}
+               "archetype": ins["archetype"], "headline": ins["narrative"]["headline"],
+               "decision_profile": ins.get("decision_profile", {})}
         self.results["get_profile"] = out
         return out
+
+    def compare_purchase(self, cost: float, recurring: bool = False) -> dict:
+        """Compare an explicitly supplied purchase cost with keeping the money. No affordability recommendation.
+        cost must appear in the current user message or a confirmed goal. recurring means a monthly expense.
+        """
+        summary = cm.summarize(cm.load_context(self.account_id))
+        amounts = [g.get("target_amount") for g in summary.get("goals", []) if g.get("target_amount") is not None]
+        if not math.isfinite(cost) or cost <= 0:
+            return {"needs_context": "What is the total price, or the monthly cost if this repeats?"}
+        if not caption_is_grounded(str(cost), {"message": self.user_message, "confirmed_goal_amounts": amounts}):
+            return {"needs_context": "What price should I use for this comparison? I need your amount rather than an estimate."}
+        if recurring and not re.search(r"monthly|per month|a month|each month|/month", self.user_message, re.I):
+            return {"needs_context": "Is that a one-time price or a monthly cost?"}
+        room = self.m.typical_inflow - self.m.typical_spending
+        result = {"cost": cost, "recurring": recurring, "historical_monthly_room": room,
+                  "buy": {"monthly_room_after": room - cost if recurring else room,
+                          "recorded_buffer_after": self.m.buffer if recurring else self.m.buffer - cost},
+                  "keep_money": {"retained_after_one_year": cost * 12 if recurring else cost},
+                  "limits": "Illustrative cash-flow comparison from historical records; not proof of affordability. Confirm current income, essential costs and accessible savings.",
+                  "question": "Are your income and essential costs still similar to these records, and what spending must stay protected?"}
+        if not recurring:
+            result["months_to_set_aside_at_historical_room"] = math.ceil(cost / room) if room > 0 else None
+        self.results["compare_purchase"] = result
+        return result
 
     def get_cohort(self) -> dict:
         """How this account compares with peers of similar inflow (survival rates, medians)."""
@@ -405,6 +442,10 @@ class _Tools:
         Strategist and Challenger (about 15 seconds), only when the person asks what they should do."""
         if not self.shock:
             return {"error": "set a shock first with deal_or_set_shock"}
+        summary = cm.summarize(cm.load_context(self.account_id))
+        goals = sorted(summary.get("goals", []), key=lambda g: g.get("priority", 1))
+        if goals and (not goals[0].get("target_amount") or not goals[0].get("target_months")):
+            return {"needs_context": "What budget and target date should we use for your goal?", "reason": "A personal plan must not substitute an assumed budget or deadline."}
         sh = self.shock
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:   # own thread: the council runs its own event loop
             self.plan = ex.submit(run_council, self.account_id, self.m, r=sh["r"], h=sh["h"], one_off=sh["one_off"], duration=sh["duration"],
@@ -413,7 +454,7 @@ class _Tools:
         publish(self.account_id, self.plan)
         self.results["run_council"] = self.plan
         return {"recommended": self.plan["recommended"], "why": self.plan["why"], "grid_size": self.plan["grid_size"],
-                "top": [{"label": c["label"], "prob_shortfall": round(c["prob_shortfall_under_stress"], 3), "score": round(c["adjusted_score"], 2)} for c in self.plan["ranked"][:3]],
+                "top": [{"label": c["label"], "action": c.get("action"), "how": c.get("how"), "needs_context": c.get("needs_context", []), "prob_shortfall": round(c["prob_shortfall_under_stress"], 3), "score": round(c["adjusted_score"], 2)} for c in self.plan["ranked"][:3]],
                 "stay": _stay(self.plan)}
 
     def show_math(self) -> dict:
@@ -558,7 +599,7 @@ def _goal_follow_up(account_id: int, summary: dict, prefix: str = "") -> dict | 
     goals = summary.get("goals") or []
     if not goals:
         return None
-    goal = goals[-1]
+    goal = sorted(goals, key=lambda g: g.get("priority", 1))[0]
     if not goal.get("target_months"):
         key = "goal_timing"
         question = "When would you like to take that vacation?" if goal.get("type") == "travel" else "When would you ideally like to reach that goal?"
@@ -583,6 +624,7 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
     m = get_metrics(account_id)
     msg = (message or "").strip()
     tools = _Tools(account_id, m)
+    tools.user_message = msg
     ctx = cm.load_context(account_id)
     summary = cm.summarize(ctx)
     pending = pending_proposals(ctx)
@@ -601,15 +643,40 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
                                    + ([f"archetype: {insights['archetype']['name']} ({insights['archetype']['share']:.0%} of accounts)"] if insights.get("archetype") else [])}
         yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "narrator", "to": "director", "title": insights["narrative"]["headline"],
                           "items": [f"[{i['flag']}] {i['text']}" for i in insights["narrative"]["insights"]] + [f"written by {insights['narrative']['source']}"]}
-        beats = opening_storyboard(account_id, m, insights)
-        beats = [_beat("intro", "none", " ".join(b["caption"] for b in beats[:2]), {}, 5)]
-        if is_cold(summary):
+        profile = insights.get("decision_profile", {})
+        observations = profile.get("observations", [])
+        if observations:
+            observation = max(observations, key=lambda o: o["priority"])
+            intro = observation["evidence"] + " " + observation["life_effect"]
+            beats = [_beat("intro", "none", intro, {}, 5)]
+            q = next((q for q in profile.get("questions", []) if q["key"] == observation["key"]), None)
+            if q:
+                cm.record_question(account_id, q["key"])
+                beats.append(_beat("ask", "none", q["text"], {"question_key": q["key"]}, 5))
+        else:
+            beats = opening_storyboard(account_id, m, insights)
+            beats = [_beat("intro", "none", " ".join(b["caption"] for b in beats[:2]), {}, 5)]
+        if not observations and is_cold(summary):
             ask = _ask_beat(account_id, summary, pending, insights, prefix="That is what the numbers say. Now I'd like to know you a little, so anything we plan fits your life.")
             if ask:
                 beats = [b for b in beats if b["id"] != "ask"] + [ask]
         yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats",
                           "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
         yield "storyboard", {"opening": True, "source": insights["narrative"]["source"], "beats": beats}
+        return
+
+    if msg in ("decision:small", "decision:big"):
+        scale = msg.split(":")[1]
+        profile = insights_fast().get("decision_profile", {})
+        choices = profile.get("decisions", {}).get(scale, [])
+        if choices:
+            choice = choices[0]
+            caption = f"We can compare: {choice['label'].lower()}. {choice['question']}"
+        else:
+            caption = "What decision are you weighing up, and what would change in your daily life?"
+        yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "narrator", "to": "director",
+                          "title": "Decision grounded in your profile", "items": [c["label"] for c in choices]}
+        yield "storyboard", {"opening": False, "source": "decision_profile", "beats": [_beat("decision", "none", caption, {}, 5)]}
         return
 
     # 2. twist cards: deterministic, but a cold profile is asked first
@@ -667,8 +734,13 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
             yield "storyboard", {"opening": False, "source": "intake", "beats": [follow_up]}
             return
         if not rest and updated_plan:
+            best = (updated_plan.get("ranked") or [{}])[0]
+            question = (best.get("needs_context") or [None])[0]
+            explanation = f"Saved. One option to discuss is: {best.get('action') or updated_plan['recommended']}."
+            if question:
+                explanation += " " + question
             yield "storyboard", {"opening": False, "source": "council", "beats": [
-                _beat("replanned", "none", f"Saved. I reviewed the same scenario with your updated priorities. The leading option is {updated_plan['recommended']}.", {}, 5)]}
+                _beat("replanned", "none", explanation, {}, 5)]}
             return
         if not rest:
             ask = _ask_beat(account_id, summary, [], insights_fast(), prefix="Got it, that's part of how I see you now.")
@@ -734,7 +806,7 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
                               "note": "Answer directly. Ask one question only if needed; ordinary replies need no visual."}, default=float)
         agent = LlmAgent(name="director", model=config.GEMINI_MODEL, description="Chooses what the stage shows and writes Pulp's lines.",
                          instruction=DIRECTOR_INSTRUCTION.replace("{visuals}", ", ".join(VISUALS)),
-                         tools=[tools.get_profile, tools.get_cohort, tools.deal_or_set_shock, tools.run_council, tools.show_math], output_key="director")
+                         tools=[tools.get_profile, tools.get_cohort, tools.compare_purchase, tools.deal_or_set_shock, tools.run_council, tools.show_math], output_key="director")
         result = None
         try:
             async for ev in run_agent_events_async(agent, payload, user_id=f"acct-{account_id}"):

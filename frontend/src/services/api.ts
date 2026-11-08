@@ -135,6 +135,7 @@ export interface Research {
   matching_rule?: string; note?: string
 }
 export interface PlanCandidate {
+  action?: string; how?: string; means?: string; needs_context?: string[]; feasibility?: string
   label: string; source: 'grid' | 'strategist'
   levers: { freed_up_per_month: number; goal_contribution_per_month: number; emergency_floor: number; extra_income_per_month: number }
   prob_shortfall_under_stress: number; median_min_buffer: number; median_end_buffer: number

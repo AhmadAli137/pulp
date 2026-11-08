@@ -128,6 +128,11 @@ def pick_question(summary: dict, pending: list[dict] | None, insights: dict | No
     best_val = base["value"] if base else 0.0
     if base:
         best = {"key": base["key"], "text": base["text"], "value": base["value"]}
+    for q in (insights or {}).get("decision_profile", {}).get("questions", []):
+        # A question becomes less useful only after it was actually shown.
+        val = q["value"] - 0.5 * asked.count(q["key"])
+        if val > best_val:
+            best, best_val = {"key": q["key"], "text": q["text"], "value": val}, val
     for q in profile_questions(summary, insights):
         val = q["relevance"] - 0.15 - 0.5 * asked.count(q["key"])
         if val > best_val:

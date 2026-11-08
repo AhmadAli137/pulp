@@ -29,7 +29,8 @@ def test_spend_less_names_the_biggest_flexible_category():
     req = {"goal": {"label": "Emergency fund", "target_amount": 0.0}}
     stay = _cand("stay the course", p=0.7)
     c = humanize_candidate(_cand("trim spending 10.0%", freed=360.0, p=0.4), m, row, req, stay)
-    assert c["action"].startswith("Spend about $360 less a month") and "card purchases" in c["action"]
+    assert c["action"].startswith("Check whether $360")
+    assert c["needs_context"] and "optional" in c["how"]
     assert "70% to 40%" in c["means"]
     assert c["horizon"] == "this month"
 
@@ -37,14 +38,16 @@ def test_spend_less_names_the_biggest_flexible_category():
 def test_regular_transfer_becomes_pause_the_transfer():
     m, row = _m(), _row(regular_transfer_out=True, regular_transfer_out_amount=300.0, transfer_out_share=0.4, card_wd_share=0.1)
     c = humanize_candidate(_cand("trim spending 5.0%", freed=180.0, p=0.4), m, row, {"goal": {"label": "x", "target_amount": 0.0}}, None)
-    assert c["action"].startswith("Pause the $300 monthly transfer")
+    assert c["action"].startswith("Check what the recurring transfer")
+    assert "Pause" not in c["action"] and c["feasibility"] == "needs_context"
 
 
 def test_strategist_decision_label_is_kept_and_extra_income_is_a_job():
     m, row = _m(), _row()
     c = humanize_candidate(_cand("Pick up a weekend shift", extra=600.0, p=0.2, source="strategist"), m, row, {"goal": {"label": "x", "target_amount": 0.0}}, None)
-    assert c["action"] == "Pick up a weekend shift"
-    assert "600" in c["how"] and c["horizon"] == "this month"
+    assert c["action"] != "Pick up a weekend shift"
+    assert c["needs_context"]
+    assert "600" in c["action"] and c["horizon"] == "this month"
 
 
 def test_habits_and_future_lines():
@@ -54,7 +57,7 @@ def test_habits_and_future_lines():
     assert any("bill dates" in a["title"] for a in acts)
     assert any("other account" in a["title"] for a in acts)
     fut = future_action(m, row)
-    assert fut["horizon"] == "later" and "six" in fut["how"].lower()
+    assert fut["horizon"] == "later" and "upcoming bills" in fut["how"].lower()
 
 
 def test_life_actions_beat_orders_plans_then_habits_then_future():
@@ -66,3 +69,10 @@ def test_life_actions_beat_orders_plans_then_habits_then_future():
     kinds = [a["source"] for a in out["actions"]]
     assert kinds[0] == "grid" and "habit" in kinds and kinds[-1] == "future"
     assert "70% → 40%" in out["actions"][0]["effect"]
+
+
+def test_confirmed_spending_limit_supports_specific_monthly_choice():
+    req = {"goal": {"label": "Trip", "target_amount": 1500}, "confirmed_context": {"constraints": [{"type": "can_free_up_per_month", "amount": 100}]}}
+    c = humanize_candidate(_cand("trim", freed=80), _m(), _row(), req, None)
+    assert "Set aside $80" in c["action"]
+    assert not c["needs_context"]

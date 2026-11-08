@@ -58,7 +58,7 @@ def _cache_path(account_id: int) -> Path:
 
 
 def _signature(flags: list[dict], archetype: dict | None) -> str:
-    raw = json.dumps({"f": [fl["key"] for fl in flags], "a": (archetype or {}).get("name"), "m": config.GEMINI_MODEL}, sort_keys=True)
+    raw = json.dumps({"f": [{"key": fl["key"], "evidence": fl["evidence"]} for fl in flags], "a": (archetype or {}).get("name"), "m": config.GEMINI_MODEL}, sort_keys=True)
     return hashlib.sha1(raw.encode()).hexdigest()[:12]
 
 
@@ -106,4 +106,8 @@ def narrative_for(account_id: int, use_ai: bool = True) -> dict:
                 out["narrator_error"] = f"{type(exc).__name__}: {exc}"[:300]
                 narrative = None
     out["narrative"] = narrative or template_narrative(flags, archetype)
+    from .decision_profile import build_decision_profile
+    from .data_store import get_store
+    from . import context_manager as cm
+    out["decision_profile"] = build_decision_profile(get_store().monthly_for(account_id), row, cm.summarize(cm.load_context(account_id)))
     return out

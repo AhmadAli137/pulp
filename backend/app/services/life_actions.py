@@ -36,17 +36,17 @@ def _biggest_flexible(mix: dict) -> tuple[str, float]:
     return best, mix.get(best, 0.0)
 
 
-def _spend_less_action(freed: float, mix: dict) -> tuple[str, str]:
+def _spend_less_action(freed: float, mix: dict, constraints: dict) -> tuple[str, str]:
+    allowance = constraints.get("can_free_up_per_month", {}).get("amount")
+    if allowance is not None and float(allowance) >= freed:
+        return (f"Set aside {_m(freed)} a month from the spending you said you can change",
+                "Choose the specific expense within your confirmed limit; keep essential and protected costs intact.")
     part, amount = _biggest_flexible(mix)
-    name = {"card": "card purchases", "cash_out": "cash spending", "transfers_out": "money you send out of the account"}[part]
-    if mix.get("regular_transfer", 0) >= freed and part == "transfers_out":
-        return (f"Pause the {_m(mix['regular_transfer'])} monthly transfer to your other account for the shock months",
-                "That money stays in this account as your cushion instead of leaving each month.")
-    if amount > 0:
-        share = min(1.0, freed / amount) if amount else 1.0
-        return (f"Spend about {_m(freed)} less a month, mostly on {name}",
-                f"You put about {_m(amount)} a month into {name} now, so this is cutting it by roughly {share:.0%}.")
-    return (f"Spend about {_m(freed)} less a month", "Pick the two or three things you would miss least and pause them for the shock months.")
+    if part == "transfers_out" and mix.get("regular_transfer", 0) > 0:
+        return ("Check what the recurring transfer pays for before changing it",
+                f"The model needs {_m(freed)} more each month. Is that transfer accessible savings, an essential payment, or support for someone?")
+    return (f"Check whether {_m(freed)} a month can be freed without affecting essentials",
+            "Card and cash totals do not tell us what is optional. Which expense would you willingly change, and by how much?")
 
 
 def humanize_candidate(c: dict, m, row, req: dict, stay: dict | None) -> dict:
@@ -55,10 +55,19 @@ def humanize_candidate(c: dict, m, row, req: dict, stay: dict | None) -> dict:
     freed, contrib, floor, extra = (float(lv[k]) for k in ("freed_up_per_month", "goal_contribution_per_month", "emergency_floor", "extra_income_per_month"))
     mix = spending_mix(m, row)
     goal = req["goal"]
+    constraints = {c.get("type"): c for c in req.get("confirmed_context", {}).get("constraints", [])}
+    allowance = constraints.get("can_free_up_per_month", {}).get("amount")
+    needs_context = []
+    if freed > 0 and (allowance is None or float(allowance) < freed):
+        needs_context.append("Which spending is optional, and how much can realistically change?")
+    if extra > 0 and "extra_income_capacity" not in constraints:
+        needs_context.append("Is extra work or another income source realistic for you, and at what amount?")
+    c["needs_context"] = needs_context
+    c["feasibility"] = "needs_context" if needs_context else "modeled_with_confirmed_limits"
     parts: list[str] = []
     hows: list[str] = []
     horizon = "now"
-    kept = c["source"] == "strategist" and bool(c["label"]) and not c["label"].lower().startswith(("trim", "save ", "stay"))
+    kept = not needs_context and c["source"] == "strategist" and bool(c["label"]) and not c["label"].lower().startswith(("trim", "save ", "stay"))
     if kept:   # the Strategist already phrased it as a decision; keep its words, add only the how
         parts.append(c["label"])
         hows.append(c.get("why") or "")
@@ -69,10 +78,11 @@ def humanize_candidate(c: dict, m, row, req: dict, stay: dict | None) -> dict:
         horizon = "this month" if (freed > 0 or extra > 0) else horizon
     else:
         if freed > 0:
-            a, h = _spend_less_action(freed, mix)
+            a, h = _spend_less_action(freed, mix, constraints)
             parts.append(a); hows.append(h); horizon = "this month"
         if extra > 0:
-            parts.append(f"Bring in about {_m(extra)} more a month, say a weekend shift or extra hours")
+            parts.append(f"Explore whether another {_m(extra)} a month of income is realistic")
+            hows.append("Do not assume extra hours are available or suitable; confirm the source and time required first.")
             horizon = "this month"
     if contrib > 0 and goal.get("target_amount", 0) > 0 and not kept:
         parts.append(f"Move {_m(contrib)} a month into a separate pot for {goal['label'].lower()}")
@@ -110,13 +120,13 @@ def habit_actions(flags: list[dict], mix: dict, row=None) -> list[dict]:
                 days = f" Your bills usually leave around the {int(row['bill_dom'])}th and your pay lands around the {int(row['payday_dom'])}th."
         except (TypeError, ValueError):
             days = ""
-        out.append({"title": "Move your bill dates to just after payday", "how": "Your account dips below zero in months where the money was there; the bills just land first." + days + " One call to each biller fixes it.",
-                    "horizon": "this month", "effect": "fewer overdraft days and no penalty interest", "source": "habit"})
+        out.append({"title": "Move your bill dates to just after payday", "how": "Your account dips below zero in months where the money was there; the bills just land first." + days + " Ask whether the biller allows a date change and whether it has a fee.",
+                    "horizon": "this month", "effect": "may reduce timing-related overdrafts if the payment dates can move", "source": "habit"})
     if "fee_bleed" in keys:
         out.append({"title": "Stop the fee leak", "how": f"Fees and penalty interest are about {_m(mix.get('fees', 0))} a month. Ask the bank for a no-fee package or keep a small cushion so the penalty interest stops.",
                     "horizon": "this month", "effect": f"about {_m(mix.get('fees', 0) * 12)} a year back", "source": "habit"})
     if "savings_elsewhere" in keys and mix.get("regular_transfer", 0) > 0:
-        out.append({"title": "Count the other account as part of your cushion", "how": f"About {_m(mix['regular_transfer'])} leaves every month to another account. If that is savings, your real safety net is bigger than this balance shows; if it is a debt payment, tell me.",
+        out.append({"title": "Find out whether the other account is available for your goal", "how": f"About {_m(mix['regular_transfer'])} leaves every month to another account. If that is savings, your real safety net is bigger than this balance shows; if it is a debt payment, tell me.",
                     "horizon": "now", "effect": "a truer picture of your runway", "source": "habit"})
     if "lifestyle_creep" in keys:
         out.append({"title": "Freeze spending growth for a year", "how": "Spending has been rising faster than income. Holding it flat, not cutting, rebuilds the margin on its own.",
@@ -129,11 +139,9 @@ def habit_actions(flags: list[dict], mix: dict, row=None) -> list[dict]:
 
 def future_action(m, row) -> dict:
     months = float(m.buffer) / float(m.typical_spending) if m.typical_spending else 0.0
-    if months >= 6:
-        return {"title": "Put the surplus to work once the cushion is safe", "how": f"You hold about {months:.0f} months of spending. Beyond six, the extra could go into a TFSA or RRSP instead of sitting idle. A planning idea to take to an advisor, not advice.",
-                "horizon": "later", "effect": "money that grows instead of waiting", "source": "future"}
-    return {"title": "Build to six months, then think about investing", "how": f"You hold about {months:.1f} months of spending. Six is the line where a layoff stops being an emergency. Investing comes after that.",
-            "horizon": "later", "effect": "a cushion that outlasts a layoff", "source": "future"}
+    return {"title": "Choose how much backup money you want to protect",
+            "how": f"The recorded balance covers about {months:.1f} months of typical outflows. What upcoming bills, dependents or income changes should that money protect?",
+            "horizon": "later", "effect": "a reserve target based on your life before allocating money to a goal", "source": "future"}
 
 
 def life_actions(plan: dict, m, row, flags: list[dict]) -> dict:

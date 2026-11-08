@@ -188,6 +188,7 @@ def offline_extract(text: str, summary: dict) -> AgentExtraction:
     months = _months_from(t)
     amounts = _amounts(text)
     existing_goal_types = {g.get("type") for g in summary.get("goals", [])}
+    unrelated_purchase = bool(re.search(r"subscription|monthly service|phone plan|membership|buy this|this purchase", t))
 
     goal_found = None
     for gtype, pat in GOAL_PATTERNS:
@@ -216,9 +217,9 @@ def offline_extract(text: str, summary: dict) -> AgentExtraction:
             for g in summary.get("goals", []):
                 changes.append(ProposedChange(field="goals", operation="update", value={"type": g.get("type"), "priority": 2}))
             changes.append(ProposedChange(field="goals", operation="add", value=v))
-    elif months and summary.get("goals") and not summary["goals"][0].get("target_months"):
+    elif months and not unrelated_purchase and summary.get("goals") and not summary["goals"][0].get("target_months"):
         changes.append(ProposedChange(field="goals", operation="update", value={"type": summary["goals"][0]["type"], "target_months": months}))
-    elif amounts and summary.get("goals") and not summary["goals"][0].get("target_amount") and "rent" not in t and "free up" not in t:
+    elif amounts and not unrelated_purchase and summary.get("goals") and not summary["goals"][0].get("target_amount") and "rent" not in t and "free up" not in t:
         changes.append(ProposedChange(field="goals", operation="update", value={"type": summary["goals"][0]["type"], "target_amount": max(amounts)}))
 
     if concern_found:
@@ -254,6 +255,10 @@ def offline_extract(text: str, summary: dict) -> AgentExtraction:
         intent = "update_event"
     elif "?" in text:
         intent = "question"
+    if re.search(r"can(?:not|'t) (?:cut|reduce)|(?:won't|will not) (?:cut|reduce)|must (?:keep|protect)", t):
+        changes.append(ProposedChange(field="constraints", value={"type": "protected_spending", "label": text.strip()[:160]}))
+    if re.search(r"can(?:not|'t) (?:cut|reduce) (?:my )?spending|nothing (?:left )?to cut", t):
+        changes.append(ProposedChange(field="constraints", value={"type": "can_free_up_per_month", "amount": 0}))
     changes = list(changes) + [c for c in _profile_answers(text) if not any(x.field == "constraints" and x.value.get("type") == c.value.get("type") for x in changes)]
     return AgentExtraction(intent=intent, proposed_changes=changes, requires_confirmation=bool(changes),
                            rationale="Offline keyword extraction (no AI service).")
@@ -390,7 +395,7 @@ Account id: {account_id}. Confirmed context so far: {context}. Questions already
 EXTRACT_PROMPT = """From the user's latest message, extract structured updates to their profile. Output JSON matching the schema.
 Vocabulary: goals.value = {{type: one of {goal_types}, label, target_amount?, target_months?, priority: 1}};
 concerns.value = {{type: one of {concern_types}, label}};
-constraints.value = {{type: expected_rent|can_free_up_per_month|startup_budget|income_replacement, amount?, fraction?, months?}};
+constraints.value = {{type: expected_rent|can_free_up_per_month|startup_budget|income_replacement|transfer_purpose|bill_date_flexibility|other_income|fee_conditions|protected_spending|extra_income_capacity|current_finances, amount?, fraction?, months?, value?, label?}};
 preferences.value = {{type: risk_preference, choice: safety|speed|balanced}};
 upcoming_events.value = {{type: life_event, label, months_from_now, amount?}}.
 Only propose what the user actually said. If nothing new, proposed_changes = []. follow_up_question must be one short question
@@ -432,6 +437,8 @@ def gemini_turn(account_id: int, text: str, summary: dict, history: list[dict], 
 
     ex_prompt = EXTRACT_PROMPT.format(goal_types=list(GOAL_LABELS.keys()), concern_types=["income_loss", "irregular_income", "rising_costs", "rent_increase", "debt", "unexpected_expense", "other"],
                                       context=json.dumps({k: summary[k] for k in ("goals", "concerns", "constraints", "preferences")}), message=text)
+    ex_prompt += "\nRecent conversation (use the question to interpret short answers; do not invent details): " + json.dumps(history[-6:], default=str)
+    ex_prompt += "\nPreserve what the user will not cut, transfer purpose, current changes and work limitations as constraints. A payment or support transfer is not savings."
     ex_cfg = types.GenerateContentConfig(response_mime_type="application/json", response_json_schema=AgentExtraction.model_json_schema(), temperature=0.0)
     extraction = AgentExtraction()
     for attempt in range(2):

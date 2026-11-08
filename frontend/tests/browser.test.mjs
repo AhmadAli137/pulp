@@ -114,7 +114,7 @@ test('saved council result is shared by goals and roadmap after navigation and r
   const plan = await response.json()
   await p.goto(`${base}/goals`)
   await p.getByRole('region', { name: 'Current shared plan' }).waitFor()
-  assert.ok((await p.getByRole('region', { name: 'Current shared plan' }).innerText()).includes(plan.recommended))
+  assert.ok((await p.getByRole('region', { name: 'Current shared plan' }).innerText()).includes(plan.ranked.find(c => c.label === plan.recommended)?.action ?? plan.recommended))
   const roadmap = await (await p.request.get(`${base}/api/roadmap/20111`)).json()
   assert.equal(roadmap.summary.recommended, plan.recommended)
   await p.goto(`${base}/roadmap`); await p.reload()
@@ -186,4 +186,14 @@ test('vacation confirmation continues with one useful question', { timeout: 4500
   const result = await (await p.request.get(`${base}/api/context/20133`)).json()
   assert.ok(result.summary.goals.some(g => g.type === 'travel'))
   assert.equal(await p.getByText('Here is how that looks in your numbers.', { exact: true }).count(), 0)
+})
+
+
+test('everyday and bigger decisions start as contextual conversation', { timeout: 45000 }, async t => {
+  const p = await pageFor(t, 20133); await p.goto(base)
+  await p.getByRole('button', { name: 'A bigger life decision' }).click()
+  await p.getByText(/keep the date, lower the budget, or wait longer/).waitFor()
+  await p.getByRole('button', { name: 'A small everyday decision' }).click()
+  await p.getByText(/We can compare: (change a bill date|add a monthly expense)/).waitFor()
+  assert.equal(await p.locator('.thread-figure').count(), 0)
 })

@@ -64,9 +64,17 @@ def freeze_request(m: OfficialMetrics, ctx: dict, *, r: float, h: float, one_off
         mix = {k: round(v, 2) for k, v in spending_mix(m, get_features().loc[m.account_id]).items()}
     except Exception:  # synthetic accounts in tests have no feature row
         mix = {}
+    decision_profile = {}
+    try:
+        from .decision_profile import build_decision_profile
+        from .data_store import get_store
+        decision_profile = build_decision_profile(get_store().monthly_for(m.account_id), get_features().loc[m.account_id], summary)
+    except KeyError:  # synthetic metrics may not have source records
+        pass
     return {
         "account_id": m.account_id,
         "spending_mix_per_month": mix,
+        "decision_profile": decision_profile,
         "context_version": ctx.get("context_version", 0),
         "metrics": {"I": I, "S": S, "H": H, "B": B, "F": m.typical_fixed_costs, "P": m.active_loan_payment,
                     "surplus": I - S, "months_available": m.months_available},
@@ -215,14 +223,14 @@ You receive a frozen request as JSON: the customer's official numbers (I inflow,
 the shock, their confirmed goal, the weights, the confirmed life context, and the best grid candidates already scored.
 
 Your job: propose up to {max_levers} levers phrased as DECISIONS a person would recognise from their own life, grounded in
-THIS person's numbers and context: spend less on a named category from spending_mix_per_month (card purchases, cash
-spending, money sent out), pause the recurring transfer if there is one, take extra hours or a second job, defer or
-shrink the stated goal, change a habit named in the flags. The label is the decision in plain words ("Cut card spending
-by about $400 a month", "Pause the $120 transfer to your other account for six months", "Pick up a weekend shift").
+THIS person's numbers and confirmed context. Do not treat card/cash totals as discretionary, assume a transfer
+is savings, or assume extra work is possible. Never propose pausing an unexplained transfer. If purpose or flexibility
+is unknown, label the option as conditional and state the exact question needed. Compare practical choices such as
+protecting a stated expense, using a confirmed saving amount, or changing the goal date or size. Describe what the
+person gives up as well as the benefit. Use the decision_profile evidence and uncertainties when supplied.
 Each lever still has to be expressed in the four monthly dollar dials so the engine can score it:
   freed_up_per_month (spending reduced), goal_contribution_per_month, emergency_floor, extra_income_per_month.
-Never invent facts that are not in the request. Never suggest cutting bills, insurance or loan payments. If the context
-is empty, lean on spending_mix_per_month and say so in the evidence.
+Never invent facts that are not in the request. Never suggest cutting bills, insurance or loan payments. If the context is empty, do not present a cut as feasible; ask what spending the person can change.
 
 For every lever you propose, call score_strategy once with those exact dials so the engine scores it.
 Then reply with ONLY a JSON object, no prose:
@@ -369,13 +377,6 @@ class _Run:
         ranked = self.candidates[: self.top_n]
         stay = next((c for c in self.candidates if c["levers"]["freed_up_per_month"] == 0 and c["levers"]["goal_contribution_per_month"] == 0
                      and c["levers"]["extra_income_per_month"] == 0), None)
-        try:  # life language on every candidate (needs the account's feature row; synthetic test accounts skip it)
-            from .features import get_features
-            row = get_features().loc[self.account_id]
-            for c in self.candidates:
-                humanize_candidate(c, self.m, row, self.req, stay)
-        except Exception:
-            pass
         try:  # life language on every candidate (needs the account's feature row; synthetic test accounts skip it)
             from .features import get_features
             row = get_features().loc[self.account_id]

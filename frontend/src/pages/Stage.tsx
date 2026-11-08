@@ -17,7 +17,7 @@ const PAGES: [string, string, typeof Wallet][] = [['/shock', 'Financial snapshot
 const TOOL_WORDS: Record<string, string> = { calculate_shock: 'running the shock', deal_or_set_shock: 'setting up the shock', get_profile: 'reading your numbers', get_financial_profile: 'reading your numbers', score_strategy: 'scoring an idea', run_council: 'asking the council', compare_strategies: 'comparing plans', get_insights: 'reading your profile', get_cohort: 'looking at people like you', show_math: 'writing out the math', simulate: 'simulating months' }
 const fieldNames: Record<string, string> = { goals: 'Goal', concerns: 'Concern', constraints: 'Planning detail', preferences: 'Preference', upcoming_events: 'Life event' }
 const GREETING = 'What would you like to feel more prepared for?'
-const SUGGESTIONS: [string, string, typeof Sparkles][] = [['What should I know about my money?', '__intro__', Sparkles], ['Try a life scenario', 'twist:cards', Dice5], ['Explore a surprise', 'twist:random', Shuffle]]
+const SUGGESTIONS: [string, string, typeof Sparkles][] = [['What should I know about my money?', '__intro__', Sparkles], ['Try a life scenario', 'twist:cards', Dice5], ['A small everyday decision', 'decision:small', Wallet], ['A bigger life decision', 'decision:big', Compass]]
 
 type Msg =
   | { id: string; kind: 'user'; text: string }
@@ -27,8 +27,8 @@ type Msg =
 type QueueItem = { kind: 'beat'; beat: Beat } | { kind: 'proposal'; proposal: Proposal } | { kind: 'text'; text: string }
 
 const readFlag = (key: string) => { try { return localStorage.getItem(key) === '1' } catch { return false } }
-const turnLabel = (m: string) => m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Twist cards' : m === 'twist:random' ? 'Shuffle the deck' : m.startsWith('twist:') ? `Twist: ${m.slice(6).replaceAll('_', ' ')}` : m.length > 70 ? m.slice(0, 69) + '…' : m
-const userText = (m: string) => m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Show me the twist cards.' : m === 'twist:random' ? 'Shuffle the deck and deal me one.' : m.startsWith('twist:') ? `Deal the “${m.slice(6).replaceAll('_', ' ')}” card.` : m
+const turnLabel = (m: string) => m === 'decision:small' ? 'Help me with an everyday decision.' : m === 'decision:big' ? 'Help me with a bigger life decision.' : m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Twist cards' : m === 'twist:random' ? 'Shuffle the deck' : m.startsWith('twist:') ? `Twist: ${m.slice(6).replaceAll('_', ' ')}` : m.length > 70 ? m.slice(0, 69) + '…' : m
+const userText = (m: string) => m === 'decision:small' ? 'Help me with an everyday decision.' : m === 'decision:big' ? 'Help me with a bigger life decision.' : m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Show me the twist cards.' : m === 'twist:random' ? 'Shuffle the deck and deal me one.' : m.startsWith('twist:') ? `Deal the “${m.slice(6).replaceAll('_', ' ')}” card.` : m
 let seq = 0
 const nid = (p: string) => `${p}-${++seq}`
 
