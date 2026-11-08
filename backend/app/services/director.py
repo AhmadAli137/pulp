@@ -286,7 +286,7 @@ def twist_storyboard(account_id: int, m, card: dict, plan: dict, *, dealt_random
         beats.append(_beat("fork", "fork", tf["narration"], tf["params"], 10))
     beats.append(_beat("math", "math", "If you want the arithmetic, this is the same runway formula the judges use.", math_params(m, shock), 8))
     beats.append(_beat("ask2", "none", "Push back on any of this. Tell me what you would or would not do, and I will run it again.", {}, 5))
-    return beats
+    return [b for b in beats if b["visual"] in ("timeline", "fork", "none") or b["id"] == "actions"][:4]
 
 
 # ----------------------------------------------------------------------------- caption safety
@@ -339,7 +339,7 @@ clarification or acknowledgement with charts. Keep supporting visuals alongside 
 Use none for ordinary conversation, timeline for a shock, fork or podium for comparisons, actions for mitigation,
 and math only when explicitly asked. Ask at most one question only when needed to proceed; do not prolong a completed answer.
 If the person describes a life event with money consequences, call deal_or_set_shock with the numbers you can
-justify from their words and then run_council on it. Never claim anything has been saved or applied."""
+justify from their words and then run_council on it. Use the active scenario for follow-ups; do not replace it with default numbers. Never claim anything has been saved or applied."""
 
 VISUALS = ["picture", "cup", "river", "timeline", "fork", "calendar", "dial", "crowd", "ribbon", "cards", "shuffle", "swarm", "podium", "actions", "math", "none"]
 
@@ -350,7 +350,12 @@ class _Tools:
         self.results: dict[str, Any] = {}
         self.shock: dict | None = None
         self.card: dict | None = None
-        self.plan: dict | None = None
+        self.plan: dict | None = cm.load_context(account_id).get("active_plan")
+        if self.plan:
+            sh = self.plan["request"]["shock"]
+            self.shock = {"r": sh["r"], "h": sh["h"], "one_off": sh["one_off"], "duration": sh["duration_months"]}
+            self.results["run_council"] = self.plan
+            self.results["deal_or_set_shock"] = timeline_params(m, self.shock, None)
 
     def get_profile(self) -> dict:
         """Official numbers (I, S, H, B, runway), the account's flags with evidence, and its archetype."""
@@ -404,6 +409,8 @@ class _Tools:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:   # own thread: the council runs its own event loop
             self.plan = ex.submit(run_council, self.account_id, self.m, r=sh["r"], h=sh["h"], one_off=sh["one_off"], duration=sh["duration"],
                                   use_ai=bool(with_agents)).result()
+        from .planning_session import publish
+        publish(self.account_id, self.plan)
         self.results["run_council"] = self.plan
         return {"recommended": self.plan["recommended"], "why": self.plan["why"], "grid_size": self.plan["grid_size"],
                 "top": [{"label": c["label"], "prob_shortfall": round(c["prob_shortfall_under_stress"], 3), "score": round(c["adjusted_score"], 2)} for c in self.plan["ranked"][:3]],
@@ -503,7 +510,7 @@ def _fallback_beats(tools: _Tools, message: str) -> list[dict]:
     beats = []
     if tools.plan and tools.card:
         return twist_storyboard(tools.account_id, tools.m, tools.card, tools.plan, dealt_randomly=tools.card.get("key") == "random")
-    if tools.shock:
+    if tools.shock and "deal_or_set_shock" in tools.results and not tools.plan:
         beats.append(_beat("tl", "timeline", "Here is what that does to your cushion, month by month.", tools.results["deal_or_set_shock"], 10))
     if not beats:
         beats.append(_beat("talk", "none", "I did not catch a money question in that. Tell me about a goal, a worry, or draw a twist card.", {}, 5))
@@ -529,8 +536,9 @@ async def _twist_turn(account_id: int, m, key: str, t0: float, use_ai: bool):
     if not plan:
         yield "error", {"message": "council did not return a plan"}
         return
+    from .planning_session import publish
+    publish(account_id, plan)
     beats = twist_storyboard(account_id, m, card, plan, dealt_randomly=(key == "random"))
-    cm.record_turn(account_id, "user", f"Twist card: {card['title']}", {"shock": shock})
     yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats",
                       "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
     yield "storyboard", {"opening": False, "source": "deck+council", "beats": beats, "card": card}
@@ -545,7 +553,7 @@ def _ask_beat(account_id: int, summary: dict, pending: list[dict], insights: dic
     return _beat("ask", "none", text, {"question_key": q["key"]}, 7)
 
 
-async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) -> AsyncIterator[tuple[str, dict]]:
+async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -> AsyncIterator[tuple[str, dict]]:
     """Yields ("agent", ev), ("handoff", ev), ("memory", ...), ("storyboard", {...}) for one stage turn.
 
     Intake rules: a cold profile gets one or two questions before a twist runs; every turn ends with a question; what
@@ -620,6 +628,11 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
                 applied += len(cm.confirm(account_id, prop["id"], accept=True)["applied"])
             except Exception:
                 pass
+        if applied:
+            from .planning_session import rerun
+            updated_plan = await run_in_threadpool(rerun, account_id, use_ai)
+        else:
+            updated_plan = None
         ctx = cm.load_context(account_id)
         summary = cm.summarize(ctx)
         yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "companion", "to": "profile", "title": "Confirmed out loud, saved",
@@ -631,6 +644,10 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
             async for et, ev in _twist_turn(account_id, m, pt, t0, use_ai):
                 yield et, ev
             set_pending_twist(account_id, None)
+            return
+        if not rest and updated_plan:
+            yield "storyboard", {"opening": False, "source": "council", "beats": [
+                _beat("replanned", "none", f"Saved. I reviewed the same scenario with your updated priorities. The leading option is {updated_plan['recommended']}.", {}, 5)]}
             return
         if not rest:
             ask = _ask_beat(account_id, summary, [], insights_fast(), prefix="Got it, that's part of how I see you now.")
@@ -664,7 +681,7 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
     proposal = None
     try:
         from .gemini_agent import chat as companion_chat
-        mem = await run_in_threadpool(companion_chat, account_id, msg, True)
+        mem = await run_in_threadpool(companion_chat, account_id, msg, not use_ai, False)
         ex = mem.get("extraction") or {}
         changes = ex.get("proposed_changes") or []
         proposal = mem.get("proposal")
@@ -681,6 +698,8 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
     if use_ai and adk_available():
         ctx_summary = cm.summarize(cm.load_context(account_id))
         payload = json.dumps({"message": msg, "confirmed_context": {k: ctx_summary.get(k, []) for k in ("goals", "concerns", "constraints", "preferences", "upcoming_events")},
+                              "active_scenario": tools.shock, "current_recommendation": (tools.plan or {}).get("recommended"),
+                              "recent_conversation": cm.load_context(account_id).get("conversation", [])[-10:],
                               "official": {"I": m.typical_inflow, "S": m.typical_spending, "B": m.buffer, "baseline_runway": m.baseline_runway_label},
                               "note": "Answer directly. Ask one question only if needed; ordinary replies need no visual."}, default=float)
         agent = LlmAgent(name="director", model=config.GEMINI_MODEL, description="Chooses what the stage shows and writes Pulp's lines.",
@@ -730,8 +749,17 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
         ask = _ask_beat(account_id, summary, pending_proposals(ctx), insights_fast())
         if ask:
             beats.append(ask)
-    cm.record_turn(account_id, "assistant", " ".join(b["caption"] for b in beats)[:1000], {"stage": [b["visual"] for b in beats]})
     yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": f"{len(beats)} beats ({'from the model' if source != 'template' else 'template'})",
                       "items": [f"{b['visual']}: {b['caption'][:90]}" for b in beats]}
     yield "storyboard", {"opening": False, "source": source, "beats": beats, "seconds": round(time.perf_counter() - t0, 2),
                          "pending_proposal": proposal["id"] if proposal else None, "pending_twist": pt}
+
+
+async def stage_stream(account_id: int, message: str, *, use_ai: bool = True):
+    """The shared conversation boundary for typed and spoken turns."""
+    cm.record_turn(account_id, "user", message)
+    async for event, data in _stage_stream(account_id, message, use_ai=use_ai):
+        if event == "storyboard":
+            cm.record_turn(account_id, "assistant", " ".join(b["caption"] for b in data.get("beats", [])),
+                           {"stage": [b["visual"] for b in data.get("beats", [])]})
+        yield event, data

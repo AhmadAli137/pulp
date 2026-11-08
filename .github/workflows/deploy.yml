@@ -20,7 +20,7 @@ jobs:
       - run: pip install -r backend/requirements.txt
       - name: Formula and unit tests (no dataset needed)
         working-directory: backend
-        run: python -m pytest -q tests/test_tangerine_metrics.py tests/test_director.py
+        run: python -m pytest -q tests/test_tangerine_metrics.py tests/test_director.py tests/test_council.py tests/test_planning_session.py
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

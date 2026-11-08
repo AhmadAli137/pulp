@@ -242,9 +242,22 @@ def build_feature_table(store: DataStore | None = None) -> pd.DataFrame:
     return f
 
 
+# Startup warming and incoming requests can race. Build the population table once.
+from threading import Lock
+_FEATURE_BUILD_LOCK = Lock()
+
+
 @lru_cache(maxsize=1)
-def get_features() -> pd.DataFrame:
+def _cached_features() -> pd.DataFrame:
     return build_feature_table()
+
+
+def get_features() -> pd.DataFrame:
+    with _FEATURE_BUILD_LOCK:
+        return _cached_features()
+
+
+get_features.cache_clear = _cached_features.cache_clear
 
 
 # ----------------------------------------------------------------------------- flags

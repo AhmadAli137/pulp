@@ -6,8 +6,9 @@ import { Card, Chip, ErrorBox, Spinner, Tip, fmt } from './ui'
 /* Stage 3 council: deterministic fan-out, then Strategist + Challenger on Google ADK (Gemini), then validation.
    Every number shown comes from the engine; the agents only propose levers and flag feasibility. */
 export default function CouncilPanel() {
-  const { accountId, shockInputs } = useApp()
-  const [res, setRes] = useState<PlanResult | null>(null)
+  const { accountId, shockInputs, activePlan, refreshSession } = useApp()
+  const [localResult, setRes] = useState<PlanResult | null>(null)
+  const res = activePlan ?? localResult
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -19,6 +20,7 @@ export default function CouncilPanel() {
         account_id: accountId, income_fraction: shockInputs.income_fraction, bills_increase: shockInputs.bills_increase,
         one_off_cost: shockInputs.one_off_cost, shock_duration: shockInputs.horizon_months, use_ai: useAi,
       }))
+      await refreshSession()
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)) } finally { setLoading(false) }
   }
 
@@ -26,7 +28,7 @@ export default function CouncilPanel() {
 
   return (
     <Card
-      title={<span className="row">Planning council <Tip text="Code builds a grid of levers and scores each with the Monte Carlo engine under this shock. Two Gemini agents on Google ADK run in parallel: the Strategist proposes levers from your confirmed context and asks the engine to score them; the Challenger flags candidates you are unlikely to follow. Code then clamps, re-scores and ranks everything." /></span>}
+      title={<span className="row">Planning council <Tip text="Code builds a grid of levers and scores each with the Monte Carlo engine under this shock. Two Gemini agents work in sequence: the Strategist proposes levers from your confirmed context and asks the engine to score them; the Challenger flags candidates you are unlikely to follow. Code then clamps, re-scores and ranks everything." /></span>}
       right={<div className="row">
         <button className="btn ghost" disabled={loading || !accountId} onClick={() => run(false)}>Grid only</button>
         <button className="btn" disabled={loading || !accountId} onClick={() => run(true)}>{loading ? <Spinner /> : 'Convene the council'}</button>
@@ -37,7 +39,7 @@ export default function CouncilPanel() {
       {res && (
         <div className="stack">
           <div className="row wrap">
-            <Chip tone={res.mode === 'adk' ? 'gold' : 'gray'}>{res.mode === 'adk' ? `Google ADK · ${res.framework.model}` : 'offline: grid only'}</Chip>
+            <Chip tone={res.mode === 'adk' ? 'gold' : 'gray'}>{res.mode === 'adk' ? `Google ADK Â· ${res.framework.model}` : 'offline: grid only'}</Chip>
             <Chip tone="outline">{res.grid_size} grid candidates</Chip>
             {res.tool_calls.length > 0 && <Chip tone="outline">{res.tool_calls.length} engine call{res.tool_calls.length === 1 ? '' : 's'} by the Strategist</Chip>}
             <Chip tone="outline">{res.timing_seconds.total}s</Chip>
@@ -46,7 +48,7 @@ export default function CouncilPanel() {
           <div className="callout">
             <div className="t">Recommended: {res.recommended}</div>
             <div className="small">{res.why}</div>
-            <div className="tiny muted">Objective: {res.objective.formula} · weights {fmt.pct(res.objective.weights.resilience)} safety / {fmt.pct(res.objective.weights.goal)} goal</div>
+            <div className="tiny muted">Objective: {res.objective.formula} Â· weights {fmt.pct(res.objective.weights.resilience)} safety / {fmt.pct(res.objective.weights.goal)} goal</div>
           </div>
           <table className="table">
             <thead><tr><th>#</th><th>Strategy</th><th>From</th><th>Monthly levers</th><th>P(shortfall)</th><th>Goal by deadline</th><th>Spending cut</th><th>Score</th><th>Challenger</th></tr></thead>
@@ -72,7 +74,7 @@ export default function CouncilPanel() {
                   <td><b>{c.adjusted_score.toFixed(2)}</b>{c.adjusted_score !== c.score && <span className="tiny muted"> (raw {c.score.toFixed(2)})</span>}</td>
                   <td className="small">
                     {c.flags.length === 0 ? <span className="muted">no flag</span> : c.flags.map((f, j) => (
-                      <div key={j}><Chip tone={sev(f.severity)}>{f.severity}</Chip> {f.risk}{f.because ? <span className="muted"> · {f.because}</span> : null}</div>
+                      <div key={j}><Chip tone={sev(f.severity)}>{f.severity}</Chip> {f.risk}{f.because ? <span className="muted"> Â· {f.because}</span> : null}</div>
                     ))}
                   </td>
                 </tr>
@@ -85,7 +87,7 @@ export default function CouncilPanel() {
               <ul className="small">{res.challenger.questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
             </div>
           )}
-          {res.validation_notes.length > 0 && <div className="tiny muted">Validation: {res.validation_notes.join(' · ')}</div>}
+          {res.validation_notes.length > 0 && <div className="tiny muted">Validation: {res.validation_notes.join(' Â· ')}</div>}
           <div className="tiny muted">{res.disclaimer}</div>
         </div>
       )}

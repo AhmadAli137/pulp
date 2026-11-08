@@ -3,16 +3,18 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../stores/useApp'
 import { api } from '../services/api'
 import { Spinner } from './ui'
+import CurrentPlan from './CurrentPlan'
+import { MessageCircle, Activity, Fingerprint, GitBranch, Target, Map, ChartNoAxesCombined, Settings } from 'lucide-react'
 
 const NAV = [
-  { to: '/', label: 'Home (Pulp)', ic: '◎' },
-  { to: '/shock', label: 'Shock Lab', ic: '⚡' },
-  { to: '/twin', label: 'My Financial Twin', ic: '◫' },
-  { to: '/explore', label: 'Explore Futures', ic: '⟡' },
-  { to: '/goals', label: 'My Goals', ic: '◉' },
-  { to: '/roadmap', label: 'Financial Roadmap', ic: '⇢' },
-  { to: '/insights', label: 'Insights', ic: '▥' },
-  { to: '/settings', label: 'Settings', ic: '⚙' },
+  { to: '/', label: 'Conversation', ic: MessageCircle },
+  { to: '/shock', label: 'Shock Lab', ic: Activity },
+  { to: '/twin', label: 'My Financial Twin', ic: Fingerprint },
+  { to: '/explore', label: 'Explore Futures', ic: GitBranch },
+  { to: '/goals', label: 'My Goals', ic: Target },
+  { to: '/roadmap', label: 'Financial Roadmap', ic: Map },
+  { to: '/insights', label: 'Insights', ic: ChartNoAxesCombined },
+  { to: '/settings', label: 'Settings', ic: Settings },
 ]
 
 const TITLES: Record<string, [string, string]> = {
@@ -62,7 +64,7 @@ export default function Layout() {
         <nav className="nav" aria-label="Main">
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
-              <span className="ic" aria-hidden>{n.ic}</span>{n.label}
+              <span className="ic" aria-hidden><n.ic size={17} /></span>{n.label}
             </NavLink>
           ))}
         </nav>
@@ -86,6 +88,7 @@ export default function Layout() {
           </form>
         </div>
         {profileError && <div className="err" role="alert" style={{ marginBottom: 16 }}>{profileError} Account IDs are integers from accounts.csv; try a sample from the Overview page.</div>}
+        <CurrentPlan />
         <Outlet />
       </main>
     </div>

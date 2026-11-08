@@ -30,7 +30,7 @@ def build_roadmap(m: OfficialMetrics, context: dict, comparison: dict | None = N
                 "tradeoffs": tradeoffs, "assumptions": assumptions, "review_trigger": trigger}
 
     this_week = [
-        action("Confirm your primary goal and timeline in the companion", None,
+        action("Review your confirmed goal and timeline" if goal["source"] != "default" else "Confirm your primary goal and timeline in the companion", None,
                "Turns the default emergency-fund goal into your own goal; the strategy comparison re-weights accordingly.",
                goal["label"], "Five minutes of input.", goal["assumption"], "Any time your goal or deadline changes."),
         action("Check which recurring bills are fixed", m.typical_fixed_costs,

@@ -29,7 +29,8 @@ export default function Twin() {
   if (!profile || !accountId) return <Empty>Select an account first.</Empty>
 
   const remove = async (field: string, id: string) => {
-    await api.edit(accountId, { field, operation: 'remove', value: {}, target_id: id })
+    await api.edit(accountId, { field, operation: 'remove', value: {}, target_id: id }, true)
+    await useApp.getState().refreshSession()
     const c = await api.context(accountId)
     setCtx(c.context)
     void refreshContext()

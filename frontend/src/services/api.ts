@@ -146,7 +146,7 @@ export interface PlanResult {
   account_id: number; mode: 'adk' | 'offline'
   framework: { name: string; available: boolean; model: string | null; agents: string[] }
   error: string | null
-  request: { shock: { label: string; official: Record<string, unknown>; verdict: Record<string, unknown> }; goal: Comparison['goal']; weights: Comparison['weights']; stress_need: number; horizon_months: number }
+  request: { context_version: number; shock: { r: number; h: number; one_off: number; duration_months: number; label: string; official: Record<string, unknown>; verdict: Record<string, unknown> }; goal: Comparison['goal']; weights: Comparison['weights']; stress_need: number; horizon_months: number }
   objective: { formula: string; weights: Comparison['weights']; disruption_weight: number }
   grid_size: number; ranked: PlanCandidate[]; recommended: string | null; why: string | null; stay_the_course: PlanCandidate | null
   strategist: { levers?: Record<string, unknown>[]; raw?: string } | null
@@ -259,6 +259,7 @@ export const API_BASE = BASE
 
 // ------------------------------------------------------------------ calls
 export const api = {
+  session: (id: number) => get<{ plan: PlanResult | null; context_version: number; stale: boolean }>(`/api/agent/session/${id}`),
   health: () => get<Health>('/api/health'),
   samples: () => get<{ accounts: SampleAccount[]; total_accounts: number; id_range: [number, number] }>('/api/accounts/sample?n=6'),
   profile: (id: number) => get<Profile>(`/api/customers/${id}`),

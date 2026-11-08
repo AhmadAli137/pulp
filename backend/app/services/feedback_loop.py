@@ -83,6 +83,8 @@ def diff_snapshots(old: dict | None, new: dict) -> dict:
 
 def replan(account_id: int, reason: str = "context updated") -> dict:
     m = get_metrics(account_id)
+    from .planning_session import rerun
+    rerun(account_id)
     ctx = cm.load_context(account_id)
     result = compare_strategies(m, ctx)
     snap = _snapshot_from(result, ctx)

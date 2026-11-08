@@ -3,7 +3,7 @@
 Flow (see docs/agents/README.md):
 
   frozen request  ->  deterministic fan-out (grid of levers scored by the Monte Carlo engine)
-                  ->  ADK ParallelAgent: Strategist (Gemini, may call the scoring tool) || Challenger (Gemini, no tools)
+                  ->  Strategist (Gemini, scoring tool) -> code validation -> Challenger (Gemini, actual scored candidates)
                   ->  deterministic validation: every Strategist lever is clamped and re-scored by the engine,
                       Challenger flags are attached to the candidates they name, everything is ranked once
                   ->  ranked result (numbers from the engine only)
@@ -24,11 +24,10 @@ from typing import Any, AsyncIterator
 
 from .. import config
 from . import context_manager as cm
-from .adk_runtime import ADK_AVAILABLE, LlmAgent, ParallelAgent, adk_available, json_block, run_agent, run_agent_events_async
+from .adk_runtime import ADK_AVAILABLE, LlmAgent, adk_available, json_block, run_agent, run_agent_events_async
 from .scenario_engine import ScenarioSpec, StrategyAdjust, simulate
 from .strategy_optimizer import _primary_goal, _weights
 from .tangerine_metrics import OfficialMetrics, compute_shock, horizon_verdict
-from .life_actions import humanize_candidate, spending_mix
 from .life_actions import humanize_candidate, spending_mix
 
 DISRUPTION_WEIGHT = 0.25     # penalty per 100% of typical spending cut; documented in the result
@@ -52,6 +51,9 @@ def freeze_request(m: OfficialMetrics, ctx: dict, *, r: float, h: float, one_off
     verdict = horizon_verdict(shock, duration)
     stress_need = one_off + duration * max(0.0, shock["monthly_gap"])
     goal = _primary_goal(ctx, m, stress_need)
+    if goal["source"] == "default":
+        goal = {**goal, "label": "Emergency reserve for this scenario",
+                "assumption": f"No goal confirmed; reserve covers the modeled gap and upfront cost for {duration} months."}
     horizon = max(horizon, goal["target_months"])
     label = f"Shock: income x{r:.2f}" + (f", bills +{h:.0%}" if h else "") + (f", one-off ${one_off:,.0f}" if one_off else "") + f" for {duration} months"
     spec = ScenarioSpec(scenario_type="stress", income_fraction=r, bills_increase=h, one_off_cost=one_off, shock_start=0,
@@ -121,6 +123,10 @@ def fan_out(m: OfficialMetrics, req: dict) -> list[dict]:
     seen: set[tuple] = set()
     for fs, cs, fl in itertools.product(GRID_FREED_SHARES, GRID_CONTRIB_SHARES, GRID_FLOOR_SHARES):
         freed = round(fs * S, 2)
+        limits = [float(c["amount"]) for c in req["confirmed_context"].get("constraints", [])
+                  if c.get("type") == "can_free_up_per_month" and c.get("amount") is not None]
+        if limits and freed > max(0, min(limits)):
+            continue
         capacity = max(0.0, I - S + freed)
         contrib = round(cs * capacity, 2) if target > 0 else 0.0
         floor = round(fl * need, 2)
@@ -162,7 +168,9 @@ def _clamp_lever(m: OfficialMetrics, req: dict, lever: dict) -> tuple[StrategyAd
             v = hi
         return round(v, 2)
 
-    freed = num("freed_up_per_month", 0.30 * S)
+    limits = [float(c["amount"]) for c in req["confirmed_context"].get("constraints", [])
+              if c.get("type") == "can_free_up_per_month" and c.get("amount") is not None]
+    freed = num("freed_up_per_month", min([0.30 * S] + [max(0, v) for v in limits]))
     extra = num("extra_income_per_month", 0.50 * I)
     capacity = max(0.0, I - S + freed + extra)
     contrib = num("goal_contribution_per_month", capacity)
@@ -296,12 +304,26 @@ class _Run:
             name="strategist", model=config.GEMINI_MODEL, description="Proposes person-specific levers and has the engine score them.",
             instruction=STRATEGIST_INSTRUCTION.format(max_levers=MAX_STRATEGIST_LEVERS), tools=[self._score_tool()], output_key="strategist",
         )
-        challenger = LlmAgent(
-            name="challenger", model=config.GEMINI_MODEL, description="Checks each candidate against the confirmed context for feasibility.",
-            instruction=CHALLENGER_INSTRUCTION, output_key="challenger",
-        )
-        return ParallelAgent(name="pulp_council", description="Strategist and Challenger review the same frozen request in parallel.",
-                             sub_agents=[strategist, challenger])
+        return strategist
+
+    def review_root(self):
+        return LlmAgent(name="challenger", model=config.GEMINI_MODEL,
+            description="Reviews the actual validated candidates, including the Strategist's proposals.",
+            instruction=CHALLENGER_INSTRUCTION, output_key="challenger")
+
+    def review_payload(self):
+        brief = json.loads(self.payload())
+        brief["grid_top"] = [{"label": c["label"], "levers": c["levers"],
+            "prob_shortfall_under_stress": c["prob_shortfall_under_stress"], "score": c["score"]}
+            for c in self.candidates]
+        return json.dumps(brief, default=float)
+
+    def absorb_review(self, res):
+        self.challenger_out = json_block(res["state"].get("challenger") or
+            "\n".join(res["texts"].get("challenger", []))) or {"flags": [], "questions": []}
+        self.tool_calls.extend(res.get("tool_calls", []))
+        self.unmatched_flags = _attach_flags(self.candidates,
+            [f for f in self.challenger_out.get("flags", []) if isinstance(f, dict)])
 
     def payload(self) -> str:
         brief = dict(self.req)
@@ -404,6 +426,11 @@ def run_council(account_id: int, m: OfficialMetrics, *, r: float, h: float, one_
             run.error = f"{type(exc).__name__}: {exc}"[:500]
             run.mode = "offline"
         run.validate()
+        if run.mode == "adk":
+            try:
+                run.absorb_review(run_agent(run.review_root(), run.review_payload(), user_id=f"acct-{account_id}"))
+            except Exception as exc:
+                run.error = f"Challenger unavailable: {type(exc).__name__}"
     return run.rank()
 
 
@@ -430,14 +457,14 @@ async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h
                 best_grid=run.candidates[0]["label"] if run.candidates else None)
     req = run.req
     ctx_bits = ", ".join(f"{k} {len(v)}" for k, v in req["confirmed_context"].items() if v)
-    yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "engine", "to": "strategist, challenger", "title": "Frozen request",
+    yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "engine", "to": "strategist", "title": "Frozen request",
                       "items": [f"I {req['metrics']['I']:,.0f} / S {req['metrics']['S']:,.0f} / B {req['metrics']['B']:,.0f}", req["shock"]["label"],
                                 f"goal: {req['goal']['label']} ({req['goal']['target_months']} months)",
                                 f"weights: safety {req['weights']['resilience']:.0%} / goal {req['weights']['goal']:.0%}",
                                 ("confirmed context: " + ctx_bits) if ctx_bits else "confirmed context: none yet",
                                 (f"grid: {len(run.candidates)} candidates, best '{run.candidates[0]['label']}'" if run.candidates else "grid: empty")]}
     if run.use_ai:
-        yield stage("council", "start", "Strategist and Challenger review the same frozen request in parallel")
+        yield stage("council", "start", "Strategist proposes levers; Challenger then reviews scored candidates")
         try:
             async for ev in run_agent_events_async(run.build_root(), run.payload(), user_id=f"acct-{account_id}"):
                 if ev["type"] == "agent":
@@ -453,7 +480,7 @@ async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h
             flags = [f for f in ((run.challenger_out or {}).get("flags") or []) if isinstance(f, dict)]
             questions = [q for q in ((run.challenger_out or {}).get("questions") or []) if isinstance(q, str)]
             n_lev, n_fl = len(levers), len(flags)
-            yield stage("council", "done", f"Strategist proposed {n_lev} lever(s); Challenger raised {n_fl} flag(s)", levers=n_lev, flags=n_fl)
+            yield stage("council", "done", f"Strategist proposed {n_lev} lever(s); ready for validation", levers=n_lev, flags=n_fl)
 
             def _dials(l: dict) -> str:
                 parts = []
@@ -468,11 +495,23 @@ async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h
 
             yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "strategist", "to": "validator", "title": f"{n_lev} lever(s) proposed",
                               "items": [f"{l.get('label', 'lever')}: {_dials(l)}" + (f" / why: {str(l.get('why', ''))[:140]}" if l.get("why") else "") for l in levers] or ["no lever this time"]}
-            yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "challenger", "to": "ranker", "title": f"{n_fl} flag(s), {len(questions)} question(s)",
-                              "items": [f"{f.get('severity', 'medium')} on '{f.get('candidate', '?')}': {f.get('risk', '')}" + (f" / {str(f.get('because', ''))[:120]}" if f.get("because") else "") for f in flags]
-                                       + [f"ask next: {q}" for q in questions[:3]] or ["nothing to flag"]}
         yield stage("validate", "start", "Clamping and re-scoring every proposed lever; attaching flags")
         await run_in_threadpool(run.validate)
+        if run.mode == "adk":
+            yield stage("review", "start", "Challenger checks the scored proposals against your constraints")
+            try:
+                async for ev in run_agent_events_async(run.review_root(), run.review_payload(), user_id=f"acct-{account_id}"):
+                    if ev["type"] == "agent":
+                        yield "agent", {k: v for k, v in ev.items() if k != "type"}
+                    else:
+                        run.absorb_review(ev)
+            except Exception as exc:
+                run.error = f"Challenger unavailable: {type(exc).__name__}"
+            flags = (run.challenger_out or {}).get("flags", [])
+            yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "challenger", "to": "ranker",
+                "title": f"Reviewed candidates: {len(flags)} flag(s)",
+                "items": [str(f.get("risk", "")) for f in flags if isinstance(f, dict)] or [run.error or "No feasibility flags"]}
+            yield stage("review", "done", "Candidate review complete" if not run.error else run.error)
         yield stage("validate", "done", f"{len(run.validation_notes)} lever(s) dropped; {len(run.unmatched_flags)} flag(s) unmatched")
     else:
         yield stage("council", "done", "No model available: grid only")

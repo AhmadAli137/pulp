@@ -471,11 +471,12 @@ def provider_info() -> dict:
 AI_MODES = ("gemini", "vultr")
 
 
-def chat(account_id: int, text: str, prefer_offline: bool = False) -> dict:
+def chat(account_id: int, text: str, prefer_offline: bool = False, record_history: bool = True) -> dict:
     ctx = cm.load_context(account_id)
     summary = cm.summarize(ctx)
     pending = summary["pending_proposals"]
-    cm.record_turn(account_id, "user", text)
+    if record_history:
+        cm.record_turn(account_id, "user", text)
     mode = "offline"
     tools_used: list[dict] = []
     reply = ""
@@ -520,7 +521,8 @@ def chat(account_id: int, text: str, prefer_offline: bool = False) -> dict:
                               source=mode if mode in AI_MODES else "offline_extractor", rationale=extraction.rationale or "Extracted from conversation")
     if question and question.get("key") and question["key"] != "gemini_follow_up":
         cm.record_question(account_id, question["key"])
-    cm.record_turn(account_id, "assistant", reply, {"mode": mode})
+    if record_history:
+        cm.record_turn(account_id, "assistant", reply, {"mode": mode})
     return {
         "account_id": int(account_id), "mode": mode, "reply": reply,
         "extraction": extraction.model_dump(), "proposal": proposal, "tool_results": tools_used,

@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import { HarvestIntro, introSeen, markIntroSeen } from './components/PulpMascot'
-import AgentHome from './pages/AgentHome'
 import Stage from './pages/Stage'
 import ShockLab from './pages/ShockLab'
 import Twin from './pages/Twin'
@@ -10,7 +9,6 @@ import Explore from './pages/Explore'
 import Goals from './pages/Goals'
 import Roadmap from './pages/Roadmap'
 import Insights from './pages/Insights'
-import Companion from './pages/Companion'
 import Settings from './pages/Settings'
 
 function Home() {
@@ -24,24 +22,12 @@ function Home() {
   )
 }
 
-/* The previous conversation-first home, kept at /classic. */
-function Classic() {
-  const [intro, setIntro] = useState(false)
-  const finish = () => { markIntroSeen(); setIntro(false) }
-  return (
-    <>
-      <div inert={intro}><AgentHome onReplayIntro={() => setIntro(true)} /></div>
-      {intro && <HarvestIntro onDone={finish} />}
-    </>
-  )
-}
-
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route index element={<Home />} />
-        <Route path="classic" element={<Classic />} />
+        <Route path="classic" element={<Navigate to="/" replace />} />
         <Route element={<Layout />}>
           <Route path="shock" element={<ShockLab />} />
           <Route path="twin" element={<Twin />} />
@@ -49,7 +35,7 @@ export default function App() {
           <Route path="goals" element={<Goals />} />
           <Route path="roadmap" element={<Roadmap />} />
           <Route path="insights" element={<Insights />} />
-          <Route path="companion" element={<Companion />} />
+          <Route path="companion" element={<Navigate to="/" replace />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Home />} />

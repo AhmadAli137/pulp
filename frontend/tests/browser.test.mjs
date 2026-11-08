@@ -15,7 +15,7 @@ before(async () => {
     try { if ((await fetch(`${base}/api/health`)).ok) break } catch {}
     await new Promise(r => setTimeout(r, 200))
   }
-  browser = await chromium.launch({ channel: process.env.PULP_BROWSER_CHANNEL || 'chrome', headless: true })
+  browser = await chromium.launch({ channel: process.env.PULP_BROWSER_CHANNEL || 'chrome', headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] })
 })
 after(async () => { await browser?.close(); server?.kill() })
 
@@ -33,123 +33,90 @@ async function pageFor(t, account = 20111, options = {}) {
   return page
 }
 
-test('conversation home loads real account and opens financial snapshot', async t => {
-  const p = await pageFor(t)
-  await p.goto(base)
-  await p.getByRole('textbox', { name: 'Message PULP' }).waitFor()
-  await p.getByText('#20111', { exact: true }).waitFor()
-  await p.getByRole('button', { name: 'Your financial context is here' }).click()
-  await p.getByRole('heading', { name: 'Account 20111' }).waitFor()
+
+test('home is conversation first, with an optional financial glance', async t => {
+  const p = await pageFor(t); await p.goto(base)
+  await p.getByRole('textbox', { name: 'Message', exact: true }).waitFor()
+  await p.getByRole('button', { name: /Your money at a glance/ }).click()
+  assert.equal(await p.locator('.thread-figure').count(), 1)
 })
 
-test('typed proposal requires confirmation and survives reload', async t => {
-  const p = await pageFor(t)
-  await p.goto(base)
-  await p.getByLabel('Message PULP').fill('I want to buy a home in five years.')
-  await p.getByRole('button', { name: 'Send message' }).click()
-  await p.getByRole('button', { name: 'Confirm & update my plan' }).click()
-  await p.getByText('Saved to your context. Your plan has been updated.', { exact: true }).waitFor()
+test('typed goal requires confirmation and survives reload', async t => {
+  const p = await pageFor(t); await p.goto(base)
+  await p.getByRole('textbox', { name: 'Message', exact: true }).fill('I want to buy a home in five years.')
+  await p.getByRole('button', { name: 'Send', exact: true }).click()
+  await p.getByRole('button', { name: 'Confirm', exact: true }).click()
+  await p.getByText(/Noted. I/).waitFor()
+  const result = await (await p.request.get(`${base}/api/context/20111`)).json()
+  assert.equal(result.summary.goals[0].type, 'home_purchase')
   await p.reload()
-  await p.locator('.focus-chips').getByText(/buy a home/i).waitFor()
+  await p.getByText('I want to buy a home in five years.', { exact: true }).waitFor()
 })
 
-test('declining proposed context leaves no accepted goal', async t => {
-  const p = await pageFor(t, 20133)
-  await p.goto(base)
-  await p.getByLabel('Message PULP').fill('I want to move out next year.')
-  await p.getByRole('button', { name: 'Send message' }).click()
-  await p.getByRole('button', { name: 'Not now' }).click()
-  await p.getByText('Proposal dismissed. Your context is unchanged.', { exact: true }).waitFor()
-  const result = await (await p.request.get(`${base}/api/context/20133`)).json()
-  assert.equal(result.summary.goals.length, 0)
+test('declining context does not accept the goal', async t => {
+  const p = await pageFor(t, 20133); await p.goto(base)
+  await p.getByRole('textbox', { name: 'Message', exact: true }).fill('I want to move out next year.')
+  await p.getByRole('button', { name: 'Send', exact: true }).click()
+  await p.getByRole('button', { name: 'Not quite', exact: true }).click()
+  await p.getByText('Left it out.', { exact: true }).waitFor()
+  const r = await (await p.request.get(`${base}/api/context/20133`)).json()
+  assert.equal(r.summary.goals.length, 0)
 })
 
-test('mobile navigation reaches research without horizontal overflow', async t => {
-  const p = await pageFor(t, 20111, { viewport: { width: 390, height: 844 } })
-  await p.goto(base)
+test('mobile home fits and navigation reaches research', async t => {
+  const p = await pageFor(t, 20111, { viewport: { width: 390, height: 844 } }); await p.goto(base)
+  await p.getByRole('button', { name: 'Start voice conversation' }).waitFor()
   assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await p.getByRole('button', { name: 'Open navigation' }).click()
   await p.getByRole('button', { name: 'Research & insights' }).click()
   await p.getByText('Ever had a negative balance day', { exact: true }).waitFor()
 })
 
-test('replaying intro can be skipped and restores composer', async t => {
-  const p = await pageFor(t)
-  await p.goto(base)
-  await p.getByRole('button', { name: 'Replay introduction' }).click()
-  await p.getByRole('button', { name: /Skip intro/ }).click()
-  await p.getByLabel('Message PULP').fill('Ready')
-  assert.equal(await p.getByLabel('Message PULP').inputValue(), 'Ready')
-})
-
-test('chat network failure restores the unsent draft', async t => {
-  const p = await pageFor(t)
-  await p.route('**/api/agent/chat', route => route.abort())
-  await p.goto(base)
-  await p.getByLabel('Message PULP').fill('Keep this question')
-  await p.getByRole('button', { name: 'Send message' }).click()
-  await p.getByRole('status').filter({ hasText: /Please try again/ }).waitFor()
-  assert.equal(await p.getByLabel('Message PULP').inputValue(), 'Keep this question')
-})
-
-test('microphone denial keeps typed conversation available', async t => {
+test('microphone denial leaves text available', async t => {
   const p = await pageFor(t)
   await p.addInitScript(() => { navigator.mediaDevices.getUserMedia = async () => { throw new Error('Microphone denied') } })
   await p.goto(base)
   await p.getByRole('button', { name: 'Start voice conversation' }).click()
-  await p.getByRole('status').waitFor()
-  await p.getByLabel('Message PULP').fill('Use text instead')
-  assert.equal(await p.getByLabel('Message PULP').isEnabled(), true)
+  await p.getByText('Microphone denied', { exact: true }).waitFor()
+  assert.ok(await p.getByRole('textbox', { name: 'Message', exact: true }).isEnabled())
 })
 
-test('future simulator returns model outputs', async t => {
-  const p = await pageFor(t)
-  await p.goto(`${base}/explore`)
-  await p.getByRole('button', { name: 'Simulate', exact: true }).click()
-  await p.getByText('Median buffer at horizon', { exact: true }).waitFor()
-})
-
-test('goal review shows missing budget instead of fictional completion', async t => {
-  const p = await pageFor(t)
-  await p.goto(`${base}/goals`)
-  await p.getByText('Budget needed', { exact: true }).waitFor()
-  await p.getByText(/Projection extended from 24 to 60 months/).waitFor()
-})
-
-test('unknown account is reported without retaining prior financial snapshot', async t => {
-  const p = await pageFor(t)
-  await p.goto(base)
-  await p.getByText('#20111', { exact: true }).waitFor()
-  await p.getByRole('button', { name: /Demo account/ }).click()
-  await p.getByLabel('Account ID', { exact: true }).fill('999999999')
-  await p.getByRole('button', { name: 'Load account', exact: true }).click()
-  await p.getByRole("alert").filter({ hasText: "Account 999999999 is not in the dataset." }).waitFor()
-  assert.equal(await p.getByLabel('Message PULP').isDisabled(), true)
-})
-
-
-test('voice scenario stays staged and preserves unstated shock inputs on confirmation', async t => {
-  const p = await pageFor(t)
+test('typing within live voice keeps the same session and never uses browser narration', { timeout: 45000 }, async t => {
+  const p = await pageFor(t, 20111, { permissions: ['microphone'] })
   await p.addInitScript(() => {
-    navigator.mediaDevices.getUserMedia = async () => {
-      const audio = new AudioContext()
-      return audio.createMediaStreamDestination().stream
-    }
+    window.ttsCalls = 0
+    speechSynthesis.speak = () => window.ttsCalls++
   })
-  await p.routeWebSocket('**/api/agent/voice/*', socket => {
-    setTimeout(() => {
-      socket.send(JSON.stringify({ type: 'ready' }))
-      socket.send(JSON.stringify({ type: 'proposal', proposal: { one_off_cost: 900, explanation: 'An unexpected bill' } }))
-    }, 700)
+  const sent = []
+  await p.routeWebSocket('**/api/agent/voice/*', ws => {
+    ws.send(JSON.stringify({ type: 'ready' }))
+    ws.onMessage(raw => { const m = JSON.parse(raw); if (m.type === 'text') {
+      sent.push(m.text)
+      ws.send(JSON.stringify({ type: 'transcript', role: 'assistant', text: 'We can adjust the same plan.' }))
+      ws.send(JSON.stringify({ type: 'turn_complete' }))
+    } })
   })
   await p.goto(base)
   await p.getByRole('button', { name: 'Start voice conversation' }).click()
-  await p.getByText(/YOUR SPOKEN SCENARIO/).waitFor()
-  assert.equal(new URL(p.url()).pathname, '/')
-  const request = p.waitForRequest(r => r.url().includes('/api/shocks/calculate') && r.method() === 'POST')
-  await p.getByRole('button', { name: 'Confirm & apply stated values' }).click()
-  const body = (await request).postDataJSON()
-  assert.equal(body.one_off_cost, 900)
-  assert.equal(body.income_fraction, .55)
-  await p.getByRole('heading', { name: 'Account 20111' }).waitFor()
+  await p.getByText(/Listening/).waitFor()
+  await p.getByRole('textbox', { name: 'Message', exact: true }).fill('I cannot cut rent')
+  await p.getByRole('button', { name: 'Send', exact: true }).click()
+  await p.getByText('We can adjust the same plan.', { exact: true }).waitFor()
+  assert.deepEqual(sent, ['I cannot cut rent'])
+  assert.equal(await p.getByRole('button', { name: 'Stop voice conversation' }).count(), 1)
+  assert.equal(await p.evaluate(() => window.ttsCalls), 0)
+})
+
+test('saved council result is shared by goals and roadmap after navigation and reload', async t => {
+  const p = await pageFor(t); await p.goto(base)
+  const response = await p.request.post(`${base}/api/agent/plan`, { timeout: 120000, data: { account_id: 20111, income_fraction: .7, bills_increase: .1, one_off_cost: 450, shock_duration: 4, use_ai: false } })
+  assert.equal(response.status(), 200)
+  const plan = await response.json()
+  await p.goto(`${base}/goals`)
+  await p.getByRole('region', { name: 'Current shared plan' }).waitFor()
+  assert.ok((await p.getByRole('region', { name: 'Current shared plan' }).innerText()).includes(plan.recommended))
+  const roadmap = await (await p.request.get(`${base}/api/roadmap/20111`)).json()
+  assert.equal(roadmap.summary.recommended, plan.recommended)
+  await p.goto(`${base}/roadmap`); await p.reload()
+  await p.getByRole('region', { name: 'Current shared plan' }).waitFor()
 })

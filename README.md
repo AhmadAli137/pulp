@@ -180,3 +180,22 @@ serializes production deploys, removes its temporary private key, and checks app
 Keep `DEPLOY_ENABLED=true` and the existing `VULTR_HOST`, `VULTR_USER`, and
 `VULTR_SSH_KEY` Actions secrets configured. For an old failed run, start a new workflow run
 on the updated branch so the revised workflow is used.
+
+
+### Unified conversation and planning
+
+Speech and typed requests now enter the same `stage_stream` workflow. Gemini Live is the only
+speaking voice; text-only mode stays silent. Typed input during live voice uses that same socket.
+The workflow keeps one conversation history and uses version-checked context proposals for confirmation.
+The Strategist proposes candidates, code clamps and scores them, then the Challenger reviews the actual
+candidate set before ranking. Confirmed spending limits constrain both grid and model proposals.
+
+`GET /api/agent/session/{account_id}` returns the saved council result and its context version.
+Conversation and Shock Lab publish that result; Goals and Roadmap consume it, and Explore starts
+from its scenario and recommended levers. Confirmed context updates rerun the same active scenario.
+Stale results are marked for review and cannot silently overwrite a newer context version.
+The legacy `/classic` and `/companion` routes redirect to the unified conversation.
+
+Verification: `python -m pytest -q backend/tests`, `node frontend/tests/voice.test.mjs`, and
+`npm --prefix frontend run test:e2e` (Chrome installed; test backend uses isolated temporary memory).
+Schema Scout is still a proposed dataset-ingestion agent; the current dataset uses its checked role map.

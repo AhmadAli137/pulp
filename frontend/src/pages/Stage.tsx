@@ -7,19 +7,17 @@ import { PulpMark, Tangerine, clearIntroSeen } from '../components/PulpMascot'
 import Backstage, { splitKeys, type FeedItem } from '../components/stage/Backstage'
 import { highlightNumbers } from '../components/stage/shared'
 import ThreadFigure from '../components/stage/ThreadFigure'
-import { startVoice } from '../services/voice'
+import { startVoice, type VoiceSession } from '../services/voice'
 import { API_BASE, api, type Beat, type Persona, type Proposal, type SampleAccount, type StageAgentEvent, type StageHandoffEvent, type StageMemoryEvent, type Storyboard } from '../services/api'
-import { speakStyled } from '../services/ttsVoice'
 import { useApp } from '../stores/useApp'
+import CurrentPlan from '../components/CurrentPlan'
 import '../stage.css'
 
 const PAGES: [string, string, typeof Wallet][] = [['/shock', 'Financial snapshot & shock lab', Wallet], ['/explore', 'Explore futures', SlidersHorizontal], ['/goals', 'My goals & plan review', MessageCircle], ['/roadmap', 'Financial roadmap', Compass], ['/insights', 'Research & insights', BookOpen]]
 const TOOL_WORDS: Record<string, string> = { calculate_shock: 'running the shock', deal_or_set_shock: 'setting up the shock', get_profile: 'reading your numbers', get_financial_profile: 'reading your numbers', score_strategy: 'scoring an idea', run_council: 'asking the council', compare_strategies: 'comparing plans', get_insights: 'reading your profile', get_cohort: 'looking at people like you', show_math: 'writing out the math', simulate: 'simulating months' }
 const fieldNames: Record<string, string> = { goals: 'Goal', concerns: 'Concern', constraints: 'Planning detail', preferences: 'Preference', upcoming_events: 'Life event' }
-const GREETING = 'Hi, I’m Pulp. Ask me anything about your money, or draw a twist card and we’ll see how you hold up.'
-const SUGGESTIONS: [string, string, typeof Sparkles][] = [['What should I know about my money?', '__intro__', Sparkles], ['Draw a twist card', 'twist:cards', Dice5], ['Shuffle the deck', 'twist:random', Shuffle]]
-const MAX_BEAT_MS = 12000
-const MIN_BEAT_MS = 1400
+const GREETING = 'What would you like to feel more prepared for?'
+const SUGGESTIONS: [string, string, typeof Sparkles][] = [['What should I know about my money?', '__intro__', Sparkles], ['Try a life scenario', 'twist:cards', Dice5], ['Explore a surprise', 'twist:random', Shuffle]]
 
 type Msg =
   | { id: string; kind: 'user'; text: string }
@@ -40,10 +38,9 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
   const [voice, setVoice] = useState(false)
   const [voiceReady, setVoiceReady] = useState(false)
   const [live, setLive] = useState({ user: '', assistant: '' })
-  const voiceStop = useRef<(() => void) | null>(null)
+  const voiceStop = useRef<VoiceSession | null>(null)
   const voiceRequest = useRef(0)
   const liveText = useRef({ user: '', assistant: '' })
-  const [voiceProposal, setVoiceProposal] = useState<Record<string, unknown> | null>(null)
   const [inputId, setInputId] = useState(accountId ? String(accountId) : '')
   const [samples, setSamples] = useState<SampleAccount[]>([])
   const [menu, setMenu] = useState(false)
@@ -95,15 +92,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
     if (item.kind === 'proposal') { setThread((t) => [...t, { id: nid('p'), kind: 'proposal', proposal: item.proposal }]); pumpTimer.current = window.setTimeout(next, 300); return }
     const text = item.kind === 'text' ? item.text : item.beat.caption
     setThread((t) => [...t, { id: nid('m'), kind: 'pulp', text, beat: item.kind === 'beat' ? item.beat : undefined }])
-    if (!muteRef.current && interacted.current && 'speechSynthesis' in window) {
-      let spoken = false, timed = false
-      const both = () => { if (spoken && timed) next() }
-      pumpTimer.current = window.setTimeout(() => { timed = true; both() }, MIN_BEAT_MS)
-      const guard = window.setTimeout(() => { spoken = true; timed = true; next() }, MAX_BEAT_MS)
-      void speakStyled(text, { onend: () => { clearTimeout(guard); spoken = true; both() }, onerror: () => { clearTimeout(guard); spoken = true; both() } }).catch(() => { clearTimeout(guard); spoken = true; both() })
-    } else {
-      pumpTimer.current = window.setTimeout(next, 0)
-    }
+    pumpTimer.current = window.setTimeout(next, 0)
   }, [])
   const enqueue = useCallback((items: QueueItem[]) => { queue.current.push(...items); pump() }, [pump])
 
@@ -120,6 +109,8 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
     source.current?.close(); source.current = null
     stopPump(); queue.current = []; setBusy(false); setStatus(null)
     const request = ++voiceRequest.current
+    ++turn.current
+    interacted.current = true
     setVoice(true); setVoiceReady(false); setMute(false); setNotice(null)
     liveText.current = { user: '', assistant: '' }
     try {
@@ -138,7 +129,14 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
           liveText.current = { user: '', assistant: '' }; setLive(liveText.current)
         }
         if (m.type === 'visual') setThread((t) => [...t, { id: nid('v'), kind: 'pulp', text: m.beat.caption, beat: m.beat }])
-        if (m.type === 'proposal') setVoiceProposal(m.proposal)
+        if (m.type === 'context_proposal') enqueue([{ kind: 'proposal', proposal: m.proposal }])
+        if (m.type === 'pipeline_event') {
+          const who = String(m.data.agent ?? m.data.from ?? 'companion')
+          light(splitKeys(who))
+          pushFeed({ id: nid('voice-event'), turn: turn.current, kind: 'agent', agent: who, t: Number(m.data.t ?? 0), text: String(m.data.summary ?? m.data.title ?? m.data.tool ?? 'Working on your plan') })
+        }
+        if (m.type === 'state_changed') void useApp.getState().refreshSession().catch(() => setNotice('Could not refresh your plan.'))
+        if (m.type === 'status') setStatus(m.message || null)
         if (m.type === 'error') setNotice(m.message)
         if (m.type === 'closed') { setVoice(false); setVoiceReady(false) }
       })
@@ -226,39 +224,47 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
         setStatus(null)
       } catch { /* ignore */ }
     })
-    es.addEventListener('done', () => { if (!mine()) return; es.close(); setBusy(false); setStatus(null) })
+    es.addEventListener('done', () => { if (!mine()) return; es.close(); setBusy(false); setStatus(null); void useApp.getState().refreshSession() })
     es.addEventListener('error', (e) => {
       if (!mine()) return
       const data = (e as MessageEvent).data
       if (data) { try { setNotice(JSON.parse(data).message ?? 'Something went wrong.') } catch { setNotice('Something went wrong.') } }
       else if (es.readyState === EventSource.CLOSED) setNotice('The connection dropped. Try again.')
-      es.close(); setBusy(false); setStatus(null)
+      es.close(); setBusy(false); setStatus(null); setDraft(message)
     })
   }, [id, light, pushFeed, enqueue, stopPump, endVoice])
 
   /* New account: a fresh thread with one greeting and the collapsed glance row. Nothing speaks. */
   useEffect(() => {
-    endVoice(); setVoiceProposal(null)
+    endVoice()
     source.current?.close(); source.current = null
     stopPump(); queue.current = []
     interacted.current = false
     setBusy(false); setStatus(null); setNotice(null); setFeed([]); setActive(new Set()); setGlanceOpen(false)
     setThread(id ? [{ id: nid('g'), kind: 'pulp', text: GREETING }, { id: nid('gl'), kind: 'glance' }] : [])
-    return () => { endVoice(); source.current?.close(); source.current = null; stopPump() }
+    let cancelled = false
+    if (id) api.context(id).then(({ context }) => {
+      if (cancelled || interacted.current) return
+      const history = context.conversation.slice(-16).map((m) => ({ id: nid('h'), kind: m.role === 'user' ? 'user' as const : 'pulp' as const, text: m.text }))
+      if (history.length) setThread(history)
+    }).catch(() => undefined)
+    return () => { cancelled = true; endVoice(); source.current?.close(); source.current = null; stopPump() }
   }, [id, stopPump, endVoice])
 
-  const send = (text: string) => { const t = text.trim(); if (!t || !id) return; setDraft(''); run(t) }
+  const send = (text: string) => { const t = text.trim(); if (!t || !id) return; setDraft(''); if (voice) { if (voiceStop.current?.sendText(t)) setThread((items) => [...items, { id: nid('u'), kind: 'user', text: userText(t) }]); else setNotice('Voice is still connecting. Please try again in a moment.'); return } run(t) }
   const confirm = async (p: Proposal, accept: boolean) => {
     if (!id) return
     setConfirming(p.id)
     try {
-      await api.confirm(id, p.id, accept)
+      const result = await api.confirm(id, p.id, accept)
+      if (result.replan) useApp.getState().setLastReplan(result.replan)
+      await useApp.getState().refreshSession()
       setThread((t) => t.map((m) => m.kind === 'proposal' && m.proposal.id === p.id ? { id: m.id, kind: 'pulp', text: accept ? 'Noted. I’ll plan around that.' : 'Left it out.' } : m))
     } catch { setNotice('Could not save that.') } finally { setConfirming(null) }
   }
   const load = (raw: string) => { const n = Number(raw); if (Number.isInteger(n) && n > 0) { void loadAccount(n); setSelector(false) } }
   const replayIntro = () => { clearIntroSeen(); onReplayIntro() }
-  const replay = (text: string) => { if (!muteRef.current && 'speechSynthesis' in window) { window.speechSynthesis.cancel(); void speakStyled(text) } }
+  const replay = (text: string) => { if (voice) voiceStop.current?.sendText(`Please explain this again: ${text}`); else setNotice('Start Talk to Pulp to discuss this in the same voice.') }
 
   const glanceBeat: Beat | null = profile ? { id: 'glance', visual: 'picture', caption: '', duration_s: 0,
     params: { inflow: profile.typical_inflow, outflow: profile.typical_spending, buffer: profile.buffer, months_of_spending: profile.typical_spending > 0 ? profile.buffer / profile.typical_spending : 0, runway_label: profile.baseline_runway_label } } : null
@@ -273,7 +279,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
         </div>
         <div className="stage-header-actions">
           <button className={`stage-backstage-toggle ${backstage ? 'on' : ''}`} aria-pressed={backstage} onClick={() => setBackstage((v) => !v)} title="See the agents and what they pass along"><Users size={15} />Agents{active.size > 0 && <i className="stage-live-dot" />}</button>
-          <button className="agent-icon-button" aria-label={mute ? 'Unmute Pulp' : 'Mute Pulp'} title={mute ? 'Unmute Pulp' : 'Mute Pulp'} onClick={() => { if (voice) endVoice(); setMute((m) => !m) }}>{mute ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
+          <button className="agent-icon-button" aria-label={mute ? 'Unmute Pulp' : 'Mute Pulp'} title={mute ? 'Unmute Pulp' : 'Mute Pulp'} onClick={() => { voiceStop.current?.setMuted(!mute); setMute(!mute) }}>{mute ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
           <button className="account-trigger" aria-expanded={selector} onClick={() => setSelector((v) => !v)}><span className="demo-dot" />Demo account <b>{profile ? '#' + id : '…'}</b><ChevronDown size={13} /></button>
           <button className="agent-icon-button intro-replay" title="Replay the PULP introduction" aria-label="Replay introduction" onClick={replayIntro}><RotateCcw size={16} /></button>
         </div>
@@ -283,7 +289,6 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
         <nav className="agent-menu" aria-label="Explore PULP">
           <div><span>THE BIGGER PICTURE</span><button aria-label="Close menu" onClick={() => setMenu(false)}><X size={16} /></button></div>
           {PAGES.map(([path, label, Icon]) => <button key={path} onClick={() => nav(path)}><Icon size={17} />{label}<ArrowUpRight size={14} /></button>)}
-          <button onClick={() => nav('/classic')}><MessageCircle size={17} />Classic chat view<ArrowUpRight size={14} /></button>
           <p>Everything Pulp shows comes from these pages' numbers. They stay here when you want the detail.</p>
         </nav>
       </>)}
@@ -301,6 +306,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
       )}
       {profileError && <div className="agent-alert" role="alert">{profileError}</div>}
 
+      <div className="conversation-context"><CurrentPlan /></div>
       <div className="stage-body">
         <main className="thread-main">
           {!profile ? (
@@ -310,6 +316,12 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
             </section>
           ) : (
             <div className="thread" aria-live="polite">
+              {thread.length <= 2 && <section className="conversation-welcome">
+                <span className="editorial-label">A little perspective. A way forward.</span>
+                <h1>Life changes.<br /><em>Let's find your next step.</em></h1>
+                <p>Talk through what matters. We'll work out the numbers together.</p>
+                <div className="welcome-art" aria-hidden="true"><i /><i /><i /></div>
+              </section>}
               {thread.map((m) => {
                 if (m.kind === 'user') return <div key={m.id} className="msg user"><p>{m.text}</p></div>
                 if (m.kind === 'glance') return (
@@ -351,11 +363,6 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
                 )
               })}
               {voice && (live.user || live.assistant) && <div className="msg-body" aria-live="polite">{live.user && <p>You: {live.user}</p>}{live.assistant && <p>Pulp: {live.assistant}</p>}</div>}
-              {voiceProposal && <div className="msg-body"><p>Review your spoken scenario:</p><p>{Object.entries(voiceProposal).filter(([, value]) => value != null).map(([key, value]) => `${key.replaceAll('_', ' ')}: ${value}`).join(' ? ')}</p><button onClick={() => {
-                const values: Record<string, number> = {}
-                for (const key of ['income_fraction', 'bills_increase', 'one_off_cost', 'horizon_months']) if (typeof voiceProposal[key] === 'number') values[key] = voiceProposal[key] as number
-                useApp.getState().setInputs(values); setVoiceProposal(null); nav('/shock')
-              }}>Confirm & review scenario</button><button onClick={() => setVoiceProposal(null)}>Dismiss</button></div>}
               {status && <p className="thread-status" role="status"><span className="stage-status-dot" />{status}</p>}
               {notice && <p className="thread-notice" role="status">{notice}</p>}
               <div ref={endRef} />

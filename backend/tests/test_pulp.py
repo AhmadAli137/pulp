@@ -142,25 +142,34 @@ def test_native_voice_protocol_and_server_bound_tools(monkeypatch):
                 return
             self.sent=True
             yield NS(data=b'\x00\x00',server_content=NS(input_transcription=NS(text='Income falls to 55%'),output_transcription=None,interrupted=False,turn_complete=False),
-                tool_call=NS(function_calls=[NS(id='p',name='propose_scenario',args={'income_fraction':.55}),
-                    NS(id='s',name='calculate_shock',args={'account_id':20133,'income_fraction':.55,'bills_increase':.15,'one_off_cost':0,'horizon_months':6})]))
+                tool_call=NS(function_calls=[NS(id='p',name='conversation_turn',args={'message':'I want to save for a home', 'account_id':20133})]))
     class FakeClient:
         def __init__(self,**kwargs): self.aio=NS(live=NS(connect=self.connect),aclose=self.close)
         def connect(self,**kwargs): captured['config']=kwargs;return Session()
         async def close(self): pass
+    from app.services import director
+    async def shared_turn(account_id, message):
+        captured['account_id'] = account_id
+        captured['message'] = message
+        yield 'memory', {'proposal': {'id': 'p', 'changes': []}}
+        yield 'storyboard', {'beats': [{'visual': 'none', 'caption': 'What is your target?', 'params': {}}]}
+    monkeypatch.setattr(director, 'stage_stream', shared_turn)
     monkeypatch.setattr(voice,'GEMINI_API_KEY','test-key-not-a-secret')
     monkeypatch.setattr(genai,'Client',FakeClient)
     with client.websocket_connect('/api/agent/voice/20111') as ws:
         assert ws.receive_json()['type']=='ready'
         assert ws.receive_json()['type']=='audio'
         assert ws.receive_json()['type']=='transcript'
+        assert ws.receive_json()['type'] == 'status'
         proposal=ws.receive_json()
-        assert proposal['type']=='proposal' and proposal['proposal']['horizon_months'] is None
-        assert ws.receive_json()['name']=='propose_scenario'
-        shock=ws.receive_json()
-        assert shock['name']=='calculate_shock'
-        assert shock['result']['account_id']==20111
-        assert shock['result']['shocked']['runway_label']=='3.4'
+        assert proposal['type']=='context_proposal'
+        assert ws.receive_json()['type'] == 'state_changed'
+        assert ws.receive_json()['type'] == 'status'
+        result = ws.receive_json()
+        assert result['name'] == 'conversation_turn'
+        assert result['result']['reply'] == 'What is your target?'
+    assert captured['account_id'] == 20111
+    assert captured['message'] == 'I want to save for a home'
     assert cm.load_context(20111)['context_version']==1
 
 def test_invalid_gemini_json_falls_back_without_mutation(monkeypatch):

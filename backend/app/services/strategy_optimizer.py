@@ -81,6 +81,12 @@ def _weights(context: dict) -> dict:
 
 
 def compare_strategies(m: OfficialMetrics, context: dict, *, horizon: int = 24, n_paths: int = 400, seed: int = 42) -> dict:
+    if context.get("active_plan"):
+        if context["active_plan"]["request"]["context_version"] != context["context_version"]:
+            raise ValueError("Your context changed. Re-run the council to refresh the plan.")
+        from .planning_session import comparison
+        return comparison(context["active_plan"])
+
     I, S, B = m.typical_inflow, m.typical_spending, m.buffer
     surplus = I - S
     constraints = {c.get("value", {}).get("type"): c.get("value", {}) for c in context.get("constraints", []) if c.get("confirmed", True)}

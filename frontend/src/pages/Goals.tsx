@@ -8,7 +8,7 @@ import { Card, Chip, DataTable, Empty, ErrorBox, Spinner, Tile, Tip, fmt } from 
 const GOAL_TYPES = ['emergency_fund', 'move_out', 'home_purchase', 'entrepreneurship', 'education', 'vehicle', 'travel', 'wedding', 'debt_payoff', 'retirement', 'family', 'other']
 
 export default function Goals() {
-  const { accountId, profile, lastReplan, setLastReplan, refreshContext, accessible, context } = useApp()
+  const { accountId, profile, activePlan, lastReplan, setLastReplan, refreshContext, accessible, context } = useApp()
   const [cmp, setCmp] = useState<Comparison | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -23,7 +23,7 @@ export default function Goals() {
       setCmp(c); setHist({ current: d.current, previous: d.previous, diff: d.diff })
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }, [accountId])
-  useEffect(() => { void load() }, [load, lastReplan])
+  useEffect(() => { void load() }, [load, lastReplan, activePlan])
 
   if (!profile || !accountId) return <Empty>Select an account first.</Empty>
 
@@ -40,6 +40,7 @@ export default function Goals() {
       const r = await api.confirm(accountId, p.proposal.id, true)
       if (r.replan) setLastReplan(r.replan)
       await refreshContext()
+      await useApp.getState().refreshSession()
       await load()
     } catch (ex) { setErr((ex as Error).message) } finally { setBusy(false) }
   }

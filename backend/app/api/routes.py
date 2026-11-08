@@ -231,13 +231,19 @@ def get_branches(account_id: int, horizon: int = Query(24, ge=6, le=120), n_path
 @router.post("/strategies/compare")
 def post_compare(req: schemas.CompareRequest):
     m = _metrics_or_404(req.account_id)
-    return _clean(compare_strategies(m, cm.load_context(req.account_id), horizon=req.horizon_months, n_paths=req.n_paths))
+    try:
+        return _clean(compare_strategies(m, cm.load_context(req.account_id), horizon=req.horizon_months, n_paths=req.n_paths))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/roadmap/{account_id}")
 def get_roadmap(account_id: int):
     m = _metrics_or_404(account_id)
-    return _clean(build_roadmap(m, cm.load_context(account_id)))
+    try:
+        return _clean(build_roadmap(m, cm.load_context(account_id)))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/context/{account_id}")
@@ -292,16 +298,25 @@ def post_chat(req: schemas.ChatRequest):
     return _clean(chat(req.account_id, req.message, prefer_offline=req.prefer_offline))
 
 
+@router.get("/agent/session/{account_id}")
+def get_planning_session(account_id: int):
+    _metrics_or_404(account_id)
+    from ..services.planning_session import current
+    return _clean(current(account_id))
+
+
 @router.post("/agent/plan")
 def post_plan(req: schemas.PlanRequest):
-    """Stage 3 council: deterministic fan-out, then Strategist and Challenger (Google ADK, Gemini) in parallel,
+    """Stage 3 council: deterministic fan-out, then Strategist, code validation and Challenger (Google ADK, Gemini) in sequence,
     then deterministic validation and ranking. Works without AI (mode = offline)."""
     m = _metrics_or_404(req.account_id)
     one_off = req.one_off_cost
     if req.one_off_in_months_of_spending is not None:
         one_off = req.one_off_in_months_of_spending * m.typical_spending
-    return _clean(run_council(req.account_id, m, r=req.income_fraction, h=req.bills_increase, one_off=one_off,
-                              duration=req.shock_duration, horizon=req.horizon_months, n_paths=req.n_paths, use_ai=req.use_ai))
+    from ..services.planning_session import publish
+    plan = run_council(req.account_id, m, r=req.income_fraction, h=req.bills_increase, one_off=one_off,
+                       duration=req.shock_duration, horizon=req.horizon_months, n_paths=req.n_paths, use_ai=req.use_ai)
+    return _clean(publish(req.account_id, plan))
 
 
 @router.post("/agent/explain")

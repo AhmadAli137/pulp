@@ -5,10 +5,8 @@ import json
 import logging
 import anyio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from .decision import ScenarioProposal, profile
+from .decision import profile
 from ..config import GEMINI_API_KEY, GEMINI_LIVE_MODEL, GEMINI_LIVE_API_VERSION, GEMINI_LIVE_VOICE
-from ..schemas import ShockRequest
-from ..services.tangerine_metrics import full_shock_report
 
 router = APIRouter()
 
@@ -31,32 +29,25 @@ async def voice(ws: WebSocket, account_id: int):
         from google import genai
         from google.genai import types
         client=genai.Client(api_key=GEMINI_API_KEY,http_options={'api_version':GEMINI_LIVE_API_VERSION})
-        last_shock = None
-        declarations=[
-            dict(name='show_visual', description='Show a supporting visual alongside speech ONLY if explicitly requested or necessary to explain a calculated shock. Ordinary conversation needs no visual.', parameters={
-                'type': 'OBJECT', 'properties': {'kind': {'type': 'STRING', 'enum': ['picture', 'timeline']}}, 'required': ['kind']}),
-            dict(name='get_financial_profile',description='Read observed financial metrics for the selected account.',parameters={'type':'OBJECT','properties':{}}),
-            dict(name='calculate_shock',description='Compute authoritative financial outcomes for an explicitly stated hypothetical scenario.',parameters={
-                'type':'OBJECT','properties':{
-                    'income_fraction':{'type':'NUMBER'},'bills_increase':{'type':'NUMBER'},
-                    'one_off_cost':{'type':'NUMBER'},'horizon_months':{'type':'INTEGER'}},
-                'required':['income_fraction','bills_increase','one_off_cost','horizon_months']}),
-            dict(name='propose_scenario',description='Stage ONLY explicitly stated values for user review. This never applies or confirms changes.',parameters={
-                'type':'OBJECT','properties':{
-                    'income_fraction':{'type':'NUMBER'},'bills_increase':{'type':'NUMBER'},
-                    'one_off_cost':{'type':'NUMBER'},'horizon_months':{'type':'INTEGER'},
-                    'goal':{'type':'STRING'},'explanation':{'type':'STRING'}}})]
+        from ..services import context_manager as cm
+        from ..services.narrator import narrative_for
+        from ..services.director import stage_stream
+        ctx = cm.load_context(account_id)
+        insights = await asyncio.to_thread(narrative_for, account_id, False)
+        declarations = [dict(name='conversation_turn',
+            description='Process every user request through the shared intake, confirmation and planning workflow. Pass their complete words unchanged. This retrieves context, proposes changes, confirms explicit approval, calculates and reviews plans, and selects optional visuals.',
+            parameters={'type': 'OBJECT', 'properties': {'message': {'type': 'STRING'}}, 'required': ['message']})]
         config=types.LiveConnectConfig(response_modalities=['AUDIO'],input_audio_transcription={},output_audio_transcription={},
             speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=GEMINI_LIVE_VOICE))),
-            system_instruction=('You are PULP: Planning Under Life’s Pressures. Be concise, calm and practical. '
-                'Conversation is the primary experience. Usually answer in one or two short sentences. Ask at most one question only when needed. '
-                'Do not turn each reply into a presentation or prolong a completed answer. Use show_visual only if asked or a shock needs visual explanation; keep speaking alongside it. '
-                'Spend more time only when comparing scenarios or life decisions to mitigate a financial shock. Learn goals, deadlines, concerns and explicit financial assumptions. '
-                'All banking data belongs to an anonymized demonstration account, not a verified identity. '
-                'Use get_financial_profile and calculate_shock for financial numbers. Do not calculate or invent results. '
-                'Use propose_scenario to stage explicit values. The user must click Apply to confirm; spoken approval cannot change controls. '
-                'Missing amounts and durations require questions. Do not assume EI eligibility, salary, available spending cuts or employment. '
-                'Rates are fractions, .55 income retained and .15 bill increase. Never claim a proposal has been applied.'),
+            system_instruction=("You are Pulp, one calm financial companion. Speech and typed messages are the same conversation. "
+                "For EVERY substantive user turn, call conversation_turn with their exact complete words before answering. "
+                "That tool owns all memory, confirmation, financial calculations and council decisions. Never invent numbers, "
+                "claim a save, or confirm changes yourself. Read its reply naturally and briefly. Do not repeat a prior answer. "
+                "Use one or two sentences for ordinary conversation. Ask only the tool's necessary question. "
+                "Visuals arrive alongside you automatically; never narrate a slideshow. Speak longer only for a requested comparison. "
+                "If a tool fails, say so and invite a retry. The account is anonymized demonstration data. "
+                "Current context and recent conversation: " + json.dumps({'context': cm.summarize(ctx),
+                    'recent': ctx.get('conversation', [])[-12:], 'insights': insights.get('narrative', {})}, default=str)),
             tools=[types.Tool(function_declarations=declarations)])
         async with client.aio.live.connect(model=GEMINI_LIVE_MODEL, config=config) as session:
             await ws.send_json(dict(type='ready',model=GEMINI_LIVE_MODEL,voice=GEMINI_LIVE_VOICE))
@@ -72,7 +63,6 @@ async def voice(ws: WebSocket, account_id: int):
                     elif message.get('type')=='text':
                         await session.send_realtime_input(text=str(message.get('text',''))[:4000])
             async def receive_gemini():
-                nonlocal last_shock
                 while True:
                     async for response in session.receive():
                         if response.data:
@@ -90,32 +80,30 @@ async def voice(ws: WebSocket, account_id: int):
                             for call in response.tool_call.function_calls:
                                 try:
                                     args=dict(call.args or {})
-                                    if call.name=='get_financial_profile':
-                                        result=dict(account_id=account_id,typical_inflow=m.typical_inflow,typical_spending=m.typical_spending,
-                                            buffer=m.buffer,household_bills=m.household_bills,baseline_runway=m.baseline_runway_label)
-                                    elif call.name=='show_visual':
-                                        from ..services.director import picture_params, timeline_params
-                                        kind = args.get('kind')
-                                        if kind == 'picture':
-                                            params = picture_params(m)
-                                        elif kind == 'timeline' and last_shock:
-                                            params = timeline_params(m, last_shock, None)
-                                        else:
-                                            raise ValueError('Calculate an explicit shock first')
-                                        await ws.send_json(dict(type='visual', beat=dict(id='voice-visual', visual=kind, caption='', params=params, duration_s=0)))
-                                        result = {'status': 'shown', 'kind': kind}
-                                    elif call.name=='calculate_shock':
-                                        args.pop('account_id',None)
-                                        req=ShockRequest(account_id=account_id,**args)
-                                        last_shock = dict(r=req.income_fraction, h=req.bills_increase, one_off=req.one_off_cost, duration=req.horizon_months)
-                                        result=full_shock_report(m,r=req.income_fraction,h=req.bills_increase,one_off=req.one_off_cost,horizon_months=req.horizon_months)
-                                    elif call.name=='propose_scenario':
-                                        result=ScenarioProposal.model_validate(args).model_dump()
-                                        await ws.send_json(dict(type='proposal',proposal=result))
-                                        result={'status':'pending_user_confirmation','proposal':result}
-                                    else: result={'error':'Unknown tool'}
-                                except (ValueError,TypeError):
-                                    result={'error':'Invalid tool arguments. Ask the user to clarify.'}
+                                    if call.name == 'conversation_turn':
+                                        reply = []
+                                        await ws.send_json(dict(type='status', message='Thinking it through...'))
+                                        async for event, data in stage_stream(account_id, str(args.get('message', ''))[:2000]):
+                                            if event == 'storyboard':
+                                                reply.extend(b['caption'] for b in data.get('beats', []))
+                                                for beat in data.get('beats', []):
+                                                    if beat['visual'] != 'none':
+                                                        await ws.send_json(dict(type='visual', beat=beat))
+                                            elif event == 'memory' and data.get('proposal'):
+                                                await ws.send_json(dict(type='context_proposal', proposal=data['proposal']))
+                                            elif event in ('agent', 'handoff'):
+                                                await ws.send_json(dict(type='pipeline_event', event=event, data=data))
+                                            elif event == 'error':
+                                                reply.append(data.get('message', 'Planning is unavailable. Please try again.'))
+                                        await ws.send_json(dict(type='state_changed'))
+                                        await ws.send_json(dict(type='status', message=''))
+                                        result = {'reply': ' '.join(reply), 'instruction': 'Say this naturally. Do not add facts or questions.'}
+                                    else:
+                                        result = {'error': 'Unknown tool'}
+                                except Exception:
+                                    logging.getLogger('pulp.voice').exception('Shared conversation turn failed')
+                                    await ws.send_json(dict(type='status', message=''))
+                                    result={'error':'This turn could not be completed. Explain that and ask the user to retry; do not claim any changes were saved.'}
                                 await ws.send_json(dict(type='tool',name=call.name,result=result))
                                 results.append(types.FunctionResponse(id=call.id,name=call.name,response=result))
                             await session.send_tool_response(function_responses=results)

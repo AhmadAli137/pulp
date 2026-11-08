@@ -25,7 +25,7 @@ export default function Settings() {
           ['Accounts loaded', health ? health.accounts.toLocaleString() : '—'],
           ['Data folder', health?.data_dir ?? '—'],
           ['AI provider', health ? <Chip tone={health.ai_provider === 'offline' ? 'gray' : ''}>{health.ai_label}{health.ai_model ? ` · ${health.ai_model}` : ''}</Chip> : '—'],
-          ['Voice', 'Browser speech recognition and synthesis (no credentials needed)'],
+          ['Voice', 'Gemini Live ? one voice for conversation and planning'],
         ]} />
         <p className="tiny muted" style={{ marginTop: 10 }}>Put GEMINI_API_KEY or VULTR_INFERENCE_API_KEY in the repo's .env and restart the backend (AI_PROVIDER picks between them). Keys are never sent to the browser.</p>
       </Card>

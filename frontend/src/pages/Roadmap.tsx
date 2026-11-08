@@ -19,10 +19,10 @@ function Action({ a }: { a: RoadmapAction }) {
 }
 
 export default function Roadmap() {
-  const { accountId, profile, lastReplan } = useApp()
+  const { accountId, profile, activePlan, lastReplan } = useApp()
   const [rm, setRm] = useState<RoadmapT | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  useEffect(() => { if (accountId) api.roadmap(accountId).then(setRm).catch((e) => setErr(e.message)) }, [accountId, lastReplan])
+  useEffect(() => { if (accountId) api.roadmap(accountId).then(setRm).catch((e) => setErr(e.message)) }, [accountId, lastReplan, activePlan])
   if (!profile) return <Empty>Select an account first.</Empty>
   if (err) return <ErrorBox msg={err} />
   if (!rm) return <Empty><Spinner /></Empty>
@@ -33,7 +33,7 @@ export default function Roadmap() {
         <div className="grid cols-3">
           <div><div className="muted small">Goal</div><div className="strong">{rm.summary.goal.label}</div><div className="small muted">{fmt.money(rm.summary.goal.target_amount)} in {rm.summary.goal.target_months} months</div></div>
           <div><div className="muted small">Recommended strategy</div><div className="strong">{rm.summary.recommended}</div><div className="small muted">capacity {fmt.money(rm.summary.capacity_per_month)}/mo</div></div>
-          <div><div className="muted small">Layoff twist today</div><div className="small">{rm.summary.layoff_verdict}</div></div>
+          <div><div className="muted small">Current scenario</div><div className="small">{rm.summary.layoff_verdict}</div></div>
         </div>
         <p className="small muted" style={{ marginTop: 10 }}>{rm.summary.goal_plan_note} Nothing is executed automatically; every action is a suggestion for you to decide on.</p>
       </Card>

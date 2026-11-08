@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api, ApiError, type Profile, type ShockInputs, type ShockReport, type ContextSummary, type ReplanResult } from '../services/api'
+import { api, ApiError, type Profile, type ShockInputs, type ShockReport, type ContextSummary, type ReplanResult, type PlanResult } from '../services/api'
 
 export const PRESETS: Record<string, { label: string; hint: string; inputs: Partial<ShockInputs>; oneOffMonths?: number }> = {
   baseline: { label: 'Baseline', hint: 'No shock', inputs: { income_fraction: 1, bills_increase: 0, one_off_cost: 0, horizon_months: 6 } },
@@ -9,6 +9,9 @@ export const PRESETS: Record<string, { label: string; hint: string; inputs: Part
 }
 
 interface AppState {
+  activePlan: PlanResult | null
+  planStale: boolean
+  refreshSession: () => Promise<void>
   accountId: number | null
   profile: Profile | null
   loadingProfile: boolean
@@ -40,6 +43,17 @@ let accountRequest = 0
 let shockRequest = 0
 
 export const useApp = create<AppState>((set, get) => ({
+  activePlan: null,
+  planStale: false,
+  refreshSession: async () => {
+    const id = get().accountId
+    if (!id) return
+    const r = await api.session(id)
+    if (get().accountId !== id) return
+    const sh = r.plan?.request.shock
+    set({ activePlan: r.plan, planStale: r.stale, ...(sh ? { shockInputs: { income_fraction: sh.r, bills_increase: sh.h, one_off_cost: sh.one_off, horizon_months: sh.duration_months }, activePreset: null } : {}) })
+    await get().refreshContext()
+  },
   accountId: null,
   profile: null,
   loadingProfile: false,
@@ -58,12 +72,13 @@ export const useApp = create<AppState>((set, get) => ({
   loadAccount: async (id) => {
     const request = ++accountRequest
     ++shockRequest
-    set({ loadingProfile: true, profileError: null, accountId: null, profile: null, context: null, shock: null, lastReplan: null })
+    set({ activePlan: null, planStale: false, loadingProfile: true, profileError: null, accountId: null, profile: null, context: null, shock: null, lastReplan: null })
     try {
       const profile = await api.profile(id)
       if (request !== accountRequest) return
       set({ accountId: id, profile, loadingProfile: false })
       try { localStorage.setItem('pulp.account', String(id)) } catch { /* ignore */ }
+      await get().refreshSession()
       await get().runShock()
       await get().refreshContext()
     } catch (e) {

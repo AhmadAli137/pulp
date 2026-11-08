@@ -10,7 +10,7 @@ import { Card, Chip, Empty, Spinner, Tile, fmt } from '../components/ui'
 
 /* The judge's exact-input calculator: baseline tiles, twist controls, verdict, plans. */
 export default function ShockLab() {
-  const { profile, loadAccount, loadingProfile, context, lastReplan } = useApp()
+  const { profile, loadAccount, loadingProfile, context, lastReplan, activePlan } = useApp()
   const [samples, setSamples] = useState<SampleAccount[]>([])
   const [range, setRange] = useState<[number, number] | null>(null)
   useEffect(() => { api.samples().then((s) => { setSamples(s.accounts); setRange(s.id_range) }).catch(() => undefined) }, [])
@@ -58,7 +58,7 @@ export default function ShockLab() {
         <Tile label="Primary goal" value={goal?.label ?? 'Emergency fund (default)'} sub={goal?.target_months ? `${goal.target_months} months` : 'Set one on Home or My Goals'} />
         <Tile label="Financial trend" value={trend == null ? '—' : fmt.signed(trend)} sub="change in average balance over the buffer window" />
         <Tile label="Most relevant concern" value={concern?.label ?? 'Income interruption (default stress)'} sub={concern ? 'confirmed by you' : 'nothing confirmed yet'} />
-        <Tile gold label="Recommended next action" value={lastReplan ? lastReplan.snapshot.recommended_label : 'Run the layoff twist'} sub={<Link to="/roadmap">See roadmap</Link>} />
+        <Tile gold label="Recommended next action" value={activePlan?.recommended ?? (lastReplan ? lastReplan.snapshot.recommended_label : 'Explore a scenario')} sub={<Link to="/roadmap">See roadmap</Link>} />
       </div>
       <ProfileInsights compact />
       <ShockCards />

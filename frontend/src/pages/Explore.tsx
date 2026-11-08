@@ -11,8 +11,8 @@ const SCENARIOS = [
 ]
 
 export default function Explore() {
-  const { accountId, profile, accessible } = useApp()
-  const [type, setType] = useState('income_loss')
+  const { accountId, profile, accessible, activePlan } = useApp()
+  const [type, setType] = useState(activePlan ? 'custom' : 'income_loss')
   const [f, setF] = useState({ income_fraction: 0.55, bills_increase: 0, one_off_cost: 0, shock_start: 0, shock_duration: 6, positive_income_change: 0, positive_start: 0, horizon_months: 24, n_paths: 500 })
   const [s, setS] = useState({ freed_up_per_month: 0, goal_contribution_per_month: 0, goal_target: 0, emergency_floor: 0 })
   const [res, setRes] = useState<SimBundle | null>(null)
@@ -31,7 +31,16 @@ export default function Explore() {
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }, [accountId, type, f, s])
 
-  useEffect(() => { void run() }, [accountId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (activePlan) {
+      const sh = activePlan.request.shock
+      setType('custom')
+      setF((v) => ({ ...v, income_fraction: sh.r, bills_increase: sh.h, one_off_cost: sh.one_off, shock_duration: sh.duration_months, horizon_months: activePlan.request.horizon_months }))
+      const c = activePlan.ranked[0]
+      if (c) setS({ ...c.levers, goal_target: activePlan.request.goal.target_amount })
+    }
+  }, [activePlan])
+  useEffect(() => { void run() }, [accountId, type, f, s]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (accountId) api.branches(accountId, 24).then((b) => setBranches(b.branches)).catch(() => undefined) }, [accountId])
 
   if (!profile || !accountId) return <Empty>Select an account first.</Empty>
