@@ -27,7 +27,7 @@ from .council import run_council
 from .explainer import lever_scene, two_futures_scene
 from .features import flags_for, get_features
 from .life_actions import life_actions
-from .intake import (classify_reply, first_questions, get_pending_twist, is_cold, pending_proposals, pick_question, restate,
+from .intake import (classify_reply, get_pending_twist, is_cold, pending_proposals, pick_question, restate,
                      set_pending_twist, wants_skip)
 from .financial_profiles import get_metrics
 from .narrator import narrative_for
@@ -629,8 +629,8 @@ def _goal_follow_up(account_id: int, summary: dict, prefix: str = "") -> dict | 
 async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -> AsyncIterator[tuple[str, dict]]:
     """Yields ("agent", ev), ("handoff", ev), ("memory", ...), ("storyboard", {...}) for one stage turn.
 
-    Intake rules: a cold profile gets one or two questions before a twist runs; every turn ends with a question; what
-    PULP learned is said back and a spoken or typed yes confirms it.
+    Explicit twists run immediately, including for fresh profiles. Missing personal details are asked after
+    the calculation when relevant; new context still requires spoken, typed or button confirmation.
     """
     from starlette.concurrency import run_in_threadpool
 
@@ -693,25 +693,11 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
         yield "storyboard", {"opening": False, "source": "decision_profile", "beats": [_beat("decision", "none", caption, {}, 5)]}
         return
 
-    # 2. twist cards: deterministic, but a cold profile is asked first
+    # 2. Explicit scenario requests run immediately; personalize after showing the result.
     if msg.startswith("twist:"):
         key = msg.split(":", 1)[1].strip() or "random"
         if key == "cards":
             yield "storyboard", {"opening": False, "source": "deck", "beats": [_beat("cards", "cards", "Pick a card, or let the deck choose.", cards_params(), 6)]}
-            return
-        if is_cold(summary) and not wants_skip(msg):
-            card = deal_card(key)
-            set_pending_twist(account_id, card["key"] if key == "random" else key)
-            qs = first_questions(summary, insights_fast(), n=1)
-            beats = [_beat("card", "shuffle" if key == "random" else "cards",
-                           f"{card['title']}. {card['text']}", shuffle_params(card) if key == "random" else {"cards": [{"key": card["key"], "title": card["title"], "text": card["text"]}]}, 6)]
-            if qs:
-                cm.record_question(account_id, qs[0]["key"])
-                beats.append(_beat("ask", "none", f"Before I run this, I want to know you a little, so the plan fits your life and not just your numbers. {qs[0]['text']}",
-                                   {"question_key": qs[0]["key"], "pending_twist": card["key"]}, 8))
-            yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "director", "to": "stage", "title": "Holding the twist until I know you",
-                              "items": [f"pending twist: {card['title']}"] + ([f"asking: {qs[0]['text']}"] if qs else [])}
-            yield "storyboard", {"opening": False, "source": "intake", "beats": beats, "card": card, "needs_intake": True, "pending_twist": card["key"]}
             return
         async for et, ev in _twist_turn(account_id, m, key, t0, use_ai):
             yield et, ev

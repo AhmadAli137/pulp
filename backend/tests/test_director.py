@@ -14,6 +14,25 @@ def _m():
     return compute_metrics(_synthetic_monthly(), None, 1)
 
 
+def test_explicit_twist_runs_for_fresh_customer_without_intake(monkeypatch):
+    import asyncio
+    from app.services import context_manager as cm
+    assert not cm.load_context(1)["goals"]
+    monkeypatch.setattr(D, "get_metrics", lambda _: _m())
+    called = []
+    async def run(account_id, metrics, key, started, use_ai):
+        called.append((account_id, key, use_ai))
+        yield "storyboard", {"source": "deck+council", "beats": [{"visual": "timeline", "caption": "Calculated shock", "params": {}}]}
+    monkeypatch.setattr(D, "_twist_turn", run)
+    async def collect():
+        return [(kind, data) async for kind, data in D.stage_stream(1, "twist:combined", use_ai=False)]
+    events = asyncio.run(collect())
+    assert called == [(1, "combined", False)]
+    assert any(data.get("source") == "deck+council" for _, data in events)
+    assert not any(data.get("needs_intake") for _, data in events)
+    assert not cm.summarize(cm.load_context(1))["asked_questions"]
+
+
 def test_deck_is_realistic_and_deterministic_by_key():
     assert len(D.SHOCK_DECK) >= 10
     assert {c["key"] for c in D.SHOCK_DECK} >= {"layoff", "furnace", "combined"}

@@ -5,7 +5,7 @@ import { useApp } from '../stores/useApp'
 import ShockPanel from '../components/ShockPanel'
 import CouncilPanel from '../components/CouncilPanel'
 import ProfileInsights from '../components/ProfileInsights'
-import ShockCards from '../components/ShockCards'
+import ResilienceEntry from '../components/ResilienceEntry'
 import { Card, Chip, Empty, Spinner, Tile, fmt } from '../components/ui'
 
 /* The judge's exact-input calculator: baseline tiles, twist controls, verdict, plans. */
@@ -38,7 +38,8 @@ export default function ShockLab() {
 
   return (
     <div className="stack">
-      <div className="row between">
+      <nav className="resilience-steps" aria-label="Resilience journey steps"><a href="#customer-baseline">1. Know the customer</a><a href="#shock-controls">2. Apply a shock</a><a href="#resilience-plans">3. Prepare and respond</a></nav>
+      <div id="customer-baseline" className="row between">
         <div className="row">
           <h2>Account {profile.account_id}</h2>
           <Chip tone="gray">{profile.months_available} months · {profile.first_month} to {profile.last_month}</Chip>
@@ -54,6 +55,9 @@ export default function ShockLab() {
         <Tile label="Cash buffer" value={fmt.money(profile.buffer)} sub={`B · last ${profile.buffer_months_used} months · P${Math.round(profile.population_percentiles.buffer)}`} tip="Mean of avg_daily_balance over the last six monthly rows, sorted by month, quiet months included." />
         <Tile accent label="Baseline runway" value={profile.baseline_runway_label === 'no shortfall (120+)' ? 'No shortfall' : `${profile.baseline_runway_label} mo`} sub={profile.baseline_gap <= 0 ? `surplus ${fmt.money(profile.typical_surplus)}/mo` : `gap ${fmt.money(profile.baseline_gap)}/mo`} tip="With no shock: if spending already exceeds inflow, buffer ÷ gap; otherwise there is no shortfall (120+)." />
       </div>
+      <div id="shock-controls"><ShockPanel compact /></div>
+      <details className="financial-section"><summary>Explore personalized strategies and trade-offs</summary><p>The preparation and backup calculations above use this customer's recorded numbers. These additional options require checking what can realistically change.</p><CouncilPanel /></details>
+      <details className="financial-section"><summary>Customer context and supporting evidence</summary>
       <div className="grid cols-4">
         <Tile label="Primary goal" value={goal?.label ?? 'Emergency fund (default)'} sub={goal?.target_months ? `${goal.target_months} months` : 'Set one on Home or My Goals'} />
         <Tile label="Financial trend" value={trend == null ? '—' : fmt.signed(trend)} sub="change in average balance over the buffer window" />
@@ -61,9 +65,8 @@ export default function ShockLab() {
         <Tile gold label="Recommended next action" value={activePlan?.recommended ?? (lastReplan ? lastReplan.snapshot.recommended_label : 'Explore a scenario')} sub={<Link to="/roadmap">See roadmap</Link>} />
       </div>
       <ProfileInsights compact />
-      <ShockCards />
-      <div id="shock-controls"><ShockPanel compact /></div>
-      <CouncilPanel />
+      </details>
+      <ResilienceEntry researchOnly />
     </div>
   )
 }

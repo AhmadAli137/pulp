@@ -7,7 +7,8 @@ export default function ShockPanel({ compact = false }: { compact?: boolean }) {
   const { profile, shockInputs, setInputs, applyPreset, runShock, shock, shockLoading, shockError, activePreset, accessible } = useApp()
   const [showMath, setShowMath] = useState(false)
   if (!profile) return null
-  const T = shockInputs.horizon_months
+  const T = shock?.applied_inputs.horizon_months ?? shockInputs.horizon_months
+  const changed = !!shock && (Object.keys(shockInputs) as (keyof typeof shockInputs)[]).some(k => shockInputs[k] !== shock.applied_inputs[k])
 
   const num = (k: keyof typeof shockInputs, scale = 1) => ({
     value: String(Math.round(shockInputs[k] * scale * 1000) / 1000),
@@ -52,7 +53,8 @@ export default function ShockPanel({ compact = false }: { compact?: boolean }) {
         <ErrorBox msg={shockError} />
       </Card>
 
-      {shock && v && (
+      {changed && <p className="callout" role="status">Inputs changed. Recalculate to update the verdict and both plans.</p>}
+      {shock && v && !changed && (
         <>
           <div className={`verdict ${tone}`} role="status" aria-live="polite">
             <div className="mark" aria-hidden>{tone === 'ok' ? '✓' : tone === 'bad' ? '!' : '='}</div>
@@ -102,7 +104,7 @@ export default function ShockPanel({ compact = false }: { compact?: boolean }) {
             </Card>
           )}
 
-          <div className="grid cols-2">
+          <div id="resilience-plans" className="grid cols-2">
             <Card title={<>Goal plan: before the shock <Tip text="Cash needed = C + T × max(0, monthly gap). Compared with the current buffer B. Capacity to save is the typical surplus I − S, an assumption." /></>}>
               <KV rows={[
                 [`Cash this scenario needs over ${T} months`, fmt.money(shock.goal_plan.cash_needed)],

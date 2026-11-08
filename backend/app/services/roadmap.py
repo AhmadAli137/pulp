@@ -34,7 +34,7 @@ def build_roadmap(m: OfficialMetrics, context: dict, comparison: dict | None = N
                "Turns the default emergency-fund goal into your own goal; the strategy comparison re-weights accordingly.",
                goal["label"], "Five minutes of input.", goal["assumption"], "Any time your goal or deadline changes."),
         action("Check which recurring bills are fixed", m.typical_fixed_costs,
-               f"Fixed costs are ${m.typical_fixed_costs:,.0f} of ${S:,.0f} typical monthly spending; the rest is what could flex in a shock.",
+               f"Fixed costs are ${m.typical_fixed_costs:,.0f} of ${S:,.0f} typical monthly spending; the remaining outflows may also include essentials or transfers, so they are not assumed available to cut.",
                "Resilience", "None.", "Fixed = household bills + insurance + loan payments (median of monthly totals).",
                "When a bill changes by more than 10%."),
     ]

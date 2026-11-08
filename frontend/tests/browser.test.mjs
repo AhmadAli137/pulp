@@ -302,3 +302,30 @@ test('scenario walkthrough plays in one inline frame without delaying the questi
   await sequence.getByRole('button', { name: 'Next scene' }).click()
   await sequence.getByText('Scene 2 of 2', { exact: true }).waitFor()
 })
+
+
+test('resilience journey exposes the three challenge twists and both plans without intake', { timeout: 45000 }, async t => {
+  const p = await pageFor(t, 20133)
+  await p.goto(base)
+  await p.getByRole('link', { name: 'Test a customer and shock', exact: true }).click()
+  await p.getByRole('navigation', { name: 'Resilience journey steps' }).waitFor()
+  await p.getByRole('heading', { name: 'Account 20133', exact: true }).waitFor()
+  for (const preset of ['Layoff, EI at 55%', 'Furnace repair', 'Layoff + bills up 15%']) {
+    const response = p.waitForResponse(r => r.url().includes('/api/shocks/calculate') && r.request().method() === 'POST')
+    await p.getByRole('group', { name: 'Presets' }).getByRole('button', { name: preset, exact: false }).click()
+    assert.equal((await response).status(), 200)
+    await p.getByRole('heading', { name: 'Goal plan: before the shock', exact: false }).waitFor()
+    await p.getByRole('heading', { name: 'Backup plan: if it happens', exact: false }).waitFor()
+    assert.equal(await p.getByText(/Before I run this/).count(), 0)
+  }
+  await p.getByLabel('Duration', { exact: false }).fill('8')
+  await p.getByText('Inputs changed. Recalculate to update the verdict and both plans.', { exact: true }).waitFor()
+  assert.equal(await p.locator('#resilience-plans').count(), 0)
+  await p.getByRole('button', { name: 'Recalculate', exact: true }).click()
+  await p.getByText('Free up per month to last 8 months', { exact: true }).waitFor()
+  await p.getByLabel('Demo account', { exact: true }).fill('20111')
+  await p.getByRole('button', { name: 'Load', exact: true }).click()
+  await p.getByRole('heading', { name: 'Account 20111', exact: true }).waitFor()
+  await p.getByRole('heading', { name: 'Backup plan: if it happens', exact: false }).waitFor()
+  await p.screenshot({ path: '../.runtime/resilience-journey.png', fullPage: true })
+})

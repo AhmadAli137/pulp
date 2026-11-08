@@ -60,3 +60,10 @@ The conversation profile tool includes reported balances and goal progress. Timi
 ## Selective animated walkthroughs
 
 Scenario and comparison responses with consecutive visual beats play in one inline `AnimatedWalkthrough`, with previous/next, pause, replay and a readable transcript. Ordinary acknowledgements and intake questions remain conversational. Questions following a sequence are available immediately; playback never blocks message entry. Random twist draws retain their shuffle reveal before impact, alternatives and actions. Typed walkthroughs advance automatically; reduced-motion and live-voice walkthroughs use manual progression initially. Playback has no speech synthesis: Gemini Live remains the only conversational voice.
+
+
+## Resilience is the primary journey
+
+The planning room foregrounds the original customer ? shock ? preparation and backup plan journey, with a direct `/shock` entry and expandable research finding. Conversation remains the default home experience. The shock page places baseline numbers, exact controls, verdict and both plans before optional personalized strategies and customer research. It omits the shared-plan banner above the calculation to avoid presenting an unrelated earlier plan as the selected shock result.
+
+Explicit twist requests bypass intake for fresh accounts. Follow-up questions personalize conditional options after results are available. Changed shock inputs hide the preceding verdict and plans until recalculation, preventing old results from appearing under a new duration. Expanded features remain available; this refocus does not integrate reported net worth into the historical simulation or establish a timed human judging outcome.

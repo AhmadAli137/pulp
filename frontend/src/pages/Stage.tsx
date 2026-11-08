@@ -12,6 +12,7 @@ import { startVoice, type VoiceSession } from '../services/voice'
 import { API_BASE, api, type Beat, type Persona, type Proposal, type SampleAccount, type StageAgentEvent, type StageHandoffEvent, type StageMemoryEvent, type Storyboard } from '../services/api'
 import { useApp } from '../stores/useApp'
 import CurrentPlan from '../components/CurrentPlan'
+import ResilienceEntry from '../components/ResilienceEntry'
 import { WORKSPACE, WorkspaceNav } from '../components/workspace'
 import '../stage.css'
 
@@ -328,6 +329,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
       {profileError && <div className="agent-alert" role="alert">{profileError}</div>}
 
       <WorkspaceNav />
+      <ResilienceEntry />
       <div className="conversation-context"><CurrentPlan /></div>
       <div className="stage-body">
         <main className="thread-main">
@@ -340,8 +342,8 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
             <div className="thread" aria-live="polite">
               {thread.length <= 2 && <section className="conversation-welcome">
                 <span className="editorial-label">Personal perspective / Practical possibilities</span>
-                <h1>Your life, in focus.<br /><em>Your next move, considered.</em></h1>
-                <p>A place for the everyday choices and the life-changing ones. Start with a conversation; see the evidence when you need it.</p>
+                <h1>Prepare for the unexpected.<br /><em>Protect what matters.</em></h1>
+                <p>Talk through a setback or a goal. Pulp connects your records to a preparation plan, a backup plan, and the choices only you can make.</p>
                 <div className="welcome-art" aria-hidden="true"><i /><i /><i /></div>
               </section>}
               {thread.map((m) => {

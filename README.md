@@ -8,6 +8,12 @@ Pulp is a conversation-first financial planning prototype. It connects anonymize
 
 Voice and typed conversation share one workflow and one saved planning context. Visuals support a decision when useful or requested; they are not required for every answer. The rest of the workspace makes the evidence, assumptions and next steps available without turning every task into a chat.
 
+## The core journey
+
+Start at the planning room or open `/shock` directly: select any supplied customer, review their baseline, apply an adjustable shock, and inspect the survival verdict plus preparation and backup plans. Explicit twist requests run immediately, even for a fresh profile. Personalization follows the calculation. The conversation keeps its optional animated walkthroughs and single native voice.
+
+The research finding is available from the opening journey, with its matched-pair denominator and simulated-outcome caveat. Financial overview, goals and briefings remain supporting destinations. Reported balances have not been merged into the sponsor's historical runway definition.
+
 ## What is available
 
 | Destination | Route | Purpose |
@@ -81,7 +87,7 @@ npm --prefix frontend run test:e2e
 python docs/agents/validate_examples.py
 ```
 
-Browser tests require installed Chrome (or the configured Playwright channel), a built frontend and a free port 8002. They use an isolated API, temporary context and disabled live AI credentials. The last code verification on November 8, 2026 passed **137 backend tests, 15 browser tests and the voice client regression test**. Counts are a dated snapshot, not a fixed acceptance target. CI runs a smaller named backend subset, voice regression and the frontend build; it does not run the full local browser suite. [Testing and verification](docs/testing.md).
+Browser tests require installed Chrome (or the configured Playwright channel), a built frontend and a free port 8002. They use an isolated API, temporary context and disabled live AI credentials. The last code verification on November 8, 2026 passed **138 backend tests, 16 browser tests and the voice client regression test**. Counts are a dated snapshot, not a fixed acceptance target. CI runs a smaller named backend subset, voice regression and the frontend build; it does not run the full local browser suite. [Testing and verification](docs/testing.md).
 
 ## Data and research
 

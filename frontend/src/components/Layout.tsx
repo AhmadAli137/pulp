@@ -66,8 +66,7 @@ export default function Layout() {
           </form>
         </div>
         {profileError && <div className="err" role="alert" style={{ marginBottom: 16 }}>{profileError} Choose a demo account in the planning room to continue.</div>}
-        <PageGuide path={loc.pathname} />
-        <CurrentPlan />
+        {loc.pathname !== '/shock' && <><PageGuide path={loc.pathname} /><CurrentPlan /></>}
         <Outlet />
       </main>
     </div>
