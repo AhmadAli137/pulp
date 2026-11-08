@@ -1,12 +1,15 @@
 import type { ShockReport } from '../services/api'
 import { Card, KV, fmt } from './ui'
+import ExplainButton from './ExplainButton'
 import './scenario.css'
 
 export default function ScenarioPlans({ report, responseFirst }: { report: ShockReport; responseFirst: boolean }) {
   const { goal_plan: goal, backup_plan: backup, verdict } = report
   const months = verdict.horizon_months
+  const a = report.applied_inputs
+  const sp = { r: a.income_fraction, h: a.bills_increase, o: a.one_off_cost, d: a.horizon_months }
   const prepare = (
-    <Card title="Prepare now">
+    <Card title="Prepare now" right={<ExplainButton topic="prepare_now" label="Prepare now" shock={sp} />}>
       <p className="scenario-intro">Build an emergency fund for {months} {months === 1 ? 'month' : 'months'} of this shock.</p>
       <KV rows={[
         ['Cash target', fmt.money(goal.cash_needed, 2)],
@@ -25,7 +28,7 @@ export default function ScenarioPlans({ report, responseFirst }: { report: Shock
     </Card>
   )
   const respond = (
-    <Card title="If it happens">
+    <Card title="If it happens" right={<ExplainButton topic="if_it_happens" label="If it happens" shock={sp} />}>
       <p className="scenario-intro">Check what you need today, then plan for the months ahead.</p>
       <KV rows={[
         ['Extra cash needed today', <strong className="scenario-amount">{fmt.money(backup.immediate_need, 2)}</strong>],

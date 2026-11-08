@@ -6,6 +6,7 @@ import { useResearch } from '../components/insights/JuiceCups'
 import ProfileInsights from '../components/ProfileInsights'
 import ResearchEvidence, { PairFinding } from '../components/ResearchEvidence'
 import { useApp } from '../stores/useApp'
+import { Detail, ShowFullDetail } from '../components/Detail'
 import '../components/clarity.css'
 
 export default function Insights() {
@@ -19,8 +20,8 @@ export default function Insights() {
       <p className="page-lead">What the records say about this account, how it compares with people of the same age, household and district, and what holds across all 4,500 accounts.</p>
       {accountId && <DiscoveryHighlight accountId={accountId} line />}
       {accountId ? <ProfileInsights /> : <DemoAccountPicker />}
-      {accountId && <DemographicsSection accountId={accountId} />}
       <ResearchEvidence />
+      <Detail>{accountId && <DemographicsSection accountId={accountId} />}</Detail>
       <section className="card stack" aria-labelledby="research-fact">
         <span className="editorial-label">Simulated · Research finding</span>
         <h2 id="research-fact">More cash can still run out sooner</h2>
@@ -33,6 +34,7 @@ export default function Insights() {
       {accountId && (
         <p className="link-row"><Link to="/shock">Try a shock on this account</Link><Link to="/plan">See what to do in My Plan</Link><Link to="/profile">See who PULP thinks you are</Link></p>
       )}
+      <ShowFullDetail what="Insights" />
     </div>
   )
 }

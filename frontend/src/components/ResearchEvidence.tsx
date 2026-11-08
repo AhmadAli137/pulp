@@ -1,6 +1,7 @@
 /* The biggest finding, open and on screen: who lasts six months on 55% income, split by cash buffer versus by
    spending-to-income ratio, then the same engine checked against loans that actually went bad. Each finding has a
    simple view (juice cups) and a detailed view (chart and table) drawn from the same data object. */
+import ExplainButton from './ExplainButton'
 import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { PairChart, QuartileChart } from '../charts'
@@ -43,7 +44,7 @@ export default function ResearchEvidence() {
     <>
       {(qb && qs) || (v && bs) ? <ProvenanceLegend /> : null}
       {qb && qs && (
-        <Card title="What decides whether you last six months" className="research-evidence">
+        <Card title="What decides whether you last six months" className="research-evidence" right={<ExplainButton topic="quartiles" label="spending versus savings" />}>
           <p>All {research?.accounts_eligible_positive_inflow?.toLocaleString() ?? '4,486'} accounts, the same layoff at 55% of usual inflow. Split by how much cash they hold, survival barely moves. Split by how much of income goes back out, it falls from almost everyone to one in four.</p>
           <Finding title="Six-month survival by quartile" source={quartileSource}
             simple={<>
@@ -60,7 +61,7 @@ export default function ResearchEvidence() {
         </Card>
       )}
       {v && bs && bs.fails_layoff_bad_rate_pct != null && bs.survives_layoff_bad_rate_pct != null && (
-        <Card title="Checked against what really happened" className="research-evidence">
+        <Card title="Checked against what really happened" className="research-evidence" right={<ExplainButton topic="loan_check" label="the loan check" />}>
           <p>Not a simulation: among the {v.loans} accounts that took a loan, those our engine says would not last a six-month layoff later had the loan go bad <strong>{bs.fails_layoff_bad_rate_pct.toFixed(1)}%</strong> of the time, versus <strong>{bs.survives_layoff_bad_rate_pct.toFixed(1)}%</strong> for those it says would.</p>
           <Finding title="Loans that went bad" source={loanSource}
             simple={<>

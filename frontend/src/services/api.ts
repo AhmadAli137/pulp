@@ -400,6 +400,18 @@ export interface Discovery {
   rarity: string; share: number | null; severity: 'risk' | 'watch' | 'info'; action: string; score: number; link: string
 }
 export interface DiscoveryResult { account_id: number; discovery: Discovery | null; runners_up: Discovery[]; method: string }
+/** The bottom line for one account: time, money, perspective and control. Every item states its basis. */
+export interface BenefitItem { label: string; text?: string; amount?: number; kind?: string; basis: string }
+export interface Benefits {
+  account_id: number; headline: string
+  time: { hours_saved: number; pulp_seconds: number; basis: string; items: string[] }
+  money: { per_year: number; items: (BenefitItem & { amount: number; kind: 'found in your records' })[]
+    shock: { label: string; shortfall_without: number; shortfall_with_plan: number; avoided: number; plan: string | null; kind: 'if a layoff hits'; basis: string } }
+  perspective: { count: number; headline: string; items: (BenefitItem & { text: string })[] }
+  control: { runway_now_months: number; runway_with_plan_months: number; runway_gain_months: number; plans_tried: number; choices: number
+    goals_with_dates: number; items: (BenefitItem & { text: string })[] }
+  elapsed_ms: number
+}
 /** Shock Dealer: who reveals a twist card (a character id from a fixed cast) and, for the open slot, which scenario.
  *  IDs only; the card's amounts come from the deck and every result from the engine. source 'local' = no model ran. */
 export interface DealCharacter { id: string; name: string; role: string }
@@ -478,6 +490,7 @@ export const api = {
   discovery: (accountId: number) => get<DiscoveryResult>(`/api/customers/${accountId}/discovery`),
   goalIdeas: (accountId: number, lens: GoalLens = 'balanced', useAi = false) => get<GoalIdeasResult>(`/api/profile/${accountId}/goal-ideas?lens=${lens}&use_ai=${useAi}`),
   addGoalIdea: (accountId: number, ideaId: string, lens: GoalLens = 'balanced') => post<ProfileDoc>(`/api/profile/${accountId}/goals`, { idea_id: ideaId, lens }),
+  benefits: (accountId: number) => get<Benefits>(`/api/customers/${accountId}/benefits`),
   demographics: (accountId: number) => get<Demographics>(`/api/insights/demographics/${accountId}`),
   lifePlans: (body: { account_id: number; income_fraction?: number; bills_increase?: number; one_off_cost?: number; shock_duration?: number; use_ai?: boolean; mode?: 'shock' | 'long_term'; shock_starts_in?: number; horizon_months?: number; trigger?: string }) => post<LifePlanResult>('/api/agent/life-plans', body),
   agentTrace: (id: number) => get<AgentTrace>(`/api/agents/trace/${id}`),

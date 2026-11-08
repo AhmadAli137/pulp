@@ -1,0 +1,65 @@
+/* Calmer pages: one typeface, three sizes, fewer boxes. Loaded last from Layout, so it applies everywhere. */
+:root{--sans:"DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--t-page:clamp(30px,3.4vw,40px);--t-section:20px;--t-body:15.5px;--t-meta:13px}
+
+/* 1. one typeface family: the sans everywhere (code blocks keep their monospace) */
+.bank-workspace :is(h1,h2,h3,h4,h5,h6,p,li,dt,dd,th,td,label,summary,strong,b,em,q,cite,blockquote,figcaption,caption,span,a,button,input,select,textarea,small):not(code):not(pre):not(kbd){font-family:var(--sans)!important}
+.bank-workspace :is(.pf-avatar,.discovery,.benefits,.plain-list){font-family:var(--sans)!important}
+.bank-workspace :is(pre,code,kbd),.bank-workspace :is(pre,code) *{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important}
+/* three sizes: page title, section title, body; plus one small meta size */
+.bank-workspace .bank-page-heading h1{font-size:var(--t-page);font-weight:700;letter-spacing:-.02em}
+.bank-workspace .card h2,.bank-workspace section>h2,.bank-workspace .card-head h2{font-size:var(--t-section)!important;font-weight:650!important;letter-spacing:-.01em!important;line-height:1.3}
+.bank-workspace .card h3,.bank-workspace section h3{font-size:16px!important;font-weight:650!important;letter-spacing:0!important}
+.bank-workspace small,.bank-workspace .small{font-size:var(--t-meta)}
+.bank-workspace .editorial-label{font-size:var(--t-meta)!important;letter-spacing:0!important;text-transform:none!important;font-weight:600}
+.bank-workspace q,.bank-workspace .pf-quote{font-style:normal!important}
+
+/* 2. fewer boxes: no cards inside cards, no decorative top borders */
+.bank-workspace .card .card{border:0!important;box-shadow:none!important;padding:0!important;background:none!important}
+.bank-workspace .gi-item,.bank-workspace .pf-said{border-top:0!important;border-left:0!important}
+
+/* item symbols */
+.item-icon{display:inline-grid;place-items:center;flex:none;border-radius:50%}
+.item-icon.tone-green{background:#e6f0ea;color:#1c4639}
+.item-icon.tone-orange{background:#fbeadf;color:#9c4f30}
+.item-icon.tone-red{background:#f8e1dc;color:#a8402a}
+.item-icon.tone-blue{background:#e4edf5;color:#2f5f8a}
+.item-icon.tone-neutral{background:#eef1ec;color:#54645a}
+
+/* a plain list: icon, one line, one short line, details on tap */
+.plain-list{list-style:none;margin:0;padding:0;display:grid}
+.plain-list>li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:start;padding:12px 0;border-top:1px solid #eceee7}
+.plain-list>li:first-child{border-top:0}
+.plain-list .pl-main{min-width:0;display:grid;gap:2px}
+.plain-list .pl-title{font-weight:600;line-height:1.35;color:#1d2f27}
+.plain-list .pl-line{color:#4d5a53;font-size:14px;line-height:1.45}
+.plain-list .pl-num{font-weight:650;color:#1c4639;white-space:nowrap;text-align:right}
+.plain-list details{grid-column:2/-1}
+.plain-list details summary{cursor:pointer;color:#54645a;font-size:var(--t-meta);list-style:none;display:inline-flex;gap:4px;align-items:center}
+.plain-list details summary::-webkit-details-marker{display:none}
+.plain-list details summary::after{content:'›';transform:rotate(90deg);display:inline-block}
+.plain-list details[open] summary::after{transform:rotate(-90deg)}
+.plain-list details p{margin:6px 0 0;font-size:var(--t-meta);color:#54645a;line-height:1.5}
+.pl-more{margin-top:6px;background:none;border:0;padding:4px 0;color:#1c4639;font:600 14px var(--sans);text-decoration:underline;cursor:pointer}
+
+/* Explain this */
+.explain-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid #d9e0d5;background:#fff;color:#1c4639;border-radius:999px;padding:4px 11px 4px 7px;font:600 13px var(--sans);cursor:pointer;white-space:nowrap}
+.explain-btn:hover,.explain-btn:focus-visible{border-color:#1c4639;background:#f3f7f4}
+.section-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px}
+.section-head>h2,.section-head>h3{margin:0}
+.explain-row{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 10px}
+
+/* Simple | Full detail switch and the end-of-page reveal */
+.view-switch{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:#eef1e8;border:1px solid #e3e8dc}
+.view-switch button{border:0;background:none;border-radius:999px;padding:5px 12px;font:600 13px var(--sans);color:#4f5a50;cursor:pointer;white-space:nowrap}
+.view-switch button[aria-pressed="true"]{background:#fff;color:#183B2D;box-shadow:0 1px 3px #0000001a}
+.show-full{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:8px 0 24px;color:#54645a;font-size:14px}
+.show-full-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid #1c4639;background:#fff;color:#1c4639;border-radius:10px;padding:9px 16px;font:600 14.5px var(--sans);cursor:pointer}
+.show-full-btn:hover,.show-full-btn:focus-visible{background:#1c4639;color:#fff}
+.bank-page-title-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}
+.bank-page-title-row h1{margin:0}
+
+/* Overview in Simple view: the typical month takes the full width when the side cards are tucked away */
+.bank-overview-grid:not(:has(.bank-balance-cards)){grid-template-columns:1fr}
+/* kickers in plain case, small */
+.bank-workspace .discovery-label{text-transform:none!important;letter-spacing:0!important;font-size:13px!important}
+.bank-workspace .discovery-chip{display:none}

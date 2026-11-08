@@ -9,6 +9,7 @@ import ScenarioPlans from '../components/ScenarioPlans'
 import '../components/twist-deck.css'
 import '../components/clarity.css'
 import { Card, ErrorBox, fmt } from '../components/ui'
+import { Detail, ShowFullDetail } from '../components/Detail'
 import { matchesShockInputs } from '../services/api'
 import { PRESETS, useApp } from '../stores/useApp'
 
@@ -59,11 +60,12 @@ export default function Plan() {
         </Card>
       ))}
 
-      <details className="disclose">
+      <Detail><details className="disclose">
         <summary>How your plans changed over time</summary>
         <p className="scenario-intro">Every time the planners run, after a twist card, a shock you mention to Pulp or a change to your goals, the four finalists are kept here.</p>
         <PlanHistory history={history.history} preview={!history.live && history.history != null} />
-      </details>
+      </details></Detail>
+      <ShowFullDetail what="My Plan" />
     </div>
   )
 }

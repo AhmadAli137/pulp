@@ -10,6 +10,8 @@ import ShockCashChart from './ShockCashChart'
 import ThreadFigure from './stage/ThreadFigure'
 import TwistDeck from './TwistDeck'
 import { Card, DataTable, ErrorBox, fmt } from './ui'
+import { Detail } from './Detail'
+import ExplainButton from './ExplainButton'
 
 export default function ShockPanel() {
   const {
@@ -62,7 +64,7 @@ export default function ShockPanel() {
           <button className="btn primary" type="submit" disabled={shockLoading}>Run shock</button>
         </form>
         <label className="scenario-happened"><input type="checkbox" checked={shockHasHappened} onChange={(event) => setShockHasHappened(event.target.checked)} /> This shock has already happened</label>
-        <p className="small muted">The layoff preset assumes 55% of typical inflow for the full period. Change this to reflect what you can verify. A bills change applies to recorded household bills only.</p>
+        <Detail><p className="small muted">The layoff preset assumes 55% of typical inflow for the full period. Change this to reflect what you can verify. A bills change applies to recorded household bills only.</p></Detail>
         {shockLoading && <p className="scenario-working" role="status"><span aria-hidden="true" /> Calculating your shock…</p>}
         {!report && !shockLoading && !shockError && <p className="scenario-working" role="status">Run the shock to update your results and both plans.</p>}
         <ErrorBox msg={shockError} />
@@ -74,6 +76,8 @@ export default function ShockPanel() {
 
 function ShockResults({ report, responseFirst, showTable }: { report: ShockReport; responseFirst: boolean; showTable: boolean }) {
   const { baseline, shocked, verdict, upfront_cost: upfront } = report
+  const ai = report.applied_inputs
+  const sp = { r: ai.income_fraction, h: ai.bills_increase, o: ai.one_off_cost, d: ai.horizon_months }
   const months = verdict.horizon_months
   const tone = verdict.exact_at_horizon ? 'exact' : verdict.survives ? 'ok' : 'bad'
   const runway = shocked.runway_status === 'no_shortfall' ? 'No monthly shortfall' : `${shocked.runway_label} months${shocked.runway_status === 'capped' ? ' (display limit)' : ''}`
@@ -87,7 +91,7 @@ function ShockResults({ report, responseFirst, showTable }: { report: ShockRepor
       <section className={`verdict scenario-verdict ${tone}`} aria-label="Shock result" role="status">
         <VerdictMark ok={verdict.survives} size={48} />
         <div>
-          <h2>{heading}</h2>
+          <div className="section-head"><h2>{heading}</h2><ExplainButton topic="shock" label="what this shock does" shock={sp} /></div>
           <p>
             In this scenario, <strong className="scenario-amount">{fmt.money(shocked.income_after, 2)}</strong> comes in each month
             and <strong className="scenario-amount">{fmt.money(shocked.spending_after, 2)}</strong> goes out.
@@ -112,12 +116,12 @@ function ShockResults({ report, responseFirst, showTable }: { report: ShockRepor
       {responseFirst && <ScenarioPlans report={report} responseFirst />}
       <ShockCashChart report={report} showTable={showTable} />
       {!responseFirst && <ScenarioPlans report={report} responseFirst={false} />}
-      <ShockLifePlans report={report} happened={responseFirst} />
+      <Detail><ShockLifePlans report={report} happened={responseFirst} /></Detail>
       <details className="disclose">
         <summary>Can a purchase wait? Compare paying now with waiting</summary>
         <PurchaseComparison key={`${report.account_id}:${JSON.stringify(report.applied_inputs)}`} report={report} showTable={showTable} />
       </details>
-      <details className="disclose" open={showTable || undefined}>
+      <Detail><details className="disclose" open={showTable || undefined}>
         <summary>How the numbers work</summary>
         <p className="scenario-intro">Your cash buffer estimates how much you could draw on from recent balances. The one-time cost comes out first. Each month with a shortfall uses more of what is left.</p>
         <div className="scenario-details">
@@ -130,7 +134,7 @@ function ShockResults({ report, responseFirst, showTable }: { report: ShockRepor
           <p className="small muted">Runway is cash after upfront costs divided by the monthly gap when both are positive. It is zero when upfront costs exhaust the buffer, and shown as no monthly shortfall when income covers spending and cash remains. Results use unrounded inputs.</p>
           <p className="small muted">{report.tipping_point.note}</p>
         </div>
-      </details>
+      </details></Detail>
     </>
   )
 }
@@ -143,7 +147,7 @@ function ShockLifePlans({ report, happened }: { report: ShockReport; happened: b
   const label = (i.preset && PRESETS[i.preset]?.label) || 'This shock'
   const { result } = useLifePlans(accountId, { mode: 'shock', inputs, happened, label, trigger: 'Ran a shock on the Shocks page' })
   return (
-    <Card title="What could you do about it?" className="plan-card">
+    <Card title="What could you do about it?" className="plan-card" right={<ExplainButton topic="plan" label="your plan" />}>
       {result ? <LifePlansView key={`${report.account_id}:${JSON.stringify(i)}:${happened}`} result={result} variant="summary" /> : <SqueezeLoader label="Squeezing plans out of your records…" />}
     </Card>
   )
@@ -163,9 +167,10 @@ function CushionWhatIf({ report }: { report: ShockReport }) {
   const runway = left <= 0 ? 0 : gap <= 0 ? null : Math.min(120, left / gap)
   const label = runway == null ? 'no shortfall (120+)' : runway.toFixed(1)
   const official = report.shocked.runway_label
+  const ai = report.applied_inputs
   const covers = runway == null || runway >= months
   return (
-    <Card title="Your cushion, month by month" className="scenario-figure">
+    <Card title="Your cushion, month by month" className="scenario-figure" right={<ExplainButton topic="cushion_chart" label="the cushion chart" shock={{ r, h: ai.bills_increase, o: ai.one_off_cost, d: months }} />}>
       <ThreadFigure beat={timelineBeat(report, changed ? { r, months, income, gap, runway, label } : undefined)} />
       <fieldset className="whatif">
         <legend>What if</legend>

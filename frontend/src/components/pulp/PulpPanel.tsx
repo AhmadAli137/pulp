@@ -12,6 +12,7 @@ import LifePlansView from '../plans/LifePlansView'
 import AgentSymbol from '../agents/AgentSymbol'
 import WorkflowColumn from '../agents/WorkflowColumn'
 import VisualPane, { type PopoutItem } from '../agents/VisualPopout'
+import { EXPLAIN_NAMES } from '../ExplainButton'
 import { startVoice, type VoiceSession } from '../../services/voice'
 import { API_BASE, api, type Beat, type DeckCard, type LifePlanResult, type Persona, type ProfileChange, type Proposal, type StageAgentEvent, type StageHandoffEvent, type StageMemoryEvent, type StageProfileEvent, type Storyboard, type TraceEvent } from '../../services/api'
 import { useApp } from '../../stores/useApp'
@@ -38,8 +39,12 @@ const writeFlag = (key: string, v: boolean) => { try { localStorage.setItem(key,
 /** A twist command: `twist:random`, `twist:<key>` or `twist:<key>@<character_id>` (from "Ask Pulp about this card"). */
 const twistKey = (m: string) => m.startsWith('twist:') ? m.slice(6).split('@')[0] : null
 const cardWords = (key: string) => key.replace(/^p_/, '').replaceAll('_', ' ')
-const turnLabel = (m: string) => m === 'decision:small' ? 'An everyday decision' : m === 'decision:big' ? 'A bigger life decision' : m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Twist cards' : m === 'twist:random' ? 'Shuffle a twist' : twistKey(m) ? `Twist: ${cardWords(twistKey(m)!)}` : m.length > 70 ? m.slice(0, 69) + '…' : m
-const userText = (m: string) => m === 'decision:small' ? 'Help me with an everyday decision.' : m === 'decision:big' ? 'Help me with a bigger life decision.' : m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Show me the twist cards.' : m === 'twist:random' ? 'Shuffle a twist' : twistKey(m) ? 'Tell me about this card' : m
+/** `explain:<topic>?…` from an Explain button: shown in the thread as "Explain: <section>". */
+const explainLabel = (m: string) => { const i = m.indexOf('explain:'); if (i < 0) return null; const topic = m.slice(i + 8).split(/[?\s]/)[0]; return `Explain: ${EXPLAIN_NAMES[topic] ?? topic.replaceAll('_', ' ')}` }
+const turnLabel = (m: string) => explainLabel(m) ?? turnLabel0(m)
+const turnLabel0 = (m: string) => m === 'decision:small' ? 'An everyday decision' : m === 'decision:big' ? 'A bigger life decision' : m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Twist cards' : m === 'twist:random' ? 'Shuffle a twist' : twistKey(m) ? `Twist: ${cardWords(twistKey(m)!)}` : m.length > 70 ? m.slice(0, 69) + '…' : m
+const userText = (m: string) => explainLabel(m) ?? userText0(m)
+const userText0 = (m: string) => m === 'decision:small' ? 'Help me with an everyday decision.' : m === 'decision:big' ? 'Help me with a bigger life decision.' : m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Show me the twist cards.' : m === 'twist:random' ? 'Shuffle a twist' : twistKey(m) ? 'Tell me about this card' : m
 let seq = 0
 const nid = (p: string) => `${p}-${++seq}`
 
@@ -312,12 +317,30 @@ export default function PulpPanel() {
   useEffect(() => {
     if (!pulpOpen) { endVoice(); setPopout(null); return }
     const seed = useApp.getState().takePulpSeed()
-    if (seed && id) run(seed)
+    if (seed && id) dispatchSeed(seed)
     window.setTimeout(() => inputRef.current?.focus(), 0)
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !popoutRef.current && !e.defaultPrevented) closePulp() }
     document.addEventListener('keydown', key)
     return () => document.removeEventListener('keydown', key)
   }, [pulpOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* A page asked Pulp something (an Explain button, "Ask Pulp about this card"). While a voice conversation is live,
+     explain requests go through it so Pulp says the answer; otherwise they take the typed path. */
+  const dispatchSeed = (seed: string) => {
+    if (seed.includes('explain:') && voice && voiceStop.current) {
+      if (voiceStop.current.sendText(`Please explain this part of the app simply: ${seed}`)) {
+        setThread((items) => [...items, { id: nid('u'), kind: 'user', text: userText(seed) }])
+        return
+      }
+    }
+    run(seed)
+  }
+  const pendingSeed = useApp((s) => s.pulpSeed)
+  useEffect(() => {
+    if (!pulpOpen || !pendingSeed || !id) return
+    const seed = useApp.getState().takePulpSeed()
+    if (seed) dispatchSeed(seed)
+  }, [pendingSeed]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = (text: string) => {
     const t = text.trim(); if (!t || !id) return

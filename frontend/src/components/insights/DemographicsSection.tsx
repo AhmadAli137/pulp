@@ -1,5 +1,6 @@
 /* "Where you live and who you are": the owner's age, household and home district against everyone else in the bank.
    Numbers come from GET /api/insights/demographics/{id}; this component only draws them. */
+import ExplainButton from '../ExplainButton'
 import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { Building2, CalendarClock, Landmark, MapPin, TrendingDown, TrendingUp, Minus, Users } from 'lucide-react'
@@ -45,6 +46,7 @@ export default function DemographicsSection({ accountId }: { accountId: number }
           <span className="editorial-label">Your age, household and district · compared with 4,500 accounts</span>
           <h2 id="demographics-heading">Where you live and who you are</h2>
         </div>
+        <ExplainButton topic="demographics" label="where you live and who you are" />
         {state === 'ready' && (
           <button type="button" className="demo-toggle" aria-pressed={numbers} onClick={() => setNumbers((v) => !v)}>
             {numbers ? 'Show plain language' : 'Show the numbers'}

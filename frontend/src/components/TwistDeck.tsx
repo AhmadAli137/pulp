@@ -3,13 +3,21 @@
    Slots 1-3 are the judges' official scenarios; slot 4 deals a different scenario each time. Revealing a card only
    sets the calculator's inputs: every amount, runway and plan still comes from /api/shocks/calculate.
    The model can take several seconds, so the next deal for every face-down slot is prefetched; if it is not ready
-   within ~600 ms the dealer is asked for an instant local draw instead. */
+   within ~600 ms the dealer is asked for an instant local draw instead.
+   The fourth card comes from the person's own deck (the Shock Generator's cards for this life): the pile beside it shows
+   the deck's real size, shuffles (split, interleave, square up) and deals the dealer's pick face up; "Look through the
+   deck" fans every card out so any of them can be played by hand. */
 import { MessageCircle } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, type DeckCard, type ShockDeal } from '../services/api'
+import { api, type DeckCard, type PersonalShock, type ShockDeal } from '../services/api'
 import { useApp } from '../stores/useApp'
 import CharacterFigure, { CHARACTER_IDS } from './characters/CharacterFigure'
+import DeckFan from './deck/DeckFan'
+import DeckPile, { type PilePhase } from './deck/DeckPile'
+import { CATEGORY, Likelihood, messengerFor, nameOf } from './deck/deckMeta'
+import { useProfileDoc } from './profile/useProfileDoc'
 import { TwistCardBack } from './stage/TwistCard'
+import './deck/deck.css'
 import './twist-deck.css'
 
 const TABLE = [
@@ -48,6 +56,11 @@ export default function TwistDeck({ editing, onPick }: { editing: boolean; onPic
   const lastScenario = useRef<string | null>(null)
   const prefetched = useRef<(Prefetch | null)[]>([null, null, null, null])
   const deck = useRef<DeckCard[]>([])
+  const [deckCards, setDeckCards] = useState<PersonalShock[]>([])
+  const [phase, setPhase] = useState<PilePhase>('idle')
+  const [browsing, setBrowsing] = useState(false)
+  const { doc } = useProfileDoc(accountId ?? null)
+  const owner = doc?.account_id === accountId ? doc?.persona?.display_name?.split(' ')[0] ?? null : null
 
   // A prefetched deal stays usable across other reveals unless its character is the one just shown (checked on use),
   // so the key holds only what makes a deal unusable outright: the account and, for slot 4, the last scenario.
@@ -62,7 +75,9 @@ export default function TwistDeck({ editing, onPick }: { editing: boolean; onPic
       const key = exclusionsKey(slot)
       const have = prefetched.current[i]
       if (have?.key === key && (!have.value || have.value.character.id !== lastCharacter.current)) return
-      const entry: Prefetch = { key, promise: request(slot, true) }
+      // Only the deck's card (slot 4) needs the model, to choose the scenario; the official cards only need a messenger, and
+      // four slow model calls at once can starve the browser's connections so the instant fallback draw queues behind them.
+      const entry: Prefetch = { key, promise: request(slot, slot === 4) }
       entry.promise.then((v) => { entry.value = v }).catch(() => { /* a local draw covers it on click */ })
       prefetched.current[i] = entry
     })
@@ -78,7 +93,8 @@ export default function TwistDeck({ editing, onPick }: { editing: boolean; onPic
     prefetched.current = [null, null, null, null]
     setOpen([false, false, false, false]); setShown([null, null, null, null]); setLatest(null)
     prefetch([true, true, true, true])
-    api.personalDeck(accountId ?? 0).then((r) => { deck.current = r.cards.map((c) => ({ ...c, one_off_months: null })) }).catch(() => { /* optional */ })
+    setDeckCards([]); setBrowsing(false); setPhase('idle')
+    api.personalDeck(accountId ?? 0).then((r) => { deck.current = r.cards.map((c) => ({ ...c, one_off_months: null })); setDeckCards(r.cards) }).catch(() => { /* optional */ })
   }, [accountId, prefetch])
 
   const deal = async (slot: number): Promise<ShockDeal> => {
@@ -96,16 +112,8 @@ export default function TwistDeck({ editing, onPick }: { editing: boolean; onPic
     return localDeal(slot, lastCharacter.current, deck.current)
   }
 
-  const flip = async (i: number) => {
+  const reveal = (i: number, d: ShockDeal) => {
     const slot = i + 1
-    if (open[i]) {
-      // covering a card does not change the applied shock
-      setOpen((o) => o.map((v, k) => (k === i ? false : v)))
-      prefetch(open.map((v, k) => (k === i ? true : !v)))
-      return
-    }
-    onPick(); setBusy(i)
-    const d = await deal(slot)
     lastCharacter.current = d.character.id
     if (slot === 4) lastScenario.current = d.card.key
     const nextOpen = open.map((v, k) => (k === i ? true : v))
@@ -115,6 +123,44 @@ export default function TwistDeck({ editing, onPick }: { editing: boolean; onPic
     else applyCard({ ...d.card, one_off_months: d.card.one_off_months ?? null })
     prefetched.current = prefetched.current.map((p, k) => (k === i ? null : p))
     prefetch(nextOpen.map((v) => !v))
+  }
+
+  const reduced = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+  /** Shuffle the personal deck (split, interleave, square up), then deal the Shock Dealer's pick into the fourth slot. */
+  const shuffleAndDeal = async () => {
+    if (busy != null) return
+    onPick(); setBusy(3); setBrowsing(false)
+    setOpen((o) => o.map((v, k) => (k === 3 ? false : v)))
+    setPhase('shuffle')
+    const [d] = await Promise.all([deal(4), wait(reduced() ? 160 : 800)])
+    setPhase('deal')
+    await wait(reduced() ? 0 : 260)
+    reveal(3, d)
+    setPhase('idle')
+  }
+  /** Play a card picked by hand from the fanned deck. Its messenger is the scenario's natural one. */
+  const playCard = (c: PersonalShock) => {
+    if (busy != null) return
+    onPick()
+    const id = messengerFor(c.key, c.category, lastCharacter.current)
+    reveal(3, { slot: 4, character: { id, name: nameOf(id), role: '' }, card: { ...c, one_off_months: null },
+      reason: 'You picked this card from your deck.', source: 'you', ms: 0 })
+    setBrowsing(false)
+  }
+
+  const flip = async (i: number) => {
+    const slot = i + 1
+    if (i === 3 && !open[i]) { await shuffleAndDeal(); return }
+    if (open[i]) {
+      // covering a card does not change the applied shock
+      setOpen((o) => o.map((v, k) => (k === i ? false : v)))
+      prefetch(open.map((v, k) => (k === i ? true : !v)))
+      return
+    }
+    onPick(); setBusy(i)
+    const d = await deal(slot)
+    reveal(i, d)
   }
 
   const isOn = (i: number) => {
@@ -145,21 +191,30 @@ export default function TwistDeck({ editing, onPick }: { editing: boolean; onPic
                       <header className="twist-card-band"><span>{i < 3 ? 'TWIST CARD' : 'DEALT'}</span><strong>{title}</strong></header>
                       <div className="twist-card-art twist-character"><CharacterFigure id={d.character.id} size={84} /></div>
                       <p className="twist-card-text">{text}</p>
+                      {i === 3 && d.card.category && CATEGORY[d.card.category] && (() => {
+                        const meta = CATEGORY[d.card.category!]
+                        return <span className="deck-face-meta"><meta.Icon size={12} aria-hidden={true} />{meta.label}<Likelihood level={d.card.likelihood} /></span>
+                      })()}
                       <footer className="twist-card-foot"><i /><span>{d.character.name}</span><i /></footer>
                     </div>
                   </div>
-                ) : <TwistCardBack className="twist-back" label={busy === i ? 'The dealer is choosing…' : 'Turn over'} />}
+                ) : <TwistCardBack className="twist-back" label={busy === i ? (i === 3 ? 'Shuffling…' : 'The dealer is choosing…') : i === 3 ? 'Deal from your deck' : 'Turn over'} />}
               </button>
               {up && d && <span className="twist-slot-who">{d.character.name}</span>}
             </div>
           )
         })}
+        <DeckPile count={deckCards.length} owner={owner} phase={phase} disabled={busy != null} onShuffle={() => void shuffleAndDeal()}
+          onBrowse={() => setBrowsing((b) => !b)} browsing={browsing} />
       </div>
+      {browsing && deckCards.length > 0 && <DeckFan cards={deckCards} current={open[3] ? shown[3]?.card.key ?? null : null} onPlay={playCard} />}
       {info && (
         <div className="twist-why" role="status">
-          <span className={`twist-dealer-chip ${info.source === 'local' || info.source === 'offline' ? 'local' : 'ai'}`}>
-            Shock Dealer · {info.source === 'local' || info.source === 'offline' ? 'local draw' : 'Gemini'}
-          </span>
+          {info.source === 'you'
+            ? <span className="twist-dealer-chip local">Chosen by you</span>
+            : <span className={`twist-dealer-chip ${info.source === 'local' || info.source === 'offline' ? 'local' : 'ai'}`}>
+                Shock Dealer · {info.source === 'local' || info.source === 'offline' ? 'local draw' : 'Gemini'}
+              </span>}
           <span className="twist-why-text">{info.reason}</span>
           {info.card.category && <span className="twist-why-cat">{CATEGORY_LABEL[info.card.category] ?? info.card.category}</span>}
           {info.card.likelihood && <span className={`twist-why-chance ${info.card.likelihood}`}>{info.card.likelihood} likelihood</span>}
@@ -170,7 +225,7 @@ export default function TwistDeck({ editing, onPick }: { editing: boolean; onPic
         </div>
       )}
       <div className="twist-deck-foot">
-        <span className="small muted">Turn a card over to deal a shock. Turn it back to cover it; the fourth card deals a new shock each time.</span>
+        <span className="small muted">Turn over one of the brief’s three cards, or shuffle your own deck{deckCards.length ? ` of ${deckCards.length} shocks made for this life` : ''}. Turn a card back to cover it.</span>
         <button type="button" className="twist-deck-none" onClick={() => { onPick(); applyPreset('baseline') }}>No shock</button>
       </div>
     </div>

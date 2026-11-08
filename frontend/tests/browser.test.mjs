@@ -185,6 +185,12 @@ test('twist cards start face down, a reveal applies the official scenario, and e
   await combined.click()
   await cards.getByRole('button', { name: 'Face-down card 3. Turn it over', exact: true }).waitFor()
   assert.equal(await p.getByLabel(/^Income retained/).inputValue(), '55')
+
+  // the personal deck: its real size is shown, a shuffle deals one of this life's cards into the fourth slot
+  await p.locator('.deck-caption b').filter({ hasText: /^\d+ cards$/ }).waitFor()
+  await p.getByRole('button', { name: 'Shuffle and deal', exact: true }).click()
+  await p.locator('.twist-slot').nth(3).locator('.twist-dealt').waitFor()
+  assert.equal(await cards.getByRole('button', { name: 'Face-down card 4. Turn it over', exact: true }).count(), 0)
 })
 
 test('Insights distinguishes the home and branch records and labels modeled research', async t => {
@@ -404,6 +410,32 @@ test('account details drop the decisions block that Insights keeps, and findings
   assert.ok(await p.locator('.prov-recorded').count() > 0 && await p.locator('.prov-simulated').count() > 0)
   await quartiles.getByRole('button', { name: 'Detailed', exact: true }).click()
   await p.getByRole('region', { name: 'Share lasting six months, by quartile' }).waitFor()
+  assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
+})
+
+test('Simple view tucks detail away, Profile opens on tabs, and Explain this answers in the chat', async t => {
+  const p = await pageFor(t)
+  await p.goto(base)
+  await loadAccount(p, account)
+  await p.getByRole('heading', { name: `Account ${account}`, exact: true }).waitFor()
+  const views = p.getByRole('group', { name: 'How much to show' })
+  assert.equal(await views.getByRole('button', { name: 'Simple', exact: true }).getAttribute('aria-pressed'), 'true')
+  assert.equal(await p.getByRole('heading', { name: /Cash buffer/ }).count(), 0)
+  await p.getByRole('button', { name: 'Show full detail' }).click()
+  await p.getByRole('heading', { name: /Cash buffer/ }).waitFor()
+
+  await navigation(p).getByRole('link', { name: 'Profile', exact: true }).click()
+  const tabs = p.getByRole('tablist', { name: 'Profile sections' })
+  for (const name of ['Goals', 'Worries & questions', 'How you compare', 'History']) await tabs.getByRole('tab', { name, exact: true }).waitFor()
+  await tabs.getByRole('tab', { name: 'History', exact: true }).click()
+  await p.getByRole('heading', { name: 'How PULP’s picture of you changed' }).waitFor()
+  assert.ok(new URL(p.url()).searchParams.get('tab') === 'history')
+
+  await navigation(p).getByRole('link', { name: 'Overview', exact: true }).click()
+  await p.getByRole('button', { name: 'Explain: your typical month' }).click()
+  const panel = p.getByRole('complementary', { name: 'Pulp conversation' })
+  await panel.locator('.msg.user').filter({ hasText: 'Explain: your typical month' }).waitFor()
+  await panel.locator('.msg.pulp-reply, .msg.pulp').filter({ hasText: /bathtub/ }).first().waitFor({ timeout: 30000 })
   assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
 })
 

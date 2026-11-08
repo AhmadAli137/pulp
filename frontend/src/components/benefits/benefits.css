@@ -1,0 +1,16 @@
+.benefits{display:grid;gap:10px;padding:18px 20px;border:1px solid #dde4d9;border-radius:14px;background:#fff;min-width:0}
+.benefits h2{margin:0}
+.benefits-headline{margin:0;color:#2b3a33;line-height:1.5}
+.benefits-tiles{list-style:none;margin:4px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px 18px}
+.benefits-tiles li{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.benefits-tiles li>div{display:grid;gap:1px;min-width:0}
+.benefits-title{font-size:13px;color:#54645a;font-weight:600}
+.benefits-tiles strong{font-size:20px;font-weight:700;color:#1c4639;line-height:1.2}
+.benefits-line{font-size:13.5px;color:#4d5a53;line-height:1.4}
+.benefits-how summary{cursor:pointer;font-size:13.5px;color:#54645a;font-weight:600}
+.benefits-how ul{margin:8px 0 0;padding-left:18px;display:grid;gap:4px;font-size:13.5px;color:#3d4a42}
+.benefits-loading{grid-template-columns:repeat(4,1fr);min-height:96px}
+.benefits-loading span{border-radius:10px;background:linear-gradient(90deg,#f1f3ee,#f8f9f6,#f1f3ee);background-size:200% 100%;animation:benefits-shimmer 1.4s linear infinite}
+@keyframes benefits-shimmer{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.benefits-loading span{animation:none}}
+@media (max-width:600px){.benefits-loading{grid-template-columns:1fr 1fr}}

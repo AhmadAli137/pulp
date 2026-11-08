@@ -1,17 +1,34 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import './pulp-mascot.css'
 
-export type PipMood = 'idle' | 'thinking' | 'listening' | 'celebrate' | 'concerned'
+export type PipMood = 'idle' | 'thinking' | 'listening' | 'celebrate' | 'concerned' | 'wave' | 'nod'
 export type PulpMood = PipMood
 
+/* Per-instance rhythm so several Pulps on a page never blink or glance in sync. Chosen once per mount. */
+function useRhythm(): CSSProperties {
+  const [r] = useState(() => {
+    const rnd = (a: number, b: number) => a + Math.random() * (b - a)
+    return {
+      '--blink-dur': `${rnd(5.2, 8.6).toFixed(2)}s`, '--blink-delay': `${rnd(0, 4).toFixed(2)}s`,
+      '--glance-dur': `${rnd(8, 15).toFixed(2)}s`, '--glance-delay': `${rnd(1, 6).toFixed(2)}s`,
+      '--breath-dur': `${rnd(4.6, 6.2).toFixed(2)}s`, '--breeze-dur': `${rnd(6, 9).toFixed(2)}s`,
+    } as CSSProperties
+  })
+  return r
+}
+
 /* Pulp, drawn flat: one tangerine shape, a soft segment highlight, a small stem and leaf, and simple dot eyes.
-   Moods change the face (celebrate: a short hop with citrus sparks and a smile; concerned: brows down, a small frown,
-   one slow droop). Reduced motion keeps the expression and drops the movement. */
+   Alive but quiet: it breathes, blinks at irregular moments, glances now and then and its leaf sways. Moods:
+   thinking (the leaf turns slowly and three juice drops circle), listening (a soft pulse ring), celebrate (a short hop
+   with citrus sparks and a smile), concerned (brows down, a small frown, one slow droop), wave (a friendly wobble when
+   the panel opens) and nod (a small affirming dip when something is saved). Reduced motion keeps the expression only. */
 export function Tangerine({ className = '', mood = 'idle', label = 'Pulp' }: { className?: string; mood?: PipMood; label?: string }) {
-  const mouth = mood === 'celebrate' ? 'M78 104q12 13 24 0' : mood === 'concerned' ? 'M80 110q10-7 20 0' : 'M81 105q9 7 18 0'
+  const rhythm = useRhythm()
+  const mouth = mood === 'celebrate' ? 'M78 104q12 13 24 0' : mood === 'concerned' ? 'M80 110q10-7 20 0' : mood === 'nod' || mood === 'wave' ? 'M79 104q11 10 22 0' : 'M81 105q9 7 18 0'
   return (
-    <svg className={`tangerine-mascot ${className} mood-${mood}`} viewBox="0 0 180 172" role="img" aria-label={label}>
+    <svg className={`tangerine-mascot ${className} mood-${mood}`} viewBox="0 0 180 172" role="img" aria-label={label} style={rhythm}>
       <ellipse className="pip-shadow" cx="90" cy="156" rx="42" ry="5" fill="#cfc6b2" opacity=".35" />
+      {mood === 'listening' && <circle className="pip-ring" cx="90" cy="98" r="58" fill="none" stroke="#F28C28" strokeWidth="2" aria-hidden="true" />}
       {mood === 'celebrate' && (
         <g className="pip-sparks" aria-hidden="true">
           {[0, 60, 120, 180, 240, 300].map((a) => (
@@ -19,20 +36,33 @@ export function Tangerine({ className = '', mood = 'idle', label = 'Pulp' }: { c
           ))}
         </g>
       )}
-      <g className="pip-body">
-        <path d="M90 46c-30-2-58 18-60 50-2 30 24 54 60 54s62-24 60-54c-2-32-30-52-60-50Z" fill="#F28C28" />
-        <path d="M90 46c-30-2-58 18-60 50-1 14 4 26 13 35-4-30 12-62 47-85Z" fill="#F7A650" opacity=".55" />
-        <path d="M58 70q10-12 24-14" stroke="#FFE2BF" strokeWidth="4" strokeLinecap="round" fill="none" opacity=".75" />
-        <path d="M90 47v-11" stroke="#5E4A33" strokeWidth="4.5" strokeLinecap="round" />
-        <path className="pip-leaf" d="M92 38c6-15 22-18 32-13-4 13-19 19-32 13Z" fill="#5E7A4A" />
-        {mood === 'concerned' && <g stroke="#4A3426" strokeWidth="2.6" strokeLinecap="round"><path d="M64 82l12 4" /><path d="M116 82l-12 4" /></g>}
-        <g className="pip-eyes" fill="#3F2C20">
-          {mood === 'celebrate'
-            ? <><path d="M65 93q5-6 10 0" stroke="#3F2C20" strokeWidth="3" fill="none" strokeLinecap="round" /><path d="M105 93q5-6 10 0" stroke="#3F2C20" strokeWidth="3" fill="none" strokeLinecap="round" /></>
-            : <><circle cx="70" cy="94" r="4" /><circle cx="110" cy="94" r="4" /></>}
+      <g className="pip-lift">
+        <g className="pip-breath">
+          <g className="pip-body">
+            <path d="M90 46c-30-2-58 18-60 50-2 30 24 54 60 54s62-24 60-54c-2-32-30-52-60-50Z" fill="#F28C28" />
+            <path d="M90 46c-30-2-58 18-60 50-1 14 4 26 13 35-4-30 12-62 47-85Z" fill="#F7A650" opacity=".55" />
+            <path d="M58 70q10-12 24-14" stroke="#FFE2BF" strokeWidth="4" strokeLinecap="round" fill="none" opacity=".75" />
+            <path d="M90 47v-11" stroke="#5E4A33" strokeWidth="4.5" strokeLinecap="round" />
+            <path className="pip-leaf" d="M92 38c6-15 22-18 32-13-4 13-19 19-32 13Z" fill="#5E7A4A" />
+            {mood === 'concerned' && <g className="pip-brows" stroke="#4A3426" strokeWidth="2.6" strokeLinecap="round"><path d="M63 85q6-4 13-6" /><path d="M117 85q-6-4-13-6" /></g>}
+            <g className="pip-eyes" fill="#3F2C20">
+              {mood === 'celebrate'
+                ? <><path d="M65 93q5-6 10 0" stroke="#3F2C20" strokeWidth="3" fill="none" strokeLinecap="round" /><path d="M105 93q5-6 10 0" stroke="#3F2C20" strokeWidth="3" fill="none" strokeLinecap="round" /></>
+                : <g className="pip-pupils"><circle cx="70" cy="94" r="4" /><circle cx="110" cy="94" r="4" /></g>}
+            </g>
+            <path className="pip-mouth" d={mouth} stroke="#5A3622" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+          </g>
         </g>
-        <path className="pip-mouth" d={mouth} stroke="#5A3622" strokeWidth="2.6" fill="none" strokeLinecap="round" />
       </g>
+      {mood === 'thinking' && (
+        <g className="pip-orbit" aria-hidden="true">
+          {[0, 120, 240].map((a) => (
+            <g key={a} className="pip-orbit-arm" style={{ ['--start' as string]: `${a}deg` }}>
+              <path d="M90 26c-2 3-4 5-4 7.5a4 4 0 0 0 8 0c0-2.5-2-4.5-4-7.5Z" fill={a === 0 ? '#F28C28' : '#F7B267'} />
+            </g>
+          ))}
+        </g>
+      )}
     </svg>
   )
 }

@@ -1,0 +1,75 @@
+/* The personal deck: a real-looking pile, a riffle shuffle, a deal, and a fan of every card. */
+.deck-pile-wrap{width:clamp(118px,21%,160px);display:flex;flex-direction:column;align-items:center;gap:8px}
+.deck-pile{position:relative;width:100%;padding:0;border:0;background:none;cursor:pointer;border-radius:14px;font-size:13px}
+.deck-pile:focus-visible{outline:3px solid #f9b17e;outline-offset:6px}
+.deck-pile:disabled{cursor:progress}
+.deck-stack{position:relative;display:block;width:100%;aspect-ratio:2/3}
+.deck-layer{--dx:calc(var(--i) * -1.4px);--dy:calc(var(--i) * -1.8px);position:absolute;inset:0;transform:translate(var(--dx),var(--dy));
+  transition:transform .2s ease}
+.deck-layer .twist-card{width:100%;height:100%;box-shadow:0 1px 0 #c2410c55,0 2px 4px #1e2b2214}
+.deck-layer.top .twist-card{box-shadow:0 10px 24px #1e2b2229,0 1px 2px #0002,inset 0 0 0 1px #0002}
+.deck-pile:not(:disabled):hover .deck-layer.top{transform:translate(var(--dx),calc(var(--dy) - 5px))}
+/* shuffle: the pile splits into two halves, they interleave card by card, then square up */
+.deck-pile.phase-shuffle .deck-layer.even{animation:deck-riffle-l .78s cubic-bezier(.45,0,.25,1) both;animation-delay:calc(var(--i) * 18ms)}
+.deck-pile.phase-shuffle .deck-layer.odd{animation:deck-riffle-r .78s cubic-bezier(.45,0,.25,1) both;animation-delay:calc(var(--i) * 18ms)}
+.deck-pile.phase-deal .deck-layer.top{animation:deck-deal .26s cubic-bezier(.3,.7,.3,1) both}
+@keyframes deck-riffle-l{0%{transform:translate(var(--dx),var(--dy))}32%{transform:translate(calc(var(--dx) - 46%),calc(var(--dy) + 6px)) rotate(-9deg)}
+  58%{transform:translate(calc(var(--dx) - 18%),calc(var(--dy) - 2px)) rotate(-3deg)}82%,100%{transform:translate(var(--dx),var(--dy))}}
+@keyframes deck-riffle-r{0%{transform:translate(var(--dx),var(--dy))}32%{transform:translate(calc(var(--dx) + 46%),calc(var(--dy) + 6px)) rotate(9deg)}
+  58%{transform:translate(calc(var(--dx) + 18%),calc(var(--dy) - 2px)) rotate(3deg)}82%,100%{transform:translate(var(--dx),var(--dy))}}
+@keyframes deck-deal{from{transform:translate(var(--dx),var(--dy))}to{transform:translate(calc(var(--dx) - 115%),calc(var(--dy) + 4px)) rotate(-6deg);opacity:0}}
+.deck-caption{margin:0;font-size:12.5px;color:#54645a;text-align:center;line-height:1.3}
+.deck-caption b{color:#183B2D}
+.deck-actions{display:flex;flex-direction:column;gap:6px;width:100%}
+.deck-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;border:1px solid #D5DBCD;background:#fff;color:#183B2D;border-radius:999px;
+  padding:6px 10px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.deck-btn.primary{background:#183B2D;border-color:#183B2D;color:#fff}
+.deck-btn:disabled{opacity:.6;cursor:progress}
+.deck-btn:focus-visible{outline:3px solid #f9b17e;outline-offset:2px}
+/* the dealt card's extra facts */
+.deck-face-meta{display:flex;align-items:center;justify-content:center;gap:6px;padding:0 .6em .45em;font-size:.68em;color:#3f5147;font-weight:700}
+.deck-face-meta svg{color:#E86A0C}
+/* likelihood dots */
+.deck-likely{display:inline-flex;gap:2px;margin-left:4px;vertical-align:middle}
+.deck-likely i{width:6px;height:6px;border-radius:50%;background:#e2e6dc}
+.deck-likely i.on{background:#E86A0C}
+/* the fan of every card */
+.deck-fan{border:1px solid #E3E8DC;border-radius:14px;background:#FAFBF8;padding:12px 12px 6px;display:grid;gap:8px;min-width:0}
+.deck-fan-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.deck-fan-filters{display:flex;flex-wrap:wrap;gap:6px}
+.deck-fan-filters button{border:1px solid #D5DBCD;background:#fff;border-radius:999px;padding:4px 11px;font:inherit;font-size:12.5px;color:#2b3a33;cursor:pointer}
+.deck-fan-filters button b{margin-left:3px;color:#7a8a80}
+.deck-fan-filters button.on{background:#183B2D;border-color:#183B2D;color:#fff}
+.deck-fan-filters button.on b{color:#FFD7B5}
+.deck-fan-row{list-style:none;margin:0;padding:22px 26px 26px;display:flex;gap:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.deck-fan-row li{flex:0 0 auto;margin-right:-18px;transform:rotate(var(--rot)) translateY(var(--lift));transform-origin:50% 120%;transition:transform .18s ease;scroll-snap-align:center}
+.deck-fan-row li:last-child{margin-right:0}
+.deck-fan-row li:hover,.deck-fan-row li:focus-within{transform:rotate(0) translateY(-10px);z-index:2}
+.deck-mini{width:150px;height:208px;display:flex;flex-direction:column;gap:5px;text-align:left;padding:10px 10px 9px;border-radius:12px;border:1px solid #183b2d22;
+  background:#fbf6ee;box-shadow:0 6px 16px #1e2b2224;cursor:pointer;font:inherit;color:#183B2D;overflow:hidden;border-top:5px solid #2f6f73}
+.deck-mini.g-life{border-top-color:#1c4639}
+.deck-mini.g-money{border-top-color:#E86A0C}
+.deck-mini.g-world{border-top-color:#2f6f73}
+.deck-mini.g-disaster{border-top-color:#b4432b}
+.deck-mini.on{outline:3px solid #9c4f30;outline-offset:2px}
+.deck-mini:focus-visible{outline:3px solid #f9b17e;outline-offset:2px}
+.deck-mini-top{display:flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#54645a}
+.deck-mini-top .deck-likely{margin-left:auto}
+.deck-mini strong{font-size:14px;line-height:1.2}
+.deck-mini-text{font-size:12px;line-height:1.35;color:#3f5147;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.deck-mini-why{margin-top:auto;font-size:11px;line-height:1.3;color:#7a6a5c;font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.deck-fan-filters button.g-disaster.on{background:#b4432b;border-color:#b4432b}
+@media (max-width:720px){
+  .deck-pile-wrap{width:calc(50% - 7px);max-width:160px}
+  .deck-fan-row li{transform:none;margin-right:10px}
+  .deck-fan-row li:hover,.deck-fan-row li:focus-within{transform:translateY(-4px)}
+  .deck-mini{width:140px}
+}
+@media (prefers-reduced-motion:reduce){
+  .deck-layer,.deck-fan-row li{transition:none!important}
+  .deck-pile .deck-layer{animation:none!important}
+  .deck-pile.phase-shuffle .deck-stack{animation:deck-fade .15s ease both}
+  @keyframes deck-fade{from{opacity:.4}to{opacity:1}}
+}
+/* the dealt card keeps its category and likelihood row in view */
+.twist-slot .twist-dealt .twist-card-text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}

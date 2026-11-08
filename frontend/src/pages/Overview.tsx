@@ -3,6 +3,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import DiscoveryHighlight from '../components/insights/DiscoveryHighlight'
+import BenefitsPanel from '../components/benefits/BenefitsPanel'
+import { Detail, ShowFullDetail } from '../components/Detail'
+import ExplainButton from '../components/ExplainButton'
 import { Tangerine } from '../components/PulpMascot'
 import ThreadFigure from '../components/stage/ThreadFigure'
 import '../components/twist-deck.css'
@@ -49,10 +52,12 @@ export default function Overview() {
         </div>
       </section>
 
+      <BenefitsPanel accountId={account_id} />
+
       <DiscoveryHighlight accountId={account_id} compact />
 
       <div className="bank-overview-grid">
-        <Card title="How does a typical month look?" className="bank-flow">
+        <Card title="How does a typical month look?" className="bank-flow" right={<ExplainButton topic="typical_month" label="your typical month" />}>
           <p>These figures use the middle of the monthly totals in the records, in Canadian dollars.</p>
           <dl className="bank-flow-rows">
             {([
@@ -72,7 +77,7 @@ export default function Overview() {
           </div>
           <section className="bank-runway" aria-labelledby="bank-runway-title">
             <div className="bank-flow-total">
-              <h3 id="bank-runway-title">Baseline runway</h3>
+              <h3 id="bank-runway-title">Baseline runway <ExplainButton topic="runway" label="your runway" /></h3>
               <strong className="bank-money">{runwayLabel}</strong>
             </div>
             <p>{runwayNote}</p>
@@ -83,8 +88,8 @@ export default function Overview() {
           </details>
         </Card>
 
-        <div className="bank-balance-cards">
-          <Card title={<><Wallet size={19} aria-hidden="true" /> Cash buffer</>} className="bank-balance">
+        <Detail><div className="bank-balance-cards">
+          <Card title={<><Wallet size={19} aria-hidden="true" /> Cash buffer</>} className="bank-balance" right={<ExplainButton topic="cushion" label="your cushion" />}>
             <strong className="bank-money">{fmt.money(profile.buffer, 2)}</strong>
             <p>Based on average daily balances from the last {profile.buffer_months_used} {profile.buffer_months_used === 1 ? 'month' : 'months'} in the data.</p>
           </Card>
@@ -99,10 +104,10 @@ export default function Overview() {
             </dl>
             {profile.active_loan_payment > 0 && <p>Active loan payment uses the recorded amount at the end of 2025.</p>}
           </Card>
-        </div>
+        </div></Detail>
       </div>
 
-      <aside className="bank-next">
+      <Detail><aside className="bank-next">
         <Tangerine className="bank-next-mascot" />
         <div>
           <h2>What next?</h2>
@@ -113,7 +118,8 @@ export default function Overview() {
           <Link to="/profile">Who PULP thinks you are <ArrowRight size={16} aria-hidden="true" /></Link>
           <Link to="/insights">How you compare with others <ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
-      </aside>
+      </aside></Detail>
+      <ShowFullDetail what="Overview" />
     </div>
   )
 }

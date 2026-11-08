@@ -7,6 +7,8 @@ import PulpPanel, { clearSavedThreads } from './pulp/PulpPanel'
 import { SUPPORTING_WORKSPACE, WORKSPACE, WorkspaceNav } from './workspace'
 import './banking.css'
 import '../brand.css'
+import './simple.css'
+import { useView } from '../stores/view'
 
 export default function Layout({ onReplayIntro }: { onReplayIntro: () => void }) {
   const { accountId, loadAccount, loadingProfile, profileError, clearAccount, openPulp, closePulp } = useApp()
@@ -18,6 +20,8 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
   const loc = useLocation()
   const navigate = useNavigate()
   const page = WORKSPACE.find(({ to }) => to === loc.pathname)
+  const { view, setView, resetReveal } = useView()
+  useEffect(() => { resetReveal() }, [loc.pathname, resetReveal])
 
   useEffect(() => {
     const current = useApp.getState()
@@ -58,7 +62,7 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
   }
 
   return (
-    <div className="bank-workspace">
+    <div className="bank-workspace" data-view={view}>
       <a className="bank-skip" href="#workspace-content">Skip to content</a>
       <header className="bank-header">
         <div className="bank-width bank-header-inner">
@@ -110,7 +114,15 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
       </div>
       <main id="workspace-content" className="main bank-main bank-width" data-page={loc.pathname.slice(1)} tabIndex={-1}>
         <div className="bank-page-heading">
-          <h1>{page?.label ?? 'PULP'}</h1>
+          <div className="bank-page-title-row">
+            <h1>{page?.label ?? 'PULP'}</h1>
+            {accountId && (
+              <div className="view-switch" role="group" aria-label="How much to show">
+                <button type="button" aria-pressed={view === 'simple'} onClick={() => setView('simple')}>Simple</button>
+                <button type="button" aria-pressed={view === 'full'} onClick={() => setView('full')}>Full detail</button>
+              </div>
+            )}
+          </div>
           {page && <p>{page.subtitle}</p>}
         </div>
         {inputError && <div className="err bank-error" id="account-input-error" role="alert">{inputError}</div>}

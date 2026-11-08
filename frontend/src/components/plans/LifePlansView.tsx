@@ -1,6 +1,8 @@
 /* Life plans after a shock (or for the long term): where you stand, how the agents searched, the four finalists by
    role, the plans that fall short, the trade-off, the steps over time with the agents' reasoning, and cash month by
    month. Compact mode (the 460px Pulp panel) shows the best balance only. Props stay { result, compact }. */
+import { Detail } from '../Detail'
+import ExplainButton from '../ExplainButton'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { LifePlan, LifePlanResult } from '../../services/api'
@@ -95,15 +97,16 @@ export default function LifePlansView({ result, compact = false, variant = 'full
       </p>
 
       <div className="lp-block lp-first">
-        <h3>{selected.id === recommended.id ? 'What to do first' : <>Steps for <span className="lp-sub">“{selected.name}”</span></>}</h3>
+        <div className="section-head"><h3>{selected.id === recommended.id ? 'What to do first' : <>Steps for <span className="lp-sub">“{selected.name}”</span></>}</h3><ExplainButton topic="plan" label="what to do first" /></div>
         <p className="lp-lead">{selected.role_label ? <b>{selected.role_label}: </b> : null}{outcomeLine(selected, horizon, longTerm)}</p>
         <StepList plan={selected} horizon={horizon} longTerm={longTerm} />
         {(selected.versus || selected.why) && <p className="lp-read"><JuiceDrop /> <b>Pulp’s read</b> {selected.versus ?? selected.why}</p>}
         {selected.id !== recommended.id && <button type="button" className="lp-btn ghost" onClick={() => setSelectedId(recommended.id)}>Back to the recommended plan</button>}
       </div>
 
+      <Detail>
       <div className="lp-block">
-        <h3>Four ways to do it <span className="lp-sub">each best at something different; pick one to see its steps</span></h3>
+        <div className="section-head"><h3>Four ways to do it <span className="lp-sub">each best at something different; pick one to see its steps</span></h3><ExplainButton topic="finalists" label="the four plans" /></div>
         <div className="lp-final-wrap">
           <FinalistCards plans={finalists} selectedId={selectedId} onSelect={setSelectedId} userBestId={userBest?.finalist ? userBest.id : null} longTerm={longTerm} />
           <details className="lp-weights-wrap lp-weights-details">
@@ -134,6 +137,7 @@ export default function LifePlansView({ result, compact = false, variant = 'full
       <details className="lp-block lp-more">
         <summary>How the agents chose this, in detail</summary>
         <div className="lp-more-body">
+          <div className="explain-row"><ExplainButton topic="plan_search" label="how the plans were chosen" /></div>
       {result.search && (
         <div className="lp-block">
           <h3>How the agents chose these four</h3>
@@ -197,6 +201,7 @@ export default function LifePlansView({ result, compact = false, variant = 'full
       </div>
         </div>
       </details>
+      </Detail>
     </section>
   )
 }
