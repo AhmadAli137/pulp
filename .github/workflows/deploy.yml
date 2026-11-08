@@ -44,8 +44,7 @@ jobs:
         run: |
           set -e
           mkdir -p ~/.ssh
-          printf '%s
-' "$VULTR_SSH_KEY" > ~/.ssh/deploy_key
+          echo "$VULTR_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$VULTR_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ConnectTimeout=20 "$VULTR_USER@$VULTR_HOST" bash -s <<'REMOTE'
