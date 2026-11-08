@@ -1,0 +1,54 @@
+/* PULP brand layer: the acronym lockup, quiet citrus patterns, paper grain, the segment divider and shared controls.
+   Patterns are faint SVG data URIs layered over existing colours; nothing here changes layout widths. */
+:root{
+  --brand-orange:#E86A0C;
+  --pattern-segment:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='.07' stroke-width='1.2'%3E%3Ccircle cx='48' cy='48' r='30'/%3E%3Cpath d='M48 18v60M22 33l52 30M22 63l52-30'/%3E%3Ccircle cx='0' cy='0' r='18'/%3E%3Ccircle cx='96' cy='96' r='18'/%3E%3C/g%3E%3C/svg%3E");
+  --pattern-segment-ink:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23E86A0C' stroke-opacity='.07' stroke-width='1.1'%3E%3Ccircle cx='120' cy='0' r='46'/%3E%3Cpath d='M120 0L74 0M120 0L80 23M120 0L97 40M120 0L120 46'/%3E%3C/g%3E%3C/svg%3E");
+  --pattern-grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.22 0 0 0 0 0.18 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* header lockup: PULP. with the acronym spelled out, initials in brand orange */
+.bank-brand{gap:9px}
+.brand-lockup{display:flex;flex-direction:column;gap:3px;min-width:0}
+.brand-acronym{font:600 11.5px/1.1 var(--font);letter-spacing:.02em;color:#54645a;white-space:nowrap}
+.brand-acronym b{color:var(--brand-orange);font-weight:800}
+.brand-tagline{font:500 11px/1.1 var(--font);color:#8C9286;white-space:nowrap}
+@media (max-width:1100px){.brand-tagline{display:none}}
+@media (max-width:640px){.brand-acronym{display:none}}
+
+/* the green account banner and branded section headers carry a faint segment pattern */
+.bank-account-summary{background-image:var(--pattern-segment);background-size:96px 96px;background-position:right -20px top -20px}
+.brand-section .card-head{position:relative}
+.brand-section{background-image:var(--pattern-segment-ink);background-repeat:no-repeat;background-position:top right}
+.brand-banner{background-image:var(--pattern-segment-ink),var(--pattern-grain);background-repeat:no-repeat,repeat;background-position:top right,0 0}
+/* fine paper grain on cards */
+.card{background-image:var(--pattern-grain)}
+.card.dark{background-image:none}
+/* citrus-segment divider */
+.brand-divider{height:14px;border:0;margin:6px 0;background:
+  radial-gradient(circle at 50% 50%,#F28C28 0 3px,transparent 3.5px) center/14px 14px no-repeat,
+  linear-gradient(#E3E8DC,#E3E8DC) left center/calc(50% - 14px) 1px no-repeat,
+  linear-gradient(#E3E8DC,#E3E8DC) right center/calc(50% - 14px) 1px no-repeat}
+.plan-card>.card-head h2::before,.brand-section>.card-head h2::before{content:'';display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:50%;background:conic-gradient(#F28C28 0 60deg,#F7A650 60deg 120deg,#F28C28 120deg 180deg,#F7A650 180deg 240deg,#F28C28 240deg 300deg,#F7A650 300deg);vertical-align:1px}
+.ov-sub{font-size:14px;margin:0 0 10px}
+
+/* My Plan tabs */
+.plan-tabs{display:inline-flex;align-self:flex-start;gap:4px;padding:4px;border-radius:999px;background:#EEF1E8;border:1px solid #E3E8DC}
+.plan-tabs button{border:0;background:none;border-radius:999px;padding:7px 16px;font:700 13px var(--font);color:#4f5a50;cursor:pointer}
+.plan-tabs button.on{background:#fff;color:#183B2D;box-shadow:0 1px 3px #0000001a}
+.plan-tabs button:focus-visible{outline:3px solid #f9b17e;outline-offset:2px}
+
+/* shared slider and button styles (used on Overview, Shocks and plans) */
+.lp-slider{display:flex;flex-direction:column;gap:2px;font-size:12.5px}
+.lp-slider-head{display:flex;justify-content:space-between}
+.lp-slider output{font-weight:800;font-variant-numeric:tabular-nums}
+.lp-slider input{width:100%;accent-color:var(--brand-orange)}
+.lp-slider small{font-size:11px;color:#7C8177}
+.lp-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid #D5DBCD;background:#fff;color:#183B2D;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer}
+.lp-btn.ghost{border-color:transparent;background:none;text-decoration:underline;padding:4px 0;font-weight:600;color:#54645a}
+.whatif{border:1px solid #E3E8DC;border-radius:12px;padding:10px 12px;margin:12px auto 0;max-width:760px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 18px;background:#FAFBF8}
+.whatif legend{font-size:12.5px;font-weight:800;color:#183B2D;padding:0 4px}
+.whatif-result{grid-column:1/-1;margin:0;font-size:13px;color:#3d4a3f}
+.whatif .lp-btn{justify-self:start}
+.lp-preview{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;border:1px dashed #C9B79E;color:#8a6a3f;font-size:11px;font-weight:700;letter-spacing:.02em;vertical-align:1px;text-transform:uppercase}
+.lp-verdict-mark{display:inline-block;flex:none}

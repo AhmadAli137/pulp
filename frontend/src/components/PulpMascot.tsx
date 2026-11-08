@@ -1,27 +1,37 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import './pulp-mascot.css'
 
-export type PipMood = 'idle' | 'thinking' | 'listening'
+export type PipMood = 'idle' | 'thinking' | 'listening' | 'celebrate' | 'concerned'
+export type PulpMood = PipMood
 
-export function Tangerine({ className = '', mood = 'idle' }: { className?: string; mood?: PipMood }) {
+/* Pulp, drawn flat: one tangerine shape, a soft segment highlight, a small stem and leaf, and simple dot eyes.
+   Moods change the face (celebrate: a short hop with citrus sparks and a smile; concerned: brows down, a small frown,
+   one slow droop). Reduced motion keeps the expression and drops the movement. */
+export function Tangerine({ className = '', mood = 'idle', label = 'Pulp' }: { className?: string; mood?: PipMood; label?: string }) {
+  const mouth = mood === 'celebrate' ? 'M78 104q12 13 24 0' : mood === 'concerned' ? 'M80 110q10-7 20 0' : 'M81 105q9 7 18 0'
   return (
-    <svg className={`tangerine-mascot ${className} mood-${mood}`} viewBox="0 0 180 172" role="img" aria-label="Pulp, your little tangerine companion">
-      <defs>
-        <radialGradient id="pip-skin" cx="32%" cy="27%" r="80%"><stop offset="0" stopColor="#ffbd5e" /><stop offset=".55" stopColor="#ff9136" /><stop offset="1" stopColor="#ed6b21" /></radialGradient>
-      </defs>
-      <ellipse className="pip-shadow" cx="89" cy="155" rx="43" ry="6" fill="#d3c6ae" opacity=".2" />
+    <svg className={`tangerine-mascot ${className} mood-${mood}`} viewBox="0 0 180 172" role="img" aria-label={label}>
+      <ellipse className="pip-shadow" cx="90" cy="156" rx="42" ry="5" fill="#cfc6b2" opacity=".35" />
+      {mood === 'celebrate' && (
+        <g className="pip-sparks" aria-hidden="true">
+          {[0, 60, 120, 180, 240, 300].map((a) => (
+            <path key={a} className="pip-spark" style={{ ['--a' as string]: `${a}deg` }} d="M90 22q5 6 0 12q-5-6 0-12Z" fill={a % 120 === 0 ? '#F28C28' : '#F7B267'} />
+          ))}
+        </g>
+      )}
       <g className="pip-body">
-        <path d="M65 140q-5 11-15 9m62-9q6 11 16 9" fill="none" stroke="#85492d" strokeWidth="5" strokeLinecap="round" />
-        <path d="M37 96q-15 5-16 17m122-17q15 4 17-8" fill="none" stroke="#d97535" strokeWidth="5" strokeLinecap="round" />
-        <path d="M88 47C31 30 14 88 39 123c18 28 79 29 101-1 28-40 0-86-52-75Z" fill="url(#pip-skin)" />
-        <path d="M45 72q10-17 29-17" stroke="#ffe1aa" strokeWidth="5" opacity=".7" strokeLinecap="round" fill="none" />
-        <g fill="#c95c20" opacity=".25"><circle cx="49" cy="110" r="1.3" /><circle cx="56" cy="124" r="1.2" /><circle cx="125" cy="119" r="1.4" /><circle cx="132" cy="79" r="1.3" /><circle cx="112" cy="135" r="1" /><circle cx="71" cy="135" r="1.3" /></g>
-        <path d="M88 47q-4-15 2-22" stroke="#665337" strokeWidth="5" fill="none" strokeLinecap="round" />
-        <path className="pip-leaf" d="M90 36c7-25 33-23 44-16-3 21-29 27-44 16Z" fill="#526d42" />
-        <path d="m94 35 26-10" stroke="#91a76c" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-        <g className="pip-eyes" fill="#4f3527"><ellipse cx="71" cy="94" rx="3.5" ry="5" /><ellipse cx="108" cy="94" rx="3.5" ry="5" /></g>
-        <g className="pip-cheeks" fill="#e96938" opacity=".4"><ellipse cx="59" cy="105" rx="7" ry="4" /><ellipse cx="120" cy="105" rx="7" ry="4" /></g>
-        <path d="M81 108q9 9 18 0" stroke="#633d26" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        <path d="M90 46c-30-2-58 18-60 50-2 30 24 54 60 54s62-24 60-54c-2-32-30-52-60-50Z" fill="#F28C28" />
+        <path d="M90 46c-30-2-58 18-60 50-1 14 4 26 13 35-4-30 12-62 47-85Z" fill="#F7A650" opacity=".55" />
+        <path d="M58 70q10-12 24-14" stroke="#FFE2BF" strokeWidth="4" strokeLinecap="round" fill="none" opacity=".75" />
+        <path d="M90 47v-11" stroke="#5E4A33" strokeWidth="4.5" strokeLinecap="round" />
+        <path className="pip-leaf" d="M92 38c6-15 22-18 32-13-4 13-19 19-32 13Z" fill="#5E7A4A" />
+        {mood === 'concerned' && <g stroke="#4A3426" strokeWidth="2.6" strokeLinecap="round"><path d="M64 82l12 4" /><path d="M116 82l-12 4" /></g>}
+        <g className="pip-eyes" fill="#3F2C20">
+          {mood === 'celebrate'
+            ? <><path d="M65 93q5-6 10 0" stroke="#3F2C20" strokeWidth="3" fill="none" strokeLinecap="round" /><path d="M105 93q5-6 10 0" stroke="#3F2C20" strokeWidth="3" fill="none" strokeLinecap="round" /></>
+            : <><circle cx="70" cy="94" r="4" /><circle cx="110" cy="94" r="4" /></>}
+        </g>
+        <path className="pip-mouth" d={mouth} stroke="#5A3622" strokeWidth="2.6" fill="none" strokeLinecap="round" />
       </g>
     </svg>
   )
@@ -38,8 +48,39 @@ export function PulpMark({ size = 28 }: { size?: number }) {
   )
 }
 
+/** A single drop of juice: the mark for places where Pulp interprets ("Pulp's read"). */
+export function JuiceDrop({ size = 14, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg className={`juice-drop ${className}`} width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M8 1.5C6 5 3.5 7.6 3.5 10.2a4.5 4.5 0 0 0 9 0C12.5 7.6 10 5 8 1.5Z" fill="#F28C28" />
+      <path d="M6 10.4a2 2 0 0 0 1.6 2" stroke="#FFE2BF" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/** Line-art press: records go in at the top, a drop of insight comes out below. */
+export function PressIcon({ size = 34, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg className={`press-icon ${className}`} width={size} height={size} viewBox="0 0 40 40" aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="11" y="3" width="18" height="6" rx="1.5" stroke="#183B2D" strokeWidth="1.6" />
+      <path d="M14 5.5h12M14 7.5h8" stroke="#A0A598" strokeWidth="1" />
+      <path d="M20 9v4" stroke="#183B2D" strokeWidth="1.6" />
+      <path d="M9 13h22l-4 9H13Z" stroke="#183B2D" strokeWidth="1.6" fill="#FFF1E6" />
+      <path d="M17 22v2.5h6V22" stroke="#183B2D" strokeWidth="1.6" />
+      <path className="press-drop" d="M20 27c-1.4 2.2-2.6 3.6-2.6 5a2.6 2.6 0 0 0 5.2 0c0-1.4-1.2-2.8-2.6-5Z" fill="#F28C28" />
+    </svg>
+  )
+}
+
+/** Loading state in the brand voice: a small press with a drip, and a line such as "Squeezing your records…". */
+export function SqueezeLoader({ label = 'Squeezing your records…', className = '' }: { label?: string; className?: string }) {
+  return (
+    <p className={`squeeze-loader ${className}`} role="status"><PressIcon size={26} className="pressing" /><span>{label}</span></p>
+  )
+}
+
 const INTRO_KEY = 'pulp-intro-seen'
-const INTRO_DURATION_MS = 1000
+const INTRO_DURATION_MS = 1500
 export function introSeen(): boolean { try { return sessionStorage.getItem(INTRO_KEY) === '1' } catch { return false } }
 export function markIntroSeen() { try { sessionStorage.setItem(INTRO_KEY, '1') } catch { /* ignore */ } }
 export function clearIntroSeen() { try { sessionStorage.removeItem(INTRO_KEY) } catch { /* ignore */ } }

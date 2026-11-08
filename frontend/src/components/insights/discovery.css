@@ -1,0 +1,37 @@
+.discovery {
+  position: relative;
+  border: 1px solid var(--bank-border, #dde4d9);
+  border-left: 5px solid var(--bank-orange, #9c4f30);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff8f1 0%, #ffffff 60%);
+  padding: 18px 20px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.discovery.sev-risk { border-left-color: #b4432b; }
+.discovery.sev-watch { border-left-color: var(--bank-orange, #9c4f30); }
+.discovery.sev-info { border-left-color: var(--bank-green, #1c4639); background: linear-gradient(135deg, #f1f7f3 0%, #ffffff 60%); }
+.discovery-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.discovery-label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--bank-orange, #9c4f30); }
+.discovery.sev-info .discovery-label { color: var(--bank-green, #1c4639); }
+.discovery-chip { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 10px; background: #f3ebe4; color: #6b3a24; }
+.discovery.sev-info .discovery-chip { background: #e5efe9; color: var(--bank-green, #1c4639); }
+.discovery h2 { margin: 0; font-size: 22px; line-height: 1.25; color: var(--bank-green, #1c4639); }
+.discovery-plain { margin: 0; font-size: 16px; line-height: 1.5; }
+.discovery-evidence { margin: 0; font-size: 14px; color: #44514a; }
+.discovery-foot { display: grid; gap: 4px; }
+.discovery-rarity { font-size: 13px; font-weight: 600; color: #6b3a24; }
+.discovery.sev-info .discovery-rarity { color: var(--bank-green, #1c4639); }
+.discovery-action { margin: 0; font-size: 14px; }
+.discovery-links { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.discovery-ask { border: 1px solid var(--bank-green, #1c4639); background: #fff; color: var(--bank-green, #1c4639); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.discovery-ask:hover, .discovery-ask:focus-visible { background: var(--bank-green, #1c4639); color: #fff; }
+.discovery-more summary { cursor: pointer; font-size: 14px; font-weight: 600; }
+.discovery-more ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+.discovery.compact h2 { font-size: 19px; }
+.discovery-loading { display: flex; align-items: center; gap: 10px; color: #55625b; font-size: 14px; border-left-color: var(--bank-border, #dde4d9); }
+@media (max-width: 600px) {
+  .discovery { padding: 14px 14px; }
+  .discovery h2 { font-size: 19px; }
+}

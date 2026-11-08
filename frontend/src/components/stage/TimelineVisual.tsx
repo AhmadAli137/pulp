@@ -33,6 +33,7 @@ export default function TimelineVisual({ p }: { p: TimelineParams }) {
         <Label x={x0 + 20} y={96} size={17} color="#183B2D" anchor="middle" weight={800} family="Manrope, sans-serif">{p.income_after < p.income_before ? `income to ${Math.round((p.income_after / Math.max(1, p.income_before)) * 100)}%` : (p.events.filter((e) => e.month === 0)[1]?.label ?? (p.spending_after > p.income_before ? 'bills up' : 'one-off cost'))}</Label>
       </motion.g>
       <line x1={x0} x2={x1} y1={400} y2={400} stroke={LINE} strokeWidth={4} strokeLinecap="round" />
+      <Label x={x1} y={378} size={14} color={MUTED} anchor="end">months from now →</Label>
       {trailW > 0 && <line x1={x0} x2={x0 + trailW} y1={400} y2={400} stroke={dry ? ROSE : ORANGE} strokeWidth={6} strokeLinecap="round" filter="url(#glow)" />}
       {Array.from({ length: months + 1 }, (_, i) => (
         <g key={i}>
@@ -60,7 +61,7 @@ export default function TimelineVisual({ p }: { p: TimelineParams }) {
         <path d="M0 0 L72 0 L62 110 L10 110 Z" fill="#FFFDF8" stroke={dry ? ROSE : INK} strokeWidth={4} strokeLinejoin="round" />
         <clipPath id="tl-cup"><path d="M0 0 L72 0 L62 110 L10 110 Z" /></clipPath>
         <rect clipPath="url(#tl-cup)" x={-5} y={110 - level * 106} width={82} height={120} fill={dry ? ROSE : 'url(#juice-v)'} />
-        <Label x={36} y={-14} size={15} color={dry ? ROSE : INK} anchor="middle" weight={800}>{money(left)}</Label>
+        <Label x={36} y={-4} size={15} color={dry ? ROSE : INK} anchor="middle" weight={800}>{money(left)} left</Label>
       </g>
       {/* income and spending bars */}
       <g transform="translate(660, 50)">

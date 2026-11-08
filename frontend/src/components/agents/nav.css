@@ -1,0 +1,15 @@
+/* Six primary tabs. Wide screens show them all; narrower screens scroll the tab strip in its own container with a
+   fade at the trailing edge, so the page itself never scrolls sideways. */
+.bank-workspace .bank-nav-inner{min-width:0}
+.bank-workspace .bank-nav-inner .workspace-tabs{flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.bank-workspace .bank-nav-inner .workspace-tabs::-webkit-scrollbar{display:none}
+.bank-workspace .bank-nav-inner .workspace-tabs a{flex:none;scroll-snap-align:start;white-space:nowrap}
+.bank-nav-inner .bank-menu{flex:none}
+@media (max-width:1060px){
+  .bank-workspace .bank-nav-inner .workspace-tabs{gap:6px}
+  .bank-workspace .bank-nav-inner .workspace-tabs a{padding-inline:8px}
+}
+@media (max-width:900px){
+  .bank-workspace .bank-nav-inner{flex-wrap:nowrap!important}
+  .bank-workspace .bank-nav-inner .workspace-tabs{padding-right:28px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 30px),transparent)}
+}

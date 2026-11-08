@@ -38,7 +38,7 @@ export default function PodiumVisual({ p }: { p: PodiumParams }) {
         const h = heights[i], x = xs[i]
         const top = e.rank === 1
         const title = e.action ?? e.label
-        const lines = wrap(title, 26)
+        const lines = wrap(title, 24)
         const sub = e.means ?? leverLine(e)
         const ink = top ? '#1b1f1c' : INK
         const soft = top ? '#5a3a24' : MUTED
@@ -50,8 +50,8 @@ export default function PodiumVisual({ p }: { p: PodiumParams }) {
               <Big x={x + w / 2} y={base - h + 40} size={30} color={ink} anchor="middle">#{e.rank}</Big>
               {lines.map((ln, li) => <Label key={li} x={x + w / 2} y={base - h + 70 + li * 20} size={15} color={ink} anchor="middle" weight={800} family="Manrope, sans-serif">{ln}</Label>)}
               <Label x={x + w / 2} y={base - h + 70 + lines.length * 20 + 6} size={13} color={soft} anchor="middle" weight={600}>{pct(e.prob_shortfall)} chance of running dry</Label>
-              {h > 180 && wrap(sub, 32).map((ln, li) => <Label key={li} x={x + w / 2} y={base - h + 70 + lines.length * 20 + 28 + li * 16} size={11.5} color={soft} anchor="middle">{ln}</Label>)}
-              {e.action && <Label x={x + w / 2} y={base - 14} size={10.5} color={soft} anchor="middle">{e.label.length > 34 ? e.label.slice(0, 33) + '…' : e.label}</Label>}
+              {h > 180 && wrap(sub, 27).map((ln, li) => <Label key={li} x={x + w / 2} y={base - h + 70 + lines.length * 20 + 28 + li * 17} size={14} color={soft} anchor="middle">{ln}</Label>)}
+              {e.action && <Label x={x + w / 2} y={base - 14} size={14} color={soft} anchor="middle">{e.label.length > 27 ? e.label.slice(0, 26) + '…' : e.label}</Label>}
               {e.flags.length > 0 && (
                 <g transform={`translate(${x + w / 2 - 56}, ${base - h - 32})`}>
                   <rect width={112} height={26} rx={13} fill={e.flags[0].severity === 'high' ? ROSE : '#FFE1C7'} stroke={e.flags[0].severity === 'high' ? 'none' : ORANGE} />

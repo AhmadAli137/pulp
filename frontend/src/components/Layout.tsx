@@ -6,6 +6,7 @@ import { PulpMark } from './PulpMascot'
 import PulpPanel from './pulp/PulpPanel'
 import { SUPPORTING_WORKSPACE, WORKSPACE, WorkspaceNav } from './workspace'
 import './banking.css'
+import '../brand.css'
 
 export default function Layout({ onReplayIntro }: { onReplayIntro: () => void }) {
   const { accountId, loadAccount, loadingProfile, profileError, clearAccount, openPulp, closePulp } = useApp()
@@ -62,7 +63,11 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
         <div className="bank-width bank-header-inner">
           <Link className="bank-brand" to="/" aria-label="PULP home">
             <PulpMark size={34} />
-            <span className="bank-brand-name">PULP<span>.</span></span>
+            <span className="brand-lockup">
+              <span className="bank-brand-name">PULP<span>.</span></span>
+              <span className="brand-acronym" aria-hidden="true"><b>P</b>lanning <b>U</b>nder <b>L</b>ife’s <b>P</b>ressures</span>
+              <span className="brand-tagline" aria-hidden="true">Squeezing insight from your money and your life</span>
+            </span>
           </Link>
           <div className="bank-account-tools">
             <form className="bank-account-form" onSubmit={submit} aria-label="Select demo account">

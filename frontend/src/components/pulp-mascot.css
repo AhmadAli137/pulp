@@ -1,62 +1,86 @@
 .tangerine-mascot{width:100%;height:100%;overflow:visible}
-.pip-body{animation:pip-bob 4.8s ease-in-out infinite;transform-origin:center}
-.pip-leaf{transform-box:fill-box;transform-origin:15% 90%;animation:leaf-wave 4.8s ease-in-out infinite}
-.pip-eyes{transform-box:fill-box;transform-origin:center;animation:pip-blink 6s infinite}
-.pip-shadow{animation:shadow-breathe 4.8s ease-in-out infinite;transform-origin:center}
-.mood-listening{filter:drop-shadow(0 0 10px #e5b07444)}
-.mood-thinking .pip-body{animation-duration:1.4s}
+.pip-body{animation:pip-bob 5.6s ease-in-out infinite;transform-origin:90px 150px}
+.pip-leaf{transform-box:fill-box;transform-origin:0% 80%;animation:leaf-wave 5.6s ease-in-out infinite}
+.pip-eyes{transform-box:fill-box;transform-origin:center;animation:pip-blink 7s infinite}
+.pip-shadow{animation:shadow-breathe 5.6s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+.mood-listening{filter:drop-shadow(0 0 8px #e5b07440)}
+.mood-thinking .pip-body{animation-duration:1.6s}
+/* celebrate: one short hop with a burst of citrus sparks, then the gentle idle */
+.mood-celebrate .pip-body{animation:pip-hop .9s cubic-bezier(.3,1.4,.5,1) 1,pip-bob 5.6s ease-in-out .9s infinite}
+.mood-celebrate .pip-shadow{animation:pip-hop-shadow .9s ease-out 1}
+.pip-spark{transform-box:view-box;transform-origin:90px 96px;transform:rotate(var(--a)) translateY(-6px);opacity:0;animation:pip-spark 1s ease-out .15s 1 both}
+/* concerned: a single slow droop that stays */
+.mood-concerned .pip-body{animation:pip-droop 1.6s ease-in-out 1 both}
+.mood-concerned .pip-leaf{animation:none;transform:rotate(14deg)}
 
-@keyframes pip-bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-5px) rotate(2deg)}}
-@keyframes leaf-wave{0%,100%{transform:rotate(0)}50%{transform:rotate(8deg)}}
-@keyframes pip-blink{0%,43%,47%,100%{transform:scaleY(1)}45%{transform:scaleY(.12)}}
-@keyframes shadow-breathe{0%,100%{opacity:.7;transform:scaleX(1)}50%{opacity:.4;transform:scaleX(.9)}}
+@keyframes pip-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes leaf-wave{0%,100%{transform:rotate(0)}50%{transform:rotate(6deg)}}
+@keyframes pip-blink{0%,45%,48%,100%{transform:scaleY(1)}46.5%{transform:scaleY(.15)}}
+@keyframes shadow-breathe{0%,100%{opacity:.75;transform:scaleX(1)}50%{opacity:.5;transform:scaleX(.94)}}
+@keyframes pip-hop{0%{transform:translateY(0) scale(1)}18%{transform:translateY(2px) scale(1.04,.95)}45%{transform:translateY(-16px) scale(.98,1.03)}75%{transform:translateY(0) scale(1.02,.98)}100%{transform:none}}
+@keyframes pip-hop-shadow{0%,100%{transform:scaleX(1)}45%{transform:scaleX(.7);opacity:.2}}
+@keyframes pip-spark{0%{opacity:0;transform:rotate(var(--a)) translateY(-4px) scale(.6)}30%{opacity:1}100%{opacity:0;transform:rotate(var(--a)) translateY(-30px) scale(1)}}
+@keyframes pip-droop{0%{transform:none}60%{transform:translateY(5px) rotate(-3deg) scale(1.02,.97)}100%{transform:translateY(3px) rotate(-2deg) scale(1.01,.98)}}
 
-/* One continuous harvest: reach, pick, squeeze, fill, then the wordmark. */
-.harvest-intro{position:fixed;inset:0;background:#faf9f6;z-index:100;display:flex;flex-direction:column;animation:intro-arrive .15s ease-out}
+/* Squeeze metaphor: the press drips while something is loading. */
+.juice-drop{display:inline-block;vertical-align:-2px;flex:none}
+.press-icon{flex:none}
+.squeeze-loader{display:flex;align-items:center;gap:10px;color:#5d6a5f;font-size:13px;margin:10px 0}
+.press-icon.pressing .press-drop{transform-box:fill-box;transform-origin:50% 0;animation:press-drip 1.3s ease-in infinite}
+@keyframes press-drip{0%{transform:translateY(-4px) scale(.4);opacity:0}35%{opacity:1}80%{transform:translateY(2px) scale(1);opacity:1}100%{transform:translateY(5px) scale(1);opacity:0}}
+
+/* One continuous harvest in 1.5 s: reach, pick, carry, squeeze, pour, fill, then the wordmark, which is still for
+   the last 360 ms. Every beat of the original film plays in order, compressed proportionally; beats that would be
+   shorter than ~120 ms are merged (the squeeze and its rebound are one motion). 1% = 15 ms. */
+.harvest-intro{position:fixed;inset:0;background:#faf9f6;z-index:100;display:flex;flex-direction:column;animation:intro-arrive .2s ease-out}
 .intro-corner{display:flex;align-items:center;gap:12px;padding:32px 42px;font-size:10px;color:#9da78c}
 .harvest-center{position:relative;flex:1;display:grid;place-items:center;min-height:0}
-.harvest-film{width:min(600px,100vw);max-height:70vh;overflow:visible;animation:film-out var(--harvest-duration) both}
-.orchard-scene{animation:orchard-out var(--harvest-duration) both;transform-origin:210px 230px}
-.picking-hand{animation:hand-pick var(--harvest-duration) both;transform-origin:402px 90px}
-.picked-fruit{animation:fruit-pick var(--harvest-duration) both;transform-origin:350px 137px}
-.squeeze-hands{animation:hands-show var(--harvest-duration) both}
-.left-squeeze{animation:left-squeeze var(--harvest-duration) both}
-.right-squeeze{animation:right-squeeze var(--harvest-duration) both}
-.juice-glass{animation:glass-show var(--harvest-duration) both}
-.glass-fill{transform-origin:300px 333px;animation:glass-fill var(--harvest-duration) both}
-.juice-stream{animation:juice-flow var(--harvest-duration) both;transform-origin:300px 190px}
-.falling-pulp{animation:pulp-fall .3s ease-in infinite}
-.falling-pulp.two{animation-delay:.1s}
-.falling-pulp.three{animation-delay:.2s}
-.intro-wordmark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;animation:wordmark-in var(--harvest-duration) both;pointer-events:none}
+.harvest-film{width:min(600px,100vw);max-height:70vh;overflow:visible;animation:film-out var(--harvest-duration) cubic-bezier(.4,0,.2,1) both}
+.orchard-scene{animation:orchard-out var(--harvest-duration) cubic-bezier(.4,0,.2,1) both;transform-origin:210px 230px}
+.picking-hand{animation:hand-pick var(--harvest-duration) cubic-bezier(.25,.7,.3,1) both;transform-origin:402px 90px}
+.picked-fruit{animation:fruit-pick var(--harvest-duration) cubic-bezier(.45,0,.25,1) both;transform-origin:350px 137px}
+.squeeze-hands{animation:hands-show var(--harvest-duration) cubic-bezier(.4,0,.2,1) both}
+.left-squeeze{animation:left-squeeze var(--harvest-duration) cubic-bezier(.45,0,.25,1) both}
+.right-squeeze{animation:right-squeeze var(--harvest-duration) cubic-bezier(.45,0,.25,1) both}
+.juice-glass{animation:glass-show var(--harvest-duration) cubic-bezier(.2,.7,.3,1) both}
+.glass-fill{transform-origin:300px 333px;animation:glass-fill var(--harvest-duration) cubic-bezier(.45,0,.35,1) both}
+.juice-stream{animation:juice-flow var(--harvest-duration) cubic-bezier(.4,0,.2,1) both;transform-origin:300px 190px}
+.falling-pulp{animation:pulp-fall .36s cubic-bezier(.5,0,.75,.4) infinite}
+.falling-pulp.two{animation-delay:.12s}
+.falling-pulp.three{animation-delay:.24s}
+.intro-wordmark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;animation:wordmark-in var(--harvest-duration) cubic-bezier(.2,.7,.3,1) both;pointer-events:none}
 .intro-wordmark h1{font-size:84px;font-weight:800;letter-spacing:-5px;color:#34442e;line-height:1.2;margin-top:8px}
 .intro-wordmark h1 span{color:#ed7c37}
 .intro-wordmark p{font-size:16px;color:#8c9c7a;margin-top:16px}
 .harvest-captions{position:absolute;bottom:8%;left:0;right:0;text-align:center;font-family:Manrope,sans-serif;color:#81936d;font-size:16px}
 .harvest-captions span{position:absolute;inset:0}
-.harvest-captions span:first-child{animation:caption-one var(--harvest-duration) both}
-.harvest-captions span:last-child{animation:caption-two var(--harvest-duration) both}
+/* one short caption, legible for about 450 ms during the pick; the second is left out at this speed */
+.harvest-captions span:first-child{animation:caption-one var(--harvest-duration) cubic-bezier(.4,0,.2,1) both}
+.harvest-captions span:last-child{display:none}
 .intro-bottom{padding:28px 42px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .intro-bottom>span{font-size:8px;letter-spacing:1.8px;color:#a2ae94}
 .intro-bottom button{border:1px solid #dde3d3;border-radius:20px;background:transparent;padding:10px 16px;color:#81936c;font-size:11px}
 .intro-bottom button:hover{background:#f0f3e8}
 @keyframes intro-arrive{from{opacity:0}to{opacity:1}}
-@keyframes orchard-out{0%,18%{opacity:1;transform:translateX(0)}28%,100%{opacity:0;transform:translateX(-70px)}}
-@keyframes hand-pick{0%{opacity:0;transform:translate(80px,-40px)}8%{opacity:1}15%,19%{opacity:1;transform:translate(-19px,20px) rotate(-8deg)}28%,100%{opacity:0;transform:translate(-40px,0)}}
-@keyframes fruit-pick{0%,15%{transform:translate(0,0) rotate(0);opacity:1}21%{transform:translate(-8px,17px) rotate(-18deg)}30%{transform:translate(-50px,35px) rotate(0) scale(1)}37%{transform:translate(-50px,35px) scale(.66,1.1)}41%{transform:translate(-50px,35px) scale(.82,.96)}47%{transform:translate(-50px,35px) scale(.48,1.05);opacity:1}54%,100%{transform:translate(-50px,35px) scale(.4,.8);opacity:0}}
-@keyframes hands-show{0%,24%{opacity:0}30%,50%{opacity:1}55%,100%{opacity:0}}
-@keyframes left-squeeze{0%,30%{transform:translateX(0)}37%{transform:translateX(27px)}41%{transform:translateX(18px)}47%,100%{transform:translateX(33px)}}
-@keyframes right-squeeze{0%,30%{transform:translateX(0)}37%{transform:translateX(-27px)}41%{transform:translateX(-18px)}47%,100%{transform:translateX(-33px)}}
-@keyframes glass-show{0%,21%{opacity:0;transform:translateY(20px)}29%,100%{opacity:1;transform:translateY(0)}}
-@keyframes glass-fill{0%,33%{transform:scaleY(0)}50%,100%{transform:scaleY(1)}}
-@keyframes juice-flow{0%,33%{opacity:0;transform:scaleY(0)}36%,48%{opacity:1;transform:scaleY(1)}52%,100%{opacity:0;transform:scaleY(.5)}}
+/* orchard: visible while the hand picks, then slides away (270 ms) */
+@keyframes orchard-out{0%,16%{opacity:1;transform:translateX(0)}34%,100%{opacity:0;transform:translateX(-70px)}}
+/* hand: arrives and grips (240 ms), holds (75 ms), leaves with the fruit (180 ms) */
+@keyframes hand-pick{0%{opacity:0;transform:translate(80px,-40px)}8%{opacity:1}16%,21%{opacity:1;transform:translate(-19px,20px) rotate(-8deg)}33%,100%{opacity:0;transform:translate(-40px,0)}}
+/* fruit: pulled (135 ms), carried to the press (150 ms), squeezed in one motion with its rebound (165 ms), pressed
+   flat (135 ms), then gone (120 ms) */
+@keyframes fruit-pick{0%,16%{transform:translate(0,0) rotate(0);opacity:1}25%{transform:translate(-8px,17px) rotate(-18deg)}35%{transform:translate(-50px,35px) rotate(0) scale(1)}46%{transform:translate(-50px,35px) scale(.74,1.06)}55%{transform:translate(-50px,35px) scale(.48,1.05);opacity:1}63%,100%{transform:translate(-50px,35px) scale(.4,.8);opacity:0}}
+@keyframes hands-show{0%,27%{opacity:0}36%,55%{opacity:1}63%,100%{opacity:0}}
+@keyframes left-squeeze{0%,35%{transform:translateX(0)}46%{transform:translateX(24px)}55%,100%{transform:translateX(33px)}}
+@keyframes right-squeeze{0%,35%{transform:translateX(0)}46%{transform:translateX(-24px)}55%,100%{transform:translateX(-33px)}}
+/* glass rises in (165 ms) before the squeeze, fills while the juice pours (300 ms) */
+@keyframes glass-show{0%,23%{opacity:0;transform:translateY(20px)}34%,100%{opacity:1;transform:translateY(0)}}
+@keyframes glass-fill{0%,39%{transform:scaleY(0)}59%,100%{transform:scaleY(1)}}
+@keyframes juice-flow{0%,38%{opacity:0;transform:scaleY(0)}46%,55%{opacity:1;transform:scaleY(1)}63%,100%{opacity:0;transform:scaleY(.5)}}
 @keyframes pulp-fall{from{transform:translateY(-12px)}to{transform:translateY(18px)}}
-@keyframes film-out{0%,53%{opacity:1;transform:scale(1)}60%,100%{opacity:0;transform:scale(.96)}}
-@keyframes wordmark-in{0%,57%{opacity:0;transform:translateY(12px)}68%,100%{opacity:1;transform:translateY(0)}}
-@keyframes caption-one{0%,24%{opacity:1}34%,100%{opacity:0}}
-@keyframes caption-two{0%,38%{opacity:0}45%,66%{opacity:1}76%,100%{opacity:0}}
-/* At one second the captions are too quick to read; the wordmark carries the line instead. */
-.harvest-captions{display:none}
+/* the film steps back (135 ms) as the wordmark rises (210 ms) and then stays still from 76% (the last 360 ms) */
+@keyframes film-out{0%,60%{opacity:1;transform:scale(1)}69%,100%{opacity:0;transform:scale(.96)}}
+@keyframes wordmark-in{0%,62%{opacity:0;transform:translateY(12px)}76%,100%{opacity:1;transform:translateY(0)}}
+@keyframes caption-one{0%{opacity:0}5%,33%{opacity:1}41%,100%{opacity:0}}
 .harvest-intro.reduced .harvest-film,.harvest-intro.reduced .harvest-captions{display:none}
 .harvest-intro.reduced .intro-wordmark{animation:none;opacity:1}
 
@@ -71,6 +95,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .harvest-intro, .harvest-intro *, .tangerine-mascot * { animation: none !important; }
+  .pip-spark { opacity: 0 !important; }
+  .press-icon.pressing .press-drop { animation: none !important; }
+  .mood-concerned .pip-body { transform: translateY(3px) rotate(-2deg); }
   .harvest-film, .harvest-captions { display: none; }
   .intro-wordmark { opacity: 1; transform: none; }
 }

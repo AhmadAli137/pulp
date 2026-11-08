@@ -1,5 +1,6 @@
-import { Activity, ChartNoAxesCombined, FileText, Fingerprint, LayoutDashboard, Map, Network, Settings, Target, UserRound } from 'lucide-react'
+import { Activity, BookOpen, ChartNoAxesCombined, FileText, Fingerprint, LayoutDashboard, Map, Network, Settings, Target, UserRound } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import './agents/nav.css'
 
 export const PRIMARY_WORKSPACE = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, subtitle: 'See what usually comes in, what goes out, and what the account has available.' },
@@ -16,6 +17,7 @@ export const SUPPORTING_WORKSPACE = [
   { to: '/roadmap', label: 'Next steps', icon: Map, subtitle: 'See what you could do this week, this month, and this year.' },
   { to: '/briefings', label: 'Briefings', icon: Activity, subtitle: 'Review your saved financial picture.' },
   { to: '/report', label: 'Stage 1 report', icon: FileText, subtitle: 'Everything PULP learned from the records, in plain words and in technical detail.' },
+  { to: '/developers', label: 'Developer docs', icon: BookOpen, subtitle: 'The API, the agents and how they hand work to each other, the stack and the infrastructure.' },
   { to: '/settings', label: 'Settings', icon: Settings, subtitle: 'Manage your preferences and see where the data comes from.' },
 ]
 

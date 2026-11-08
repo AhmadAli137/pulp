@@ -1,0 +1,2743 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "PULP API \u2014 Planning Under Life\u2019s Pressures",
+  "description": "Financial resilience engine for the Tangerine track (Sheridan Datathon 2026). Official sponsor calculations, shock simulation, matched-cohort research, Monte Carlo futures, strategy comparison, structured life context and adaptive replanning.",
+  "version": "1.0.0"
+ },
+ "paths": {
+  "/api/health": {
+   "get": {
+    "summary": "Health",
+    "operationId": "health_api_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/accounts/sample": {
+   "get": {
+    "summary": "Sample Accounts",
+    "operationId": "sample_accounts_api_accounts_sample_get",
+    "parameters": [
+     {
+      "name": "n",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 50,
+       "minimum": 1,
+       "default": 8,
+       "title": "N"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/{account_id}": {
+   "get": {
+    "summary": "Get Customer",
+    "operationId": "get_customer_api_customers__account_id__get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/{account_id}/history": {
+   "get": {
+    "summary": "Get History",
+    "operationId": "get_history_api_customers__account_id__history_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/{account_id}/cohort": {
+   "get": {
+    "summary": "Get Cohort",
+    "operationId": "get_cohort_api_customers__account_id__cohort_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/{account_id}/insights": {
+   "get": {
+    "summary": "Get Insights",
+    "description": "Stage 1 profile: rule-based flags with evidence, behavioural archetype, and the narrator's sentences\n(Gemini on ADK when configured, templated otherwise). Every number comes from the feature table.",
+    "operationId": "get_insights_api_customers__account_id__insights_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     },
+     {
+      "name": "use_ai",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Use Ai"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/research/archetypes": {
+   "get": {
+    "summary": "Get Research Archetypes",
+    "description": "Behavioural archetypes over all accounts: cluster statistics (code) and names (Gemini or rules).",
+    "operationId": "get_research_archetypes_api_research_archetypes_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/research/hunter": {
+   "get": {
+    "summary": "Get Research Hunter",
+    "description": "Pattern Hunter findings (the ADK hypothesis loop, run offline) or the deterministic battery.",
+    "operationId": "get_research_hunter_api_research_hunter_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/research/validation": {
+   "get": {
+    "summary": "Get Research Validation",
+    "description": "Ground truth: our flags and the simulated layoff against the loans that actually went bad.\n\nServed from the committed Stage 1 run (data/derived/hunter_findings.json) so a page view never rebuilds the\nfeature table; computed live only when that snapshot is missing.",
+    "operationId": "get_research_validation_api_research_validation_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/research/features": {
+   "get": {
+    "summary": "Get Research Features",
+    "description": "Six-month layoff survival by quantile bin of one feature, for the bank-side view.",
+    "operationId": "get_research_features_api_research_features_get",
+    "parameters": [
+     {
+      "name": "feature",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "description": "feature name from FEATURE_DOCS",
+       "title": "Feature"
+      },
+      "description": "feature name from FEATURE_DOCS"
+     },
+     {
+      "name": "bins",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 10,
+       "minimum": 2,
+       "default": 4,
+       "title": "Bins"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/research/summary": {
+   "get": {
+    "summary": "Get Research",
+    "operationId": "get_research_api_research_summary_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/shocks/calculate": {
+   "post": {
+    "summary": "Post Shock",
+    "operationId": "post_shock_api_shocks_calculate_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ShockRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/shocks/compare-purchase": {
+   "post": {
+    "summary": "Post Purchase Comparison",
+    "description": "Compare keeping the purchase money with paying the remaining cost now.",
+    "operationId": "post_purchase_comparison_api_shocks_compare_purchase_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PurchaseComparisonRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/scenarios/simulate": {
+   "post": {
+    "summary": "Post Simulate",
+    "operationId": "post_simulate_api_scenarios_simulate_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SimulateRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/scenarios/branches/{account_id}": {
+   "get": {
+    "summary": "Get Branches",
+    "operationId": "get_branches_api_scenarios_branches__account_id__get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     },
+     {
+      "name": "horizon",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 120,
+       "minimum": 6,
+       "default": 24,
+       "title": "Horizon"
+      }
+     },
+     {
+      "name": "n_paths",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 2000,
+       "minimum": 50,
+       "default": 400,
+       "title": "N Paths"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/strategies/compare": {
+   "post": {
+    "summary": "Post Compare",
+    "operationId": "post_compare_api_strategies_compare_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CompareRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/roadmap/{account_id}": {
+   "get": {
+    "summary": "Get Roadmap",
+    "operationId": "get_roadmap_api_roadmap__account_id__get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/context/{account_id}": {
+   "get": {
+    "summary": "Get Context",
+    "operationId": "get_context_api_context__account_id__get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "summary": "Delete Context",
+    "operationId": "delete_context_api_context__account_id__delete",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/context/propose": {
+   "post": {
+    "summary": "Post Propose",
+    "operationId": "post_propose_api_context_propose_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ProposeRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/context/confirm": {
+   "post": {
+    "summary": "Post Confirm",
+    "operationId": "post_confirm_api_context_confirm_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ConfirmRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/context/edit": {
+   "post": {
+    "summary": "Post Edit",
+    "operationId": "post_edit_api_context_edit_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EditRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/chat": {
+   "post": {
+    "summary": "Post Chat",
+    "operationId": "post_chat_api_agent_chat_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ChatRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/session/{account_id}": {
+   "get": {
+    "summary": "Get Planning Session",
+    "operationId": "get_planning_session_api_agent_session__account_id__get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/plan": {
+   "post": {
+    "summary": "Post Plan",
+    "description": "Stage 3 council: deterministic fan-out, then Strategist, code validation and Challenger (Google ADK, Gemini) in sequence,\nthen deterministic validation and ranking. Works without AI (mode = offline).",
+    "operationId": "post_plan_api_agent_plan_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlanRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/explain": {
+   "post": {
+    "summary": "Post Explain",
+    "description": "Council plus the Explainer: the ranked plan and a scene script (habit, runway, two futures, lever).",
+    "operationId": "post_explain_api_agent_explain_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlanRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/run": {
+   "get": {
+    "summary": "Get Agent Run",
+    "description": "Server-sent events: the whole agentic run as it happens. Events: insight, stage, agent, plan, scenes, done, error.",
+    "operationId": "get_agent_run_api_agent_run_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     },
+     {
+      "name": "income_fraction",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 5.0,
+       "minimum": 0.0,
+       "default": 0.55,
+       "title": "Income Fraction"
+      }
+     },
+     {
+      "name": "bills_increase",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 10.0,
+       "minimum": -1.0,
+       "default": 0.0,
+       "title": "Bills Increase"
+      }
+     },
+     {
+      "name": "one_off_cost",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "minimum": 0.0,
+       "default": 0.0,
+       "title": "One Off Cost"
+      }
+     },
+     {
+      "name": "shock_duration",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 60,
+       "minimum": 1,
+       "default": 6,
+       "title": "Shock Duration"
+      }
+     },
+     {
+      "name": "horizon_months",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 120,
+       "minimum": 6,
+       "default": 24,
+       "title": "Horizon Months"
+      }
+     },
+     {
+      "name": "n_paths",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 2000,
+       "minimum": 50,
+       "default": 200,
+       "title": "N Paths"
+      }
+     },
+     {
+      "name": "use_ai",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Use Ai"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/deck": {
+   "get": {
+    "summary": "Get Deck",
+    "description": "The twist deck. With account_id: the Shock Generator's personal deck for that life (built on first use).",
+    "operationId": "get_deck_api_agent_deck_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/shock-dealer": {
+   "post": {
+    "summary": "Post Shock Dealer",
+    "description": "Who reveals the next twist card and, for the open slot, which scenario. IDs only; amounts come from the deck and engine.",
+    "operationId": "post_shock_dealer_api_agent_shock_dealer_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DealRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/characters": {
+   "get": {
+    "summary": "Get Characters",
+    "operationId": "get_characters_api_agent_characters_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/{account_id}/discovery": {
+   "get": {
+    "summary": "Get Discovery",
+    "description": "The single finding most worth telling this person, ranked by severity, rarity across all accounts and how\nunlikely they are to notice it themselves; with the evidence, how rare it is, and one thing to do about it.",
+    "operationId": "get_discovery_api_customers__account_id__discovery_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/profile/{account_id}": {
+   "get": {
+    "summary": "Get Profile Doc",
+    "description": "The person behind the account: the fictional persona (built and seeded on first call), weighted goals, and the log\nof every change agents or the user made.",
+    "operationId": "get_profile_doc_api_profile__account_id__get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/profile/{account_id}/undo/{change_id}": {
+   "post": {
+    "summary": "Undo Profile Change",
+    "operationId": "undo_profile_change_api_profile__account_id__undo__change_id__post",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     },
+     {
+      "name": "change_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Change Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/profile/{account_id}/rebuild": {
+   "post": {
+    "summary": "Rebuild Profile",
+    "description": "Build the persona again (used after a reset).",
+    "operationId": "rebuild_profile_api_profile__account_id__rebuild_post",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/life-plans": {
+   "post": {
+    "summary": "Post Life Plans",
+    "description": "Stage 3 search: generate many multi-step plans, screen, rank by the stated objective, keep four distinct finalists.",
+    "operationId": "post_life_plans_api_agent_life_plans_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LifePlansRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/plans/history/{account_id}": {
+   "get": {
+    "summary": "Get Plan History",
+    "operationId": "get_plan_history_api_plans_history__account_id__get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/personas": {
+   "get": {
+    "summary": "Get Personas",
+    "description": "Who the agents are: role, what they read and write, and the guardrail on each, for the backstage view.",
+    "operationId": "get_personas_api_agent_personas_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/stage": {
+   "get": {
+    "summary": "Get Agent Stage",
+    "description": "Server-sent events for one stage turn: agent events while the Director works, memory, then a storyboard of beats.",
+    "operationId": "get_agent_stage_api_agent_stage_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     },
+     {
+      "name": "message",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "maxLength": 2000,
+       "default": "__intro__",
+       "title": "Message"
+      }
+     },
+     {
+      "name": "use_ai",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Use Ai"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/replan": {
+   "post": {
+    "summary": "Post Replan",
+    "operationId": "post_replan_api_replan_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ReplanRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/replan/{account_id}/diff": {
+   "get": {
+    "summary": "Get Replan Diff",
+    "operationId": "get_replan_diff_api_replan__account_id__diff_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/{account_id}/overview": {
+   "get": {
+    "summary": "Financial Overview",
+    "operationId": "financial_overview_api_customers__account_id__overview_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/customers/{account_id}/briefing": {
+   "get": {
+    "summary": "Financial Briefing",
+    "operationId": "financial_briefing_api_customers__account_id__briefing_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     },
+     {
+      "name": "period",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "pattern": "^(daily|weekly)$",
+       "default": "daily",
+       "title": "Period"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/research/pulp": {
+   "get": {
+    "summary": "Research",
+    "operationId": "research_api_research_pulp_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/status": {
+   "get": {
+    "summary": "Agent Status",
+    "operationId": "agent_status_api_agent_status_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/decisions/compare": {
+   "post": {
+    "summary": "Compare",
+    "operationId": "compare_api_decisions_compare_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ShockRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/decision/interpret": {
+   "post": {
+    "summary": "Interpret",
+    "operationId": "interpret_api_decision_interpret_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InterpretRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agents/trace/{account_id}": {
+   "get": {
+    "tags": [
+     "reports"
+    ],
+    "summary": "Agent Trace",
+    "operationId": "agent_trace_api_agents_trace__account_id__get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": true,
+         "title": "Response Agent Trace Api Agents Trace  Account Id  Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/report/stage1": {
+   "get": {
+    "tags": [
+     "reports"
+    ],
+    "summary": "Stage1 Report",
+    "operationId": "stage1_report_api_report_stage1_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": true,
+         "title": "Response Stage1 Report Api Report Stage1 Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/insights/demographics/{account_id}": {
+   "get": {
+    "tags": [
+     "insights"
+    ],
+    "summary": "Get Demographics",
+    "operationId": "get_demographics_api_insights_demographics__account_id__get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": true,
+         "title": "Response Get Demographics Api Insights Demographics  Account Id  Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/": {
+   "get": {
+    "summary": "Root",
+    "operationId": "root__get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "ChatRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "message": {
+      "type": "string",
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Message"
+     },
+     "prefer_offline": {
+      "type": "boolean",
+      "title": "Prefer Offline",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id",
+     "message"
+    ],
+    "title": "ChatRequest"
+   },
+   "CompareRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "horizon_months": {
+      "type": "integer",
+      "maximum": 120.0,
+      "minimum": 6.0,
+      "title": "Horizon Months",
+      "default": 24
+     },
+     "n_paths": {
+      "type": "integer",
+      "maximum": 3000.0,
+      "minimum": 50.0,
+      "title": "N Paths",
+      "default": 400
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id"
+    ],
+    "title": "CompareRequest"
+   },
+   "ConfirmRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "proposal_id": {
+      "type": "string",
+      "title": "Proposal Id"
+     },
+     "accept": {
+      "type": "boolean",
+      "title": "Accept",
+      "default": true
+     },
+     "replan": {
+      "type": "boolean",
+      "title": "Replan",
+      "default": true
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id",
+     "proposal_id"
+    ],
+    "title": "ConfirmRequest"
+   },
+   "ContextChange": {
+    "properties": {
+     "field": {
+      "type": "string",
+      "enum": [
+       "goals",
+       "concerns",
+       "constraints",
+       "preferences",
+       "upcoming_events",
+       "accepted_actions",
+       "completed_actions"
+      ],
+      "title": "Field"
+     },
+     "operation": {
+      "type": "string",
+      "enum": [
+       "add",
+       "update",
+       "remove"
+      ],
+      "title": "Operation",
+      "default": "add"
+     },
+     "value": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Value"
+     },
+     "target_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "field"
+    ],
+    "title": "ContextChange"
+   },
+   "DealRequest": {
+    "properties": {
+     "account_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Account Id"
+     },
+     "slot": {
+      "type": "integer",
+      "maximum": 4.0,
+      "minimum": 1.0,
+      "title": "Slot",
+      "default": 4
+     },
+     "scenario": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scenario"
+     },
+     "exclude_character": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exclude Character"
+     },
+     "exclude_scenario": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exclude Scenario"
+     },
+     "use_ai": {
+      "type": "boolean",
+      "title": "Use Ai",
+      "default": true
+     },
+     "pool": {
+      "type": "string",
+      "pattern": "^(personal|deck)$",
+      "title": "Pool",
+      "default": "personal"
+     }
+    },
+    "type": "object",
+    "title": "DealRequest"
+   },
+   "EditRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "change": {
+      "$ref": "#/components/schemas/ContextChange"
+     },
+     "replan": {
+      "type": "boolean",
+      "title": "Replan",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id",
+     "change"
+    ],
+    "title": "EditRequest"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "InterpretRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "message": {
+      "type": "string",
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Message"
+     }
+    },
+    "type": "object",
+    "required": [
+     "account_id",
+     "message"
+    ],
+    "title": "InterpretRequest"
+   },
+   "LifePlansRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "income_fraction": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 3.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Income Fraction"
+     },
+     "bills_increase": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 5.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bills Increase"
+     },
+     "one_off_cost": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1000000000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "One Off Cost"
+     },
+     "shock_duration": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 36.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Shock Duration"
+     },
+     "use_ai": {
+      "type": "boolean",
+      "title": "Use Ai",
+      "default": false
+     },
+     "mode": {
+      "type": "string",
+      "pattern": "^(shock|long_term)$",
+      "title": "Mode",
+      "default": "shock"
+     },
+     "shock_starts_in": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 24.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Shock Starts In"
+     },
+     "horizon_months": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 120.0,
+        "minimum": 6.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Horizon Months"
+     },
+     "trigger": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Trigger"
+     }
+    },
+    "type": "object",
+    "required": [
+     "account_id"
+    ],
+    "title": "LifePlansRequest"
+   },
+   "PlanRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "income_fraction": {
+      "type": "number",
+      "maximum": 5.0,
+      "minimum": 0.0,
+      "title": "Income Fraction",
+      "description": "Retained income fraction r (0.55 = EI at 55%)",
+      "default": 0.55
+     },
+     "bills_increase": {
+      "type": "number",
+      "maximum": 10.0,
+      "minimum": -1.0,
+      "title": "Bills Increase",
+      "description": "Household-bill increase h as a fraction",
+      "default": 0.0
+     },
+     "one_off_cost": {
+      "type": "number",
+      "minimum": 0.0,
+      "title": "One Off Cost",
+      "description": "One-time cost C in dollars",
+      "default": 0.0
+     },
+     "one_off_in_months_of_spending": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "One Off In Months Of Spending",
+      "description": "Alternative: C as a multiple of typical spending S"
+     },
+     "shock_duration": {
+      "type": "integer",
+      "maximum": 60.0,
+      "minimum": 1.0,
+      "title": "Shock Duration",
+      "description": "Months the shock lasts",
+      "default": 6
+     },
+     "horizon_months": {
+      "type": "integer",
+      "maximum": 120.0,
+      "minimum": 6.0,
+      "title": "Horizon Months",
+      "default": 24
+     },
+     "n_paths": {
+      "type": "integer",
+      "maximum": 2000.0,
+      "minimum": 50.0,
+      "title": "N Paths",
+      "default": 200
+     },
+     "use_ai": {
+      "type": "boolean",
+      "title": "Use Ai",
+      "description": "False runs the deterministic fan-out only",
+      "default": true
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id"
+    ],
+    "title": "PlanRequest",
+    "description": "Stage 3 council: the judge's shock plus the confirmed context, frozen for one run."
+   },
+   "ProposeRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "changes": {
+      "items": {
+       "$ref": "#/components/schemas/ContextChange"
+      },
+      "type": "array",
+      "title": "Changes"
+     },
+     "source": {
+      "type": "string",
+      "title": "Source",
+      "default": "user"
+     },
+     "rationale": {
+      "type": "string",
+      "title": "Rationale",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id",
+     "changes"
+    ],
+    "title": "ProposeRequest"
+   },
+   "PurchaseComparisonRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id",
+      "description": "Any valid account_id from the Tangerine data"
+     },
+     "income_fraction": {
+      "type": "number",
+      "maximum": 5.0,
+      "minimum": 0.0,
+      "title": "Income Fraction",
+      "description": "Retained income fraction r (0.55 = EI at 55%)",
+      "default": 1.0
+     },
+     "bills_increase": {
+      "type": "number",
+      "maximum": 10.0,
+      "minimum": -1.0,
+      "title": "Bills Increase",
+      "description": "Household-bill increase h as a fraction (0.15 = +15%)",
+      "default": 0.0
+     },
+     "one_off_cost": {
+      "type": "number",
+      "minimum": 0.0,
+      "title": "One Off Cost",
+      "description": "One-time cost C in dollars",
+      "default": 0.0
+     },
+     "one_off_in_months_of_spending": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "One Off In Months Of Spending",
+      "description": "Alternative: one-off cost as a multiple of typical spending S"
+     },
+     "horizon_months": {
+      "type": "integer",
+      "maximum": 120.0,
+      "minimum": 1.0,
+      "title": "Horizon Months",
+      "description": "Scenario duration T in months",
+      "default": 6
+     },
+     "preset": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "layoff",
+         "furnace",
+         "combined",
+         "baseline"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preset"
+     },
+     "purchase_cost": {
+      "type": "number",
+      "exclusiveMinimum": 0.0,
+      "title": "Purchase Cost",
+      "description": "Remaining optional purchase cost in dollars"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id",
+     "purchase_cost"
+    ],
+    "title": "PurchaseComparisonRequest"
+   },
+   "ReplanRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": "manual replan"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id"
+    ],
+    "title": "ReplanRequest"
+   },
+   "ScenarioIn": {
+    "properties": {
+     "preset": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "baseline",
+         "income_loss",
+         "higher_costs",
+         "one_off",
+         "positive_income",
+         "combined"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preset"
+     },
+     "scenario_type": {
+      "type": "string",
+      "title": "Scenario Type",
+      "default": "custom"
+     },
+     "income_fraction": {
+      "type": "number",
+      "maximum": 5.0,
+      "minimum": 0.0,
+      "title": "Income Fraction",
+      "default": 1.0
+     },
+     "bills_increase": {
+      "type": "number",
+      "maximum": 10.0,
+      "minimum": -1.0,
+      "title": "Bills Increase",
+      "default": 0.0
+     },
+     "one_off_cost": {
+      "type": "number",
+      "minimum": 0.0,
+      "title": "One Off Cost",
+      "default": 0.0
+     },
+     "shock_start": {
+      "type": "integer",
+      "maximum": 240.0,
+      "minimum": 0.0,
+      "title": "Shock Start",
+      "default": 0
+     },
+     "shock_duration": {
+      "type": "integer",
+      "maximum": 240.0,
+      "minimum": 0.0,
+      "title": "Shock Duration",
+      "default": 6
+     },
+     "positive_income_change": {
+      "type": "number",
+      "maximum": 5.0,
+      "minimum": -1.0,
+      "title": "Positive Income Change",
+      "default": 0.0
+     },
+     "positive_start": {
+      "type": "integer",
+      "maximum": 240.0,
+      "minimum": 0.0,
+      "title": "Positive Start",
+      "default": 0
+     },
+     "horizon_months": {
+      "type": "integer",
+      "maximum": 240.0,
+      "minimum": 1.0,
+      "title": "Horizon Months",
+      "default": 24
+     },
+     "n_paths": {
+      "type": "integer",
+      "maximum": 5000.0,
+      "minimum": 1.0,
+      "title": "N Paths",
+      "default": 500
+     },
+     "seed": {
+      "type": "integer",
+      "title": "Seed",
+      "default": 42
+     },
+     "label": {
+      "type": "string",
+      "title": "Label",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ScenarioIn"
+   },
+   "ShockRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id",
+      "description": "Any valid account_id from the Tangerine data"
+     },
+     "income_fraction": {
+      "type": "number",
+      "maximum": 5.0,
+      "minimum": 0.0,
+      "title": "Income Fraction",
+      "description": "Retained income fraction r (0.55 = EI at 55%)",
+      "default": 1.0
+     },
+     "bills_increase": {
+      "type": "number",
+      "maximum": 10.0,
+      "minimum": -1.0,
+      "title": "Bills Increase",
+      "description": "Household-bill increase h as a fraction (0.15 = +15%)",
+      "default": 0.0
+     },
+     "one_off_cost": {
+      "type": "number",
+      "minimum": 0.0,
+      "title": "One Off Cost",
+      "description": "One-time cost C in dollars",
+      "default": 0.0
+     },
+     "one_off_in_months_of_spending": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "One Off In Months Of Spending",
+      "description": "Alternative: one-off cost as a multiple of typical spending S"
+     },
+     "horizon_months": {
+      "type": "integer",
+      "maximum": 120.0,
+      "minimum": 1.0,
+      "title": "Horizon Months",
+      "description": "Scenario duration T in months",
+      "default": 6
+     },
+     "preset": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "layoff",
+         "furnace",
+         "combined",
+         "baseline"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preset"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id"
+    ],
+    "title": "ShockRequest"
+   },
+   "SimulateRequest": {
+    "properties": {
+     "account_id": {
+      "type": "integer",
+      "title": "Account Id"
+     },
+     "scenario": {
+      "$ref": "#/components/schemas/ScenarioIn"
+     },
+     "strategy": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/StrategyAdjustIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account_id"
+    ],
+    "title": "SimulateRequest"
+   },
+   "StrategyAdjustIn": {
+    "properties": {
+     "label": {
+      "type": "string",
+      "title": "Label",
+      "default": "Custom"
+     },
+     "freed_up_per_month": {
+      "type": "number",
+      "minimum": 0.0,
+      "title": "Freed Up Per Month",
+      "default": 0.0
+     },
+     "goal_contribution_per_month": {
+      "type": "number",
+      "minimum": 0.0,
+      "title": "Goal Contribution Per Month",
+      "default": 0.0
+     },
+     "goal_target": {
+      "type": "number",
+      "minimum": 0.0,
+      "title": "Goal Target",
+      "default": 0.0
+     },
+     "emergency_floor": {
+      "type": "number",
+      "minimum": 0.0,
+      "title": "Emergency Floor",
+      "default": 0.0
+     },
+     "goal_contribution_start": {
+      "type": "integer",
+      "maximum": 240.0,
+      "minimum": 0.0,
+      "title": "Goal Contribution Start",
+      "default": 0
+     },
+     "extra_income_per_month": {
+      "type": "number",
+      "minimum": 0.0,
+      "title": "Extra Income Per Month",
+      "default": 0.0
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "StrategyAdjustIn"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}

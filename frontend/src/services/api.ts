@@ -330,15 +330,79 @@ export interface PlanOutcome {
   cash_path: number[]; goal_paths: Record<string, number[]>; min_cash: number; months_covered: number
   shortfall_total: number; end_cash: number; goals: GoalOutcome[]; resilience: number; goal_score: number
 }
+/** Which objective a finalist won. Four finalists: one best on each axis, one best overall trade-off. */
+export type PlanRole = 'best_shortfall' | 'best_resilience' | 'best_goals' | 'best_tradeoff' | 'least_disruption' | 'falls_short'
+/** Why a step is in the plan: the insight it rests on and what it moves in the objective. */
+export interface StepReason { step: number; because: string; evidence: string; moves: string }
 export interface LifePlan {
   id: string; name: string; summary: string; why: string; steps: PlanStep[]; outcome: PlanOutcome; score: number
-  components: { resilience: number; goals: number; disruption: number }; pareto: boolean; source: 'catalog' | 'strategist' | 'baseline'
+  /** No shortfall at any month of the horizon. */
+  survives?: boolean; first_short_month?: number | null
+  /** For role 'falls_short': why this plausible plan still runs out. */
+  fails_because?: string
+  /** shortfall is 0-1 where 1 = no uncovered shortfall at all (higher is better on every axis). */
+  components: { resilience: number; goals: number; disruption: number; shortfall?: number }; pareto: boolean; source: 'catalog' | 'strategist' | 'baseline' | 'search'
   flags: { risk: string; severity: string; because: string }[]
+  role?: PlanRole; role_label?: string
+  /** Step-by-step justification grounded in Stage 1 insights and the objective. */
+  reasoning?: StepReason[]
+  /** Why this finalist beat the runners-up for its role. */
+  versus?: string
+}
+/** One candidate from the Life Planner search, compact, for the screening visual. */
+export interface SearchCandidate {
+  id: string; name: string; decisions: string[]; resilience: number; goals: number; shortfall: number; disruption: number; score: number
+  status: 'finalist' | 'pareto' | 'dominated' | 'screened'; reason?: string; round: number
+}
+/** The search the planners ran: generate many, screen infeasible, keep the Pareto set, pick four distinct finalists. */
+export interface PlanSearch {
+  generated: number; screened_out: number; feasible: number; pareto: number; finalists: number
+  screens: { rule: string; removed: number }[]
+  rounds: { round: number; agent: string; title: string; count: number }[]
+  candidates: SearchCandidate[]
 }
 export interface LifePlanResult {
   account_id: number; shock: { label: string; r: number; h: number; one_off: number; duration: number }; horizon_months: number
-  objective: { formula: string; weights: { resilience: number; goals: number; disruption: number }; goal_weights: { goal_id: string; label: string; weight: number; horizon: GoalHorizon; importance: number }[] }
-  baseline: LifePlan; plans: LifePlan[]; recommended: string; mode: 'adk' | 'offline'; trace: TraceEvent[]
+  objective: { formula: string; weights: { resilience: number; goals: number; disruption: number; shortfall?: number }; goal_weights: { goal_id: string; label: string; weight: number; horizon: GoalHorizon; importance: number }[] }
+  baseline: LifePlan; plans: LifePlan[]; recommended: string
+  /** Up to three plausible plans that still run short, for contrast. */
+  cautionary?: LifePlan[]; mode: 'adk' | 'offline'; trace: TraceEvent[]
+  search?: PlanSearch
+  /** 'shock' = respond to a shock; 'long_term' = a general multi-year plan toward the goals with no shock. */
+  plan_mode?: 'shock' | 'long_term'; shock_starts_in?: number; trigger?: string
+}
+/** One run of the planners, kept so the person can see how their plans changed as their profile changed. */
+export interface PlanHistoryEntry {
+  id: string; at: string; trigger: string; plan_mode: 'shock' | 'long_term'; shock_label: string; profile_version: number
+  goals: { label: string; weight: number }[]
+  finalists: { role: PlanRole; role_label: string; name: string; decisions: string[]; score: number; components: { resilience: number; goals: number; disruption: number; shortfall?: number } }[]
+  changed: string[]
+}
+/** The single finding most worth telling this person: ranked by severity, rarity across all accounts, and how unlikely
+ *  they are to notice it themselves. Numbers come from the engine and the flag evidence. */
+export interface Discovery {
+  kind: 'flag' | 'demographic' | 'trait'; key: string; title: string; plain: string; evidence: string
+  rarity: string; share: number | null; severity: 'risk' | 'watch' | 'info'; action: string; score: number; link: string
+}
+export interface DiscoveryResult { account_id: number; discovery: Discovery | null; runners_up: Discovery[]; method: string }
+/** Shock Dealer: who reveals a twist card (a character id from a fixed cast) and, for the open slot, which scenario.
+ *  IDs only; the card's amounts come from the deck and every result from the engine. source 'local' = no model ran. */
+export interface DealCharacter { id: string; name: string; role: string }
+export interface ShockDeal {
+  slot: number; character: DealCharacter
+  card: DeckCard & { category?: string; likelihood?: string; why_you?: string; source?: string }
+  reason: string; source: string; ms: number
+}
+/** Demographic and location insights: the person's age, household and district against everyone else in the data. */
+export interface DemographicInsight { key: string; title: string; plain: string; technical: string; value: string; compare: string; percentile: number | null; strength: 'strong' | 'moderate' | 'weak'; category: 'age' | 'household' | 'location' | 'economy' | 'banking' }
+export interface Demographics {
+  account_id: number
+  person: { age: number | null; age_band: string; gender: string | null; owners: number; joint: boolean; card: string | null; account_years: number }
+  district: { id: number; name: string; region: string; inhabitants: number; urban_ratio_pct: number; average_salary: number; unemployment_2022: number; unemployment_2023: number; entrepreneurs_per_1000: number; crimes_per_1000: number }
+  insights: DemographicInsight[]
+  /** Layoff survival and spending ratio by group, so the page can show where this person's groups sit. */
+  groups: { dimension: 'age_band' | 'region' | 'urban' | 'unemployment_trend' | 'household'; label: string; n: number; survive6_layoff_pct: number; median_spend_ratio: number; mine: boolean }[]
+  caveats: string[]
 }
 /** One observable step of an agent, for the Agents page and the panel's workflow column. */
 export interface TraceEvent { t: number; stage: 1 | 2 | 3; agent: string; kind: 'start' | 'tool_call' | 'tool_result' | 'handoff' | 'output' | 'note'; title: string; to?: string; items?: string[]; data?: Record<string, unknown> }
@@ -384,7 +448,14 @@ export const api = {
   lifeProfile: (id: number) => get<ProfileDoc>(`/api/profile/${id}`),
   undoChange: (id: number, changeId: string) => post<ProfileDoc>(`/api/profile/${id}/undo/${changeId}`, {}),
   personalDeck: (id: number) => get<{ account_id: number; cards: PersonalShock[]; source: string }>(`/api/agent/deck?account_id=${id}`),
-  lifePlans: (body: { account_id: number; income_fraction: number; bills_increase: number; one_off_cost: number; shock_duration: number; use_ai?: boolean }) => post<LifePlanResult>('/api/agent/life-plans', body),
+  planHistory: (accountId: number) => get<{ account_id: number; history: PlanHistoryEntry[] }>(`/api/plans/history/${accountId}`),
+  /** slot 1-3 keep their official scenario (layoff, furnace, combined); slot 4 also deals the scenario. Prefetch the next deal
+   *  right after a reveal (the model takes several seconds); if it is not ready within ~600 ms, call again with use_ai: false. */
+  shockDealer: (body: { account_id?: number | null; slot: number; scenario?: string; exclude_character?: string | null; exclude_scenario?: string | null; use_ai?: boolean; pool?: 'personal' | 'deck' }) => post<ShockDeal>('/api/agent/shock-dealer', body),
+  characters: () => get<{ characters: (DealCharacter & { fits: string[] })[] }>('/api/agent/characters'),
+  discovery: (accountId: number) => get<DiscoveryResult>(`/api/customers/${accountId}/discovery`),
+  demographics: (accountId: number) => get<Demographics>(`/api/insights/demographics/${accountId}`),
+  lifePlans: (body: { account_id: number; income_fraction?: number; bills_increase?: number; one_off_cost?: number; shock_duration?: number; use_ai?: boolean; mode?: 'shock' | 'long_term'; shock_starts_in?: number; horizon_months?: number; trigger?: string }) => post<LifePlanResult>('/api/agent/life-plans', body),
   agentTrace: (id: number) => get<AgentTrace>(`/api/agents/trace/${id}`),
   stage1Report: (id?: number | null) => get<Stage1Report>(`/api/report/stage1${id ? `?account_id=${id}` : ''}`),
   plan: (body: { account_id: number; income_fraction: number; bills_increase: number; one_off_cost: number; shock_duration: number; use_ai: boolean }) => post<PlanResult>('/api/agent/plan', body),

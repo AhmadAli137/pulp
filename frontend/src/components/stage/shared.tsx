@@ -26,6 +26,60 @@ export const pct = (x: number) => `${Math.round(x * 100)}%`
 export const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x))
 export const spring = { duration: 0.5, ease: 'easeOut' } as const
 
+/* ---------------------------------------------------------------- axes shared by the chart-like visuals */
+/** Round tick values covering lo..hi (about `count` steps of 1, 2, 2.5 or 5 x 10^k). */
+export function niceTicks(lo: number, hi: number, count = 4): number[] {
+  const span = hi - lo || 1
+  const raw = span / count
+  const mag = 10 ** Math.floor(Math.log10(raw))
+  const step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((s) => s >= raw) ?? 10 * mag
+  const out: number[] = []
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(Math.round(v * 1e6) / 1e6)
+  return out
+}
+/** "$12k", "$850", "−$1.2k": short dollar labels for axes. */
+export const kMoney = (v: number) => {
+  const a = Math.abs(v), s = v < 0 ? '−' : ''
+  return a >= 10000 ? `${s}$${Math.round(a / 1000)}k` : a >= 1000 ? `${s}$${(a / 1000).toFixed(1).replace(/\.0$/, '')}k` : `${s}$${Math.round(a)}`
+}
+/** Horizontal gridlines with dollar labels on the left, a stronger $0 line and an optional axis title. */
+export function DollarAxis({ x, x2, lo, hi, Y, title }: { x: number; x2: number; lo: number; hi: number; Y: (v: number) => number; title?: string }) {
+  const ticks = niceTicks(lo, hi, 4).filter((v) => Y(v) >= Y(hi) - 1 && Y(v) <= Y(lo) + 1)
+  return (
+    <g aria-hidden="true">
+      {ticks.map((v) => (
+        <g key={v}>
+          <line x1={x} x2={x2} y1={Y(v)} y2={Y(v)} stroke={v === 0 ? '#9AA093' : LINE} strokeWidth={v === 0 ? 2 : 1.2} strokeDasharray={v === 0 ? '6 6' : undefined} />
+          <text x={x - 10} y={Y(v) + 5} fontSize={14} fill={MUTED} textAnchor="end">{kMoney(v)}</text>
+        </g>
+      ))}
+      {title && <text x={x - 10} y={Y(hi) - 14} fontSize={14} fill={MUTED} textAnchor="end" fontWeight={700}>{title}</text>}
+    </g>
+  )
+}
+/** Month ticks along the bottom with "now", "m3"... and an axis title. */
+export function MonthAxis({ x0, x1, y, months, title = 'months from now', start = 0 }: { x0: number; x1: number; y: number; months: number; title?: string; start?: number }) {
+  const span = Math.max(1, months)
+  const every = span <= 12 ? 1 : span <= 24 ? 3 : span <= 48 ? 6 : 12
+  const X = (m: number) => x0 + (m / span) * (x1 - x0)
+  const ticks: number[] = []
+  for (let m = 0; m <= span; m += every) ticks.push(m)
+  if (ticks[ticks.length - 1] !== span) ticks.push(span)
+  const name = (m: number) => (start === 0 ? (m === 0 ? 'now' : `m${m}`) : m === span ? 'now' : `−${span - m}`)
+  return (
+    <g aria-hidden="true">
+      <line x1={x0} x2={x1} y1={y} y2={y} stroke="#9AA093" strokeWidth={1.5} />
+      {ticks.map((m) => (
+        <g key={m}>
+          <line x1={X(m)} x2={X(m)} y1={y} y2={y + 6} stroke="#9AA093" strokeWidth={1.5} />
+          <text x={X(m)} y={y + 22} fontSize={14} fill={MUTED} textAnchor="middle">{name(m)}</text>
+        </g>
+      ))}
+      {title && <text x={x1} y={y + 42} fontSize={14} fill={MUTED} textAnchor="end">{title} →</text>}
+    </g>
+  )
+}
+
 export function useMotionScale(): number {
   const reduced = useReducedMotion()
   return reduced ? 0 : 1
