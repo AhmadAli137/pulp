@@ -4,7 +4,7 @@
 
 PULP is a financial resilience engine for real bank customers, built for the Tangerine track (“Resilience Rewired”) at the Sheridan Datathon 2026. Pick any account from the supplied anonymized bank data and PULP shows what typically comes in and goes out, tests what a shock would do, and gives a plan for before it hits and a backup plan for when it does. Pulp, a tangerine companion, can talk it through with you by text or voice.
 
-**Live:** [askpulp.com](https://askpulp.com)
+**Live demo:** [askpulp.com](https://askpulp.com)
 
 ## What it does
 
@@ -13,31 +13,36 @@ The track asks for three things. All three run on the judges’ exact definition
 | Requirement | In PULP |
 |---|---|
 | **Know the customer** | Type any `account_id`. Overview shows typical money in and out, fixed costs, the cash buffer and baseline runway. |
-| **Take a shock** | Shocks lets you draw one of the three twist cards from the brief, shuffle a deck of twelve realistic Canadian shocks, or set income retained, household bills change, a one-time cost and the duration yourself. |
+| **Take a shock** | Shocks deals four face-down cards. The first three are the brief’s twist cards (laid off, the furnace dies, layoff and bills); the fourth deals a different shock each time, chosen for that account’s life. You can also set income retained, household bills change, a one-time cost and the duration yourself. |
 | **Make a plan** | Every shock returns a **Prepare now** plan (the cash target and how long it takes to save) and an **If it happens** plan (cash needed today and what to free up each month). |
 
 ## The workspace
 
 | Page | What you can do |
 |---|---|
-| **Overview** | See the typical month, the cash buffer, fixed costs and baseline runway, with an optional picture of how money flows in and out. |
-| **Shocks** | Draw or shuffle a twist card, or enter your own. See the verdict, your cushion month by month, cash over time, both plans, and whether an optional purchase can wait. Ask the planning council what you could change. |
-| **My Plan** | Revisit both plans for the current shock, and the council’s top options written as decisions you could actually make. Mark a shock as already happened to see the backup plan first. |
-| **Insights** | The account’s recorded patterns and the questions they raise, plus the dataset-wide findings and the check against real loan outcomes. |
-| **Account tools** | Account details, goals, next steps, briefings and settings. |
+| **Overview** | Pulp’s biggest discovery about you first: the one finding most worth knowing, ranked by how serious it is, how rare it is across all 4,500 accounts and how unlikely you are to notice it yourself, with the evidence and one thing to do. Then the typical month, the cash buffer, fixed costs and baseline runway; a picture of the month with what-if sliders; how you differ from other accounts and who you are like. |
+| **Profile** | The person behind the account: a fictional persona built from the records, goals weighted by importance and time horizon, worries, the first questions Pulp asks, and a timeline of every change the agents or you made, each one undoable. |
+| **Shocks** | Flip a card to reveal who brings the shock and what it is, or enter your own. Each reveal shows a different character, and the Shock Dealer says in one line why it picked them. See the verdict, the cushion month by month, both official plans, and the plans the agents chose for this shock, or ask Pulp about the same card. |
+| **My Plan** | Both official plans, a long-term plan with no shock, the four finalists for the current shock, plans that fall short for contrast, and how your plans changed over time. |
+| **Insights** | The account’s patterns, what your age, household and district say about you, the dataset-wide findings and the check against real loan outcomes. Each chart has a simple juice-cup view with the same numbers, tagged **Recorded** (what actually happened) or **Simulated** (the engine’s test). |
+| **Agents** | Every agent, its symbol and job, and the full flow for each stage: from records to a person, getting to know you, and when life happens. |
+| **Stage 1 report** | Everything Stage 1 learned, as a plain-language report and a technical one, downloadable as Markdown or printable. |
+| **Developer docs** | Every API endpoint with examples, a flowchart of the agents and how they hand work to each other, the tech stack and the infrastructure. |
+| **Account details** | What you own and what you owe (update the balances yourself), goals with the savings you have set aside, where your money goes, and the details you told Pulp, each removable. |
 
 **Pulp** lives in the bottom-right corner on every page. Open it to:
 
-- ask about your money or a decision in plain words, or press **Talk** for a live voice conversation (Gemini native audio);
-- deal a twist card in the conversation, then open its official numbers in Shocks;
-- confirm or correct what Pulp learned about you. Nothing is saved until you say yes, by button or out loud;
-- open **Agents** to watch which agent ran, what it was given and what it handed on.
+- text Pulp about your money or a decision, or press **Talk**: with a typed message it sends it, with an empty box it starts a live voice conversation (Gemini native audio) that appears in the same thread;
+- mention something that happened or might happen (“I might lose my job”, “rent is going up 10%”, “should I take a second job?”), and the Stage 3 agents plan for it straight away;
+- press **Shuffle** for a twist: a small picture of what it does to your cushion and a short reply about what it means for you, with its official numbers one tap away in Shocks;
+- watch your profile update as you talk. Pulp says what it changed; say “no” to undo it, or undo any change on the Profile page;
+- turn on **Agents** to see the workflow beside the chat: which agent ran, what it was given and what it handed on.
 
 Sign out of the demo to clear the account from your browser. The demo is not connected to a live bank.
 
 ## How the numbers work
 
-Everything is computed from `monthly_summary.csv` and `loans.csv` with the judges’ definitions:
+The official numbers are computed from `monthly_summary.csv` and `loans.csv` with the judges’ definitions. The profile, persona and Insights also read the client, household, card, district and standing-order files, plus transaction-derived features committed in `data/derived/`.
 
 | Number | Definition |
 |---|---|
@@ -60,21 +65,48 @@ Two things to know when reading results. The layoff card applies 55% to all of t
 
 Methods, caveats and reproduction: [docs/findings.md](docs/findings.md).
 
+## How the plans are chosen
+
+For a shock, or for the long term with no shock, the Life Planner builds about 300 candidate plans from real decisions: a weekend job or gig work, extra hours, moving for a better-paid job or to somewhere cheaper, a lodger, trimming day-to-day spending, pausing a recurring transfer, moving bill dates after payday, refinancing, building the cushion before goals, investing for long goals, a December budget, or delaying a goal. Each plan has one to three steps with start and end months.
+
+1. The **Engine** simulates every plan month by month. Spare money fills the cushion, then goals by weight. A gap drains the cushion, then goal savings, then becomes shortfall.
+2. The **Validator** screens out plans that do not fit this life, counted per rule: no loan to refinance, extra hours at a job you have lost, a cheaper move with no housing bill, cuts beyond a quarter of spending, or anything you told Pulp rules out.
+3. The **Ranker** keeps the plans that no other plan beats on every axis.
+4. The **Director** keeps four distinct finalists: the one that covers the gap best, the strongest cushion, the furthest toward your goals, and the best balance by the weighted score. Up to three sensible-looking plans that still run short are shown for contrast.
+
+The objective is printed with every result:
+
+```
+score = w_short x gap covered + w_res x cushion + w_goal x sum(goal weight x progress) - w_dis x disruption
+goal weight = importance x urgency (short 1.0, medium 0.75, long 0.5), normalised
+```
+
+Each step comes with the Stage 1 insight it rests on and what it moves, measured by rerunning the plan without it. Every run is kept, so you can see how your plans changed as your profile changed.
+
 ## Agents interpret, code calculates
 
 No model ever produces a number. The engine is deterministic Python, tested against the definitions above; the agents decide what to look at, what to ask and how to say it, and every number in their words is checked against the engine before it is shown.
 
-| Agent | Role |
-|---|---|
-| **Engine** (code) | The official formula, a Monte Carlo simulator and a grid of options. The only source of numbers. |
-| **Companion** | Turns what you say into things PULP may remember. Only proposes; you confirm. |
-| **Profile Narrator** | Writes the few sentences worth hearing about an account, one per flag the engine raised. |
-| **Director** | Decides what to show for each turn and writes what Pulp says, calling the engine for numbers. |
-| **Strategist** | Proposes options from your own life and spending (pause a transfer, take extra hours) and has the engine score them. |
-| **Challenger** | Flags options you are unlikely to follow, given what you told Pulp. Cannot change scores or memory. |
-| **Validator and Ranker** (code) | Clamps and re-scores every proposal, then ranks them by one stated objective. |
+| Stage | Agent | Role |
+|---|---|---|
+| 1 | **Schema Scout** (code) | Maps the bank’s columns to roles (money in, money out, bills, balance), so the rest of the pipeline reads roles rather than column names. Today the map is fixed for this dataset. |
+| 1 | **Feature Forge** (code) | Turns the records into about 78 signals per account. |
+| 1 | **Pattern Hunter** | Searches all 4,500 accounts for patterns, testing each with statistical tools. |
+| 1 | **Archetype Namer** | Names the six behavioural groups the clustering found. |
+| 1 | **Profile Narrator** | Writes the few sentences worth hearing about an account, one per flag. |
+| 1 | **Persona Builder** | Builds a realistic but fictional person for the account: occupation guess, household, weighted goals, worries and first questions. Amounts come from code. |
+| 2 | **Companion** | Turns what you say into profile updates, applied directly and logged; “no” undoes them. |
+| 2 | **Director** | Decides what to show each turn, writes what Pulp says, and starts Stage 3 when you mention a shock or a decision. |
+| 3 | **Shock Dealer** | Picks who reveals each twist card and, for the open card, which shock, from a fixed list, with a one-line reason. Never sets an amount. |
+| 3 | **Shock Generator** (code) | Picks shocks that fit this life: a lost client for a cash earner, a payment reset for a borrower, parental leave for a young family. |
+| 3 | **Life Planner** (code) | Generates and simulates hundreds of multi-step plans. |
+| 3 | **Strategist** and **Challenger** | Propose options from your life, and flag the ones you are unlikely to follow. |
+| 3 | **Validator and Ranker** (code) | Screen, rank and keep the four finalists by one stated objective. |
+| all | **Engine** (code) | The official formula and the month-by-month simulator. The only source of numbers. |
 
-Model roles run on Gemini through Google’s Agent Development Kit, with Vultr Serverless Inference as an optional fallback provider. Without a key, PULP keeps working: the calculator, twist cards and plans are deterministic, and the conversation falls back to an offline extractor.
+The personas are fictional and marked as such. They exist so a short demo can start from a plausible life instead of a long intake, and every goal or worry they add can be undone.
+
+Model roles run on Gemini through Google’s Agent Development Kit, with Vultr Serverless Inference as an optional fallback provider. Without a key, PULP keeps working: the calculator, twist cards and plans are deterministic, the Shock Dealer falls back to a local draw, the conversation falls back to an offline extractor, and the Agents view labels those turns as offline instead of showing agents that did not run.
 
 Before you ask anything, PULP has already profiled each account from its records: about 78 behavioural signals (income regularity, payday and bill dates, penalty interest, recurring transfers, spending drift, past income drops and how the household responded), six behavioural archetypes, and a set of evidence-backed flags. Details in [docs/architecture.md](docs/architecture.md).
 
@@ -118,7 +150,9 @@ The browser tests use an isolated API on port 8002 and need Chrome, or a Chromiu
 
 ## More
 
-[Demo walkthrough](demo/demo-script.md) · [Challenge and data dictionary](docs/tangerine-challenge.md) · [Methodology](docs/methodology.md) · [Limitations](docs/limitations.md) · [Architecture](docs/architecture.md)
+Developer docs are also in the app at `/developers` (every endpoint, the agent flowchart, stack and infrastructure).
+
+[Stage 1 report](docs/stage1-report.md) · [Agent contracts](docs/agents/v2-contracts.md) · [Demo walkthrough](demo/demo-script.md) · [Challenge and data dictionary](docs/tangerine-challenge.md) · [Methodology](docs/methodology.md) · [Limitations](docs/limitations.md) · [Architecture](docs/architecture.md)
 
 ## Credits and sources
 
@@ -130,6 +164,6 @@ The browser tests use an isolated API on port 8002 and need Chrome, or a Chromiu
 - [EI sickness benefits](https://www.canada.ca/en/services/benefits/ei/ei-sickness.html)
 - [EI maternity and parental benefits](https://www.canada.ca/en/services/benefits/ei/ei-maternity-parental.html)
 
-No Statistics Canada tables were used. The other amounts in the twist deck (rent and bill increases, repair, dental and vet costs, reduced hours) are illustrative round figures chosen to be plausible, not values taken from a published source.
+No Statistics Canada tables were used. District figures (salary, unemployment, urban share, crime) come from the dataset’s own district table, which describes Czech districts. The other amounts in the twist deck (rent and bill increases, repair, dental and vet costs, reduced hours) are illustrative round figures chosen to be plausible, not values taken from a published source.
 
 **Built with** Google Agent Development Kit and Gemini, FastAPI, pandas, React, Vite and Vultr.

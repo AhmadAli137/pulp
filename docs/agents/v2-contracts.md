@@ -67,3 +67,59 @@ weights default 0.5 / 0.4 / 0.1, shifted by stated preferences (safety vs speed)
 ```
 
 Plans on the Pareto frontier of (resilience, goal score) are marked `pareto: true`.
+
+## Plan search and the four finalists (added after user feedback)
+
+The Life Planner does not hand-pick a few plans. Each run:
+
+1. **Generate** (Life Planner, code): combinations of 1 to 4 decisions from the catalog, each with timing variants
+   (start now, start at the shock, start after it), typically 120 to 400 candidates. The Strategist (model) may add
+   up to 6 candidates built from the profile; they go through the same pipeline.
+2. **Simulate** (Engine): every candidate month by month under the shock.
+3. **Screen** (Validator, code): remove infeasible or implausible candidates, counted per rule (conflicting decisions,
+   second job for a household that already works two incomes, a move with no housing bill, spending cut beyond 25% of S,
+   a goal delayed past its horizon, negative cash with no credit).
+4. **Arbitrage** (Ranker, code): keep the Pareto set over (shortfall covered, resilience, weighted goals); dominated
+   candidates are marked with the candidate that beats them.
+5. **Finalists**: four plans that are each best on one axis plus one best trade-off by the weighted score:
+   `best_shortfall`, `best_resilience`, `best_goals`, `best_tradeoff`. Finalists must differ: decision sets with
+   Jaccard similarity >= 0.5 to an earlier finalist are skipped for the next best.
+6. **Justify** (Challenger + Director): each step gets `reasoning` (the Stage 1 insight it rests on, its evidence and
+   what it moves in the objective), and each finalist gets `versus` (why it beat the runners-up for its role).
+
+`shortfall` component = 1 - min(1, shortfall_total / (duration x monthly gap at baseline)); higher is better.
+`LifePlanResult.search` carries the counts, the screens, the rounds and up to 400 compact candidates for the
+screening visual. `plans` holds the four finalists in role order; `recommended` is the `best_tradeoff` id.
+
+## Demographic and location insights
+
+`GET /api/insights/demographics/{id}` → `Demographics`: age band, household (owners, joint, card), the district
+(salary, unemployment trend, urban ratio, entrepreneurs, crime per 1,000), insights the person would not have thought
+of (each with plain and technical wording and a strength), and layoff survival by group. Built from `clients.csv`,
+`dispositions.csv`, `districts.csv`, `cards.csv` and `accounts.csv`. Descriptive, not causal; small groups are flagged.
+
+## Long-term plans and plan history
+
+`POST /api/agent/life-plans` takes `mode`: `shock` (default; the shock starts in `shock_starts_in` months, default 3,
+or 1 when the conversation says it already happened) or `long_term` (no shock, `horizon_months` default 60, the same
+search over the same decisions, optimised mainly for goals and cushion). In long-term mode the four finalist roles are
+`best_resilience`, `best_goals`, `least_disruption` ("Easiest to live with") and `best_tradeoff`, since there is no gap
+to cover. Every run appends a `PlanHistoryEntry` to the context key `plan_history` (last 30) with the trigger, the
+profile version, the goal weights at the time, the finalists, and `changed` (plain sentences on what moved since the
+previous run of the same mode: a new finalist, a goal weight change, a score change). `GET /api/plans/history/{id}`
+returns them newest first.
+
+## Shock Dealer and the four face-down cards
+
+`POST /api/agent/shock-dealer` `{account_id?, slot 1-4, exclude_character?, exclude_scenario?, use_ai, pool}` returns
+`{slot, character {id, name, role}, card, reason, source, ms}`. Slots 1-3 keep the brief's official scenarios (layoff,
+furnace, combined); slot 4 and the chat's Shuffle also pick the scenario (from the personal deck when one exists). The
+model (Gemini on ADK) chooses IDs only from the allowed lists and never the excluded ones, with a one-line reason that may
+not contain amounts; anything else, a slow model (9 s cap) or no key falls back to a local draw that prefers the
+scenario's natural messenger (the Manager for a layoff, the Technician for the furnace). The Shocks page prefetches the
+next deal so a reveal never waits on the model. `GET /api/agent/characters` lists the cast.
+
+A card resolved on the Shocks page is carried into the conversation as `twist:<key>@<character>`, so Pulp explains the
+same card. Twist storyboards carry `reply` (one or two sentences, from the model when available and grounded against the
+engine's numbers, else a template), `reply_source` and `council_mode`. Offline council runs no longer emit an engine to
+Strategist handoff: they emit `engine -> ranker` titled "Offline run: engine grid only" with `mode: "offline"`.
