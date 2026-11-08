@@ -1,24 +1,24 @@
 # Judging map
 
-| Criterion | Weight | Where it is in PULP |
+The [organizer brief](event-brief.md) supplies the event criteria. This page maps them to current screens; it does not assert updated prize eligibility.
+
+| Criterion | Brief weight | Demonstration |
 |---|---|---|
-| Discovery | 35% | Insights screen and `docs/findings.md`: research question, fixed matching rule, 2,238 pairs, 78 reversals (3.5%), quartile contrast (buffer 70/57/58/73% vs spending ratio 99/82/52/25%), rank correlations −0.02 vs −0.75, variance decomposition, seven sensitivity runs, representative pair, practical consequence |
-| Data Use | 25% | Exact sponsor formulas with "show the math"; loan rule; population table cross-checked against per-account recomputation; cohort matching with stated denominator; observed negative-balance days kept separate from simulated outcomes; simulation calibrated on the account's own months; assumptions labelled on every plan |
-| Communication | 25% | One finding in the first minute (Insights hero, chart with two panels); live twist on one screen with verdict, "why did this change", results table that needs no colour; before-and-after replanning with reasons |
-| Impact | 15% | Goal plan (dollars and months) before the shock, backup plan (immediate need and monthly amount) if it hits, unresolved gap stated when neither covers the horizon; roadmap with amounts, effects, trade-offs and review triggers; context the customer controls and can delete |
+| Discovery | 35% | Insights & evidence, preserved matched-pair findings, stated populations and sensitivity checks |
+| Data use | 25% | Your financial picture, official setback arithmetic, source periods, evidence-linked questions and confirmed personal context |
+| Communication | 25% | Planning room with one voice, concise explanations, optional visuals, readable evidence and responsive comparison pages |
+| Impact | 15% | Concrete small/big decisions, conditional goal choices, explicit gaps and next steps |
 
-## Live-twist checklist (three minutes)
+## Live-twist sequence
 
-1. Type the judge's `account_id` into Pulp's box on Home (or the top-right box). Read the stats strip; Shock Lab has the five full tiles with show-the-math.
-2. Read the twist card to Pulp in plain words, or pick the preset / type exact values in Shock Lab (income %, bills %, one-time $, months).
-3. Read the verdict line and the official runway; point at "why did this change".
-4. Read the goal plan ("before") and backup plan ("if it happens") amounts; mention the tipping point if asked "how much more could bills rise?".
-5. If time allows: Explore Futures for the fan chart, or Insights for where the account sits among peers.
+1. Select the judge's anonymized account.
+2. Open Prepare for a setback and enter the exact given inputs; do not silently substitute a generic preset.
+3. Read the official runway and horizon verdict, with the relevant driver and assumptions.
+4. Review the before-shock reserve need and after-shock improvement needed. Separate a modeled candidate from confirmed feasibility.
+5. If useful, open Compare possibilities for uncertainty paths, or Goals & choices and Your next steps for continuity.
 
-## Definition-of-done evidence
+## Evidence and boundaries
 
-- Any valid id: `GET /api/customers/{id}` works for all 4,500; unknown ids return a clear 404.
-- Expected outputs for the presets are recomputed from the formula in tests and checked against the API.
-- Covered edge cases: exhausted buffer, no shortfall, capped runway, one-off cost, combined shock, exact horizon, unrounded vs displayed runway, short history, zero household bills, zero surplus.
-- Synthetic fixture check (4.0 months, $3,100) is a unit test, not a finding.
-- 47 backend tests pass; frontend type-checks and builds; a Playwright run of every screen reports no console errors.
+The synthetic arithmetic fixture (4.0 months and a $3,100 six-month shortfall) is a unit test, not a dataset finding. [Testing](testing.md) states current suite coverage and the smaller CI subset. [Findings](findings.md) preserves original research numbers. [Agent inventory](agents/README.md) distinguishes implemented roles from the historical proposed protocol.
+
+Use the [demo script](../demo/demo-script.md) for the current conversation-first walkthrough. No demonstration should imply live-account access, current benefit eligibility, authenticated customer banking or autonomous money movement.

@@ -1,5 +1,7 @@
 # Contracts and API blueprint
 
+> **Historical proposal, not shipped behavior (status clarified November 8, 2026).** This document preserves an earlier design or handoff prompt. Its proposed roles, APIs and approval contracts are not the current runtime. Start with the [current architecture](../architecture.md) and compare any proposed work with the implementation before using these instructions.
+
 **Proposed v1 contract. None of the new endpoints below exist yet.** Implement strict Pydantic models under `backend/app/schemas/planning.py`; generate frontend types from OpenAPI. The prose tables define the intended contract; example JSON is illustrative and does not replace runtime validation.
 
 ## Common conventions

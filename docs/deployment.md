@@ -1,104 +1,85 @@
-# Deployment
+# Deployment and operations
 
-## Option A: Vercel (what is live now)
+## Primary deployment
 
-Live at **https://pulp-mu-six.vercel.app** (project `pulp`). One Vercel project serves the built frontend as static files and the FastAPI backend as a Python
-serverless function (`api/index.py`). `vercel.json` rewrites `/api/*`, `/docs` and `/openapi.json` to the function
-and every other path to the SPA. The summary CSVs are uploaded with the deployment from `./data` (not from git), and
-`docs/findings.json` ships with it for the Insights screen.
+**askpulp.com** is the primary application: React build, FastAPI, SSE conversation and the native Gemini Live WebSocket run together on Vultr behind Caddy. The deployment configuration redirects `askpulp.ca`, `www.askpulp.ca` and `www.askpulp.com` to the primary domain. Domain rules live in [`deploy/Caddyfile.askpulp`](../deploy/Caddyfile.askpulp).
 
-```bash
-npx vercel link --yes --project pulp     # once
-npx vercel deploy --prod --yes           # every release (uploads ./data and builds frontend/ on Vercel)
-```
+The older Vercel configuration remains in the repository as a secondary/legacy deployment option. It is not the canonical voice-capable production host; do not use it to verify the complete experience or assume it is synchronized with Vultr.
 
-Project settings to make in the Vercel dashboard (Project -> Settings):
+## Stack and persistence
 
-| Setting | Value |
+[`Dockerfile`](../Dockerfile) builds with Node 22 and runs Python 3.12 with one Uvicorn worker. [`docker-compose.yml`](../docker-compose.yml) defines:
+
+- `app`: built frontend plus API; the host's `./data` is mounted read-only at `/app/data`.
+- `caddy`: HTTPS and WebSocket/SSE proxying on ports 80/443.
+- `context`: persistent per-account context at `/app/backend/app/storage/context`.
+- `caddy_data` and `caddy_config`: certificate and proxy state.
+
+The server checkout is `/opt/pulp`. Source data is mounted, not baked into the Docker image. Back up the context volume before destructive maintenance. `docker compose down -v` removes named volumes, including saved context; it is not a routine redeploy command.
+
+## Configuration
+
+Copy [.env.example](../.env.example) and provide real values privately. Never commit `.env` or private keys.
+
+| Variable | Function |
 |---|---|
-| Deployment Protection -> Vercel Authentication | **Disabled** (otherwise judges get a 401 login wall) |
-| Environment Variables | `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.5-flash` (or `VULTR_INFERENCE_API_KEY` + `AI_PROVIDER=vultr`) |
-| Storage (optional) | add Upstash Redis from the Marketplace; its `KV_REST_API_URL`/`KV_REST_API_TOKEN` make confirmed context durable. Without it, context lives in the function's `/tmp` and can reset between cold starts. |
+| `DOMAIN`, `CADDYFILE` | Public host and proxy configuration; primary uses `askpulp.com` and `./deploy/Caddyfile.askpulp` |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Gemini extraction and ADK text roles |
+| `GEMINI_LIVE_MODEL`, `GEMINI_LIVE_API_VERSION`, `GEMINI_LIVE_VOICE` | Native audio configuration; repository voice default is Aoede |
+| `AI_PROVIDER` | Companion/extraction selection: auto, gemini, vultr or offline; does not turn Vultr into a Gemini Live replacement |
+| `VULTR_INFERENCE_API_KEY`, `VULTR_INFERENCE_MODEL`, `VULTR_INFERENCE_BASE_URL` | Optional companion/extraction provider |
+| `PULP_DATA_DIR` / `EVERPATH_DATA_DIR` | Data discovery outside the Compose-mounted default |
+| `PULP_STORAGE_DIR`, `PULP_DERIVED_DIR` | Optional writable context and derived-artifact locations |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Optional Redis REST persistence; Upstash aliases are also recognized |
+| `PULP_ALLOWED_ORIGINS` | Additional comma-separated CORS origins |
 
-Redeploy after changing environment variables. The summary CSVs are committed, so git-triggered deploys carry the data. Vercel cannot host the voice websocket or
-long jobs; use it as a static mirror and demo from Vultr (Option B).
+The committed model names are application defaults. Check availability with the configured provider when operating the app; do not copy old quota or latency claims into an SLA. Live audio requires microphone permission and a secure browser context (HTTPS in production, localhost in development).
 
-## Option B: Vultr at https://askpulp.com, one instance for frontend, API, voice relay and the ADK council (the demo host)
+For a new host, inspect [`deploy/vultr-setup.sh`](../deploy/vultr-setup.sh) before running it. It installs Docker, prepares the checkout and environment, and starts the stack. Point DNS at the intended host and choose the matching Caddyfile. Existing deployment credentials and server state are not part of the repository.
 
-One Docker image serves the API and the built frontend; Caddy in front terminates HTTPS. This is the deployment
-that supports everything: the Gemini Live voice relay is a websocket (Vercel's Python functions cannot hold one),
-the browser only allows the microphone on HTTPS, and the Stage 3 council on Google ADK runs inside the same process.
+## Automated release
 
-```
-GitHub (push to master) ──▶ Actions: pytest + npm build ──▶ ssh vultr: git reset --hard, docker compose up -d --build
-                                                                  │
-<ip>.sslip.io or your domain ──▶ Caddy :443 (Let's Encrypt) ──▶ app :8000 (FastAPI + dist + /api/voice websocket)
-```
+[`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) is authoritative:
 
-### 1. Create the instance
+1. Push/PR/manual dispatch runs the named backend regression subset, voice client test and frontend build.
+2. Deployment requires a push or manual dispatch on `master`, repository variable `DEPLOY_ENABLED=true`, and the `production` environment.
+3. Secrets are `VULTR_HOST`, `VULTR_USER`, and `VULTR_SSH_KEY`.
+4. The runner uses native OpenSSH. It sends the exact tested `github.sha` to the server, fetches the branch, resets the dedicated deployment checkout to that commit and rebuilds Compose services.
+5. A bounded internal `/api/health` check must succeed. Production deploy jobs are serialized; the runner removes its temporary private key on exit.
 
-Vultr Cloud Compute, Ubuntu 24.04, Toronto, 2 vCPU / 4 GB (the population table, Monte Carlo and ADK are
-in-memory and light). Add your SSH key when creating it and note the public IP.
+The server checkout must not contain uncommitted work: the release intentionally resets it. The workflow currently obtains host keys with `ssh-keyscan`; it does not pin an independently verified fingerprint in a secret.
 
-### 2. Bootstrap in one command
+### Why the SSH action 504 issue changed
 
-As root on the server. No domain is needed: the script defaults to `<ip>.sslip.io`, a free hostname that resolves
-to the server, and Caddy obtains a certificate for it.
+The deploy job no longer downloads a third-party SSH action or its release binary. This removes that particular dependency and its download-504 failure path. GitHub availability, network failures, SSH access, image builds and provider outages can still fail. Start a new workflow run from the updated branch when replacing a historical failed workflow; retrying an old run can retain its old workflow definition.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/AhmadAli137/pulp/master/deploy/vultr-setup.sh | GEMINI_API_KEY=AQ.xxxx bash
-```
+## Verification and recovery
 
-The script installs Docker, opens 22/80/443, clones the repo (the summary CSVs are committed, so no upload step),
-writes `/opt/pulp/.env`, builds the image, starts Caddy + app, waits for `/api/health`, and prints the URL.
-Add `DOMAIN=yourdomain.tld` in front of `bash` once an A record points at the server.
+Read-only checks after a release:
 
-### 3. Domain
-
-askpulp.com and askpulp.ca are registered at GoDaddy. DNS on both: `A @ -> 137.220.54.238`, `CNAME www -> @`. The server uses
-`deploy/Caddyfile.askpulp` (selected with `CADDYFILE=./deploy/Caddyfile.askpulp` in `/opt/pulp/.env`, `DOMAIN=askpulp.com`):
-askpulp.com and the sslip alias serve the app; www.askpulp.com, askpulp.ca and www.askpulp.ca redirect to askpulp.com. Caddy
-issued all four certificates automatically. Without a domain the single-host `deploy/Caddyfile` with an sslip.io name works.
-
-### 4. Keys and models
-
-Edit `/opt/pulp/.env` and rebuild (`cd /opt/pulp && docker compose up -d --build`). Relevant variables:
-
-| Variable | Purpose |
-|---|---|
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | text roles: companion, Strategist, Challenger (Google ADK uses the same key) |
-| `GEMINI_LIVE_MODEL`, `GEMINI_LIVE_API_VERSION` | native-audio voice relay |
-| `VULTR_INFERENCE_API_KEY` | optional fallback provider when Gemini is down or unkeyed |
-| `AI_PROVIDER` | `auto` (Gemini, else Vultr, else offline) |
-
-### 5. Deploy on every push
-
-Repository settings: secrets `VULTR_HOST` (the IP), `VULTR_USER` (`root`), `VULTR_SSH_KEY` (private key), and the
-variable `DEPLOY_ENABLED=true`. `.github/workflows/deploy.yml` then runs the tests, builds the frontend and redeploys
-over SSH on each push to `master`, waiting for the health check before it reports success.
-
-### 6. Verify
-
-```bash
-curl https://askpulp.com/api/health             # accounts: 4500, ai_provider: gemini, council: true
-curl -X POST https://askpulp.com/api/agent/plan -H 'content-type: application/json'      -d '{"account_id": 47788, "income_fraction": 0.55, "use_ai": true}'   # mode: adk, two agents, ~12 s
+```sh
+curl -fsS https://askpulp.com/api/health
 ```
 
-Open the site, load an account, and test the microphone from the home screen: the websocket upgrades through Caddy.
+On the deployment host:
 
-## Local check of the production image
-
-```bash
-docker build -t pulp .
-docker run --rm -p 8080:8000 -v "$(pwd)/data-20261107T180312Z-1-001/data:/app/data:ro" --env-file .env pulp
-# http://127.0.0.1:8080
-# On Windows Git Bash use a native path and disable path conversion, or the mount comes up empty:
-#   MSYS_NO_PATHCONV=1 docker run --rm -p 8080:8000 -v "C:/path/to/data:/app/data:ro" --env-file .env pulp
+```sh
+cd /opt/pulp
+git rev-parse HEAD
+docker compose ps
+docker compose logs --tail=100 app
 ```
 
-## Notes
+Confirm the expected frontend asset revision, open the planning room, and test microphone permission, a short voice turn, typed continuation, and the optional agent flow. Health alone does not prove model access or conversational quality. Do not use a production planning POST as a harmless health probe: it can publish an active plan.
 
-- Confirmed life context is stored in the `context` Docker volume so redeploys keep it; `docker compose down -v`
-  wipes it.
-- CORS allows the local dev origins plus `https://$DOMAIN`; add more with `PULP_ALLOWED_ORIGINS=a,b`.
-- Browser speech recognition requires HTTPS on a real domain, which this setup provides.
+If a release fails, inspect the Actions log and container logs. Rebuild only after identifying the failed step. To roll back, select a known-good commit and redeploy that exact revision through a reviewed release change; preserve context/data volumes. There is no automatic rollback in the current workflow.
+
+## Local Docker check
+
+From a checkout with `data/` and `.env` prepared:
+
+```sh
+docker compose build app
+```
+
+Starting the complete stack also binds HTTP/HTTPS ports and uses `DOMAIN` for certificates. For isolated UI regression work, prefer the temporary browser-test server described in [testing](testing.md).

@@ -1,52 +1,51 @@
-# Limitations
+# Limitations and unfinished work
 
-**Data.** The records are a static 2020–2025 snapshot of one anonymized bank (PKDD'99 Financial dataset
-re-based by the track organizers into Canadian dollars). They do not label wages versus other inflows, do not
-label discretionary spending, and carry no identity. PULP therefore never infers occupation, salary, net
-worth, household size or veteran status, and never treats an account as belonging to the person speaking.
+## Data and personal context
 
-**Adapting historical banking data to present-day Canada.** District salaries, unemployment and rents in the
-dataset are the bank's original regions; we do not use them in calculations. EI is applied as a flat 55%
-replacement from the first month, without the weekly maximum, the waiting period or the 14–45 week duration.
-The shock calculator states that cash flows are held constant through the horizon; a judge who wants a
-different post-EI assumption must enter it explicitly. No CPI, CMHC or LFS values are used in computations.
+The supplied records cover 2020-01 through 2025-12 for one anonymized banking dataset. They are not a live connection, proof of current affordability or identification of the person using the demo. Current income, essential commitments, accessible savings and life changes require confirmation.
 
-**Official metrics.** Medians over the whole history smooth over trends; an account whose income recently
-changed is represented by its typical month, not its latest. The buffer uses average daily balances, which can
-include money that is spoken for. Accounts with zero median inflow (14) get a runway but are excluded from
-cohort and discovery analyses.
+Card and cash totals do not identify discretionary categories. A transfer does not establish its purpose, ownership or accessibility. Pension inflows do not establish employment or willingness to work. Archetype descriptions may include tentative occupation/life-stage guesses; these are displayed as guesses, not confirmed facts.
 
-**Discovery.** Matched-pair outcomes are simulated under the sponsor formula, not observed events. Greedy
-adjacent pairing leaves a few accounts unmatched (10 at 5% tolerance) and could, in principle, be replaced by a
-different deterministic matching; sensitivity runs show the conclusion does not depend on the tolerance.
-Reversals are uncommon (about 3.5% of pairs); the headline is the population-level contrast between buffer size
-and spending ratio, not the rare pairs.
+Official typical-month metrics smooth the whole history; the buffer is an average balance, not a verified uncommitted balance today. Decision profiles additionally report recent paired monthly room and observation periods. Those measurements answer different questions and should not be silently substituted for one another.
 
-**Simulation.** Monte Carlo paths bootstrap the account's own months, so an account with a short history has
-few distinct months to draw from, and the bands understate possibilities the history never showed. Probabilities
-are model outputs for a scenario the user chose, never real-world event probabilities.
+The app uses mapped CSV columns and optional offline transaction-derived artifacts. Automatic Schema Scout ingestion, arbitrary Excel schema interpretation, live bank synchronization and a continuously refreshed personal profile feed are not implemented.
 
-**Strategies.** Capacity to save is the typical surplus plus any amount the user says they can free up; the
-data cannot verify either. Scores depend on stated weights, which are shown. The four strategies are explicit
-dollar rules, not an exhaustive search.
+## Questions and recommendations
 
-**Companion.** Without a Gemini key the companion uses keyword extraction, which is deliberately narrow and can
-miss phrasing it does not recognise; it still proposes nothing it did not see. With Gemini, extraction is
-schema-validated and retried, then falls back to the offline extractor. Browser speech recognition requires
-Chrome or Edge and microphone permission; text always works. ElevenLabs is not integrated.
+Question selection is a heuristic based on missing context, relevance and repetition. New profile questions connect evidence to decisions, but there is no learned optimization or human outcome study showing they are the best possible questions.
 
-**Slow loop.** The bank data does not update, so the "financial adaptation" loop is demonstrated only through
-explicit user input and simulated scenarios; nothing synchronizes with a live account.
+A model can still misinterpret a short answer, select an unsuitable tool or omit a useful clarification. Structured extraction, numeric checks, proposal confirmation and deterministic tools reduce errors; they are not semantic proof that every statement is correct. The offline extractor is deliberately limited and may miss phrasing or misclassify an answer. Review proposals before confirming them.
 
-**Not implemented.** Reinforcement learning, payment authorization, newsletters, transfers, product
-applications and any autonomous financial action. The Gemini-native audio relay added separately under
-`backend/app/api/voice.py` requires a key and was not validated by this build's tests.
+The candidate grid and Strategist explore a bounded set of levers, not every possible life choice. A numerically strong candidate may be impractical. Options carry missing-context questions when spending flexibility or income capacity is unknown; modeled outcomes remain conditional even after those details are confirmed.
 
-## Model quota
+## Arithmetic and evidence
 
-The Gemini key used for development is on the free tier, which allows about 20 generate-content requests per model per
-day. A council run uses two, a narration one, an archetype naming one, and a Pattern Hunter run up to 28. Every model
-role has a deterministic fallback (grid-only council, template narrative, rule-named archetypes, the baseline battery),
-so the product keeps working, but the demo needs a key on a billed project or the quota will be gone within a few
-accounts. Narratives are cached per account so repeated loads do not spend quota.
+The 55% retained-income layoff preset is a challenge assumption, not a current eligibility or benefit calculation. It does not implement benefit caps, waiting periods or personal entitlement. Preset repair costs and durations are hypothetical scenarios, not personalized quotes.
 
+Simulation bootstraps the account's recorded months and assumes the specified shock behavior. It cannot represent every future event or market condition. Model shortfall shares are not real-world probabilities. Deterministic monthly paths and fractional official runway differ at discrete boundaries; upfront shortfalls can happen before a month-end plotted point.
+
+Population findings and matched-pair outcomes are conditional on the dataset, eligibility and selected stress. Association is not causation. District comparisons reflect the supplied data, not a live Canadian salary benchmark. Retain denominator and date labels when presenting findings.
+
+## Voice and provider availability
+
+The active home uses Gemini Live, microphone permission and a WebSocket-capable backend. Text-only mode is silent. Legacy browser-speech helpers are not the current voice fallback. No key, quota exhaustion, network failure or unavailable model can disable native voice. Offline calculations and limited typed fallback remain, but do not reproduce full model behavior.
+
+Vultr's optional inference provider covers companion/extraction paths; it does not replace the native Gemini Live session or all ADK roles. Repository model names and older measured latencies are not guarantees of future provider availability. No fixed free-tier quota is assumed.
+
+## Storage, privacy and operations
+
+This is a public demo with selectable anonymized accounts, not a production personal-banking authorization system. Conversation history is retained separately from confirmed structured context; describing storage as only user-confirmed facts would be inaccurate. Saved state can include proposals, history, plan results and snapshots.
+
+File storage and process-local locks assume a single worker. Optional Redis REST persistence does not provide atomic multi-worker confirmation. Authentication, per-user authorization, production retention controls and distributed transactions remain necessary before using this architecture for private customer accounts.
+
+The frontend build currently emits a large-bundle warning. Desktop/mobile checks and regression tests are not a full accessibility or performance audit. Deployment has health checks but no automatic rollback.
+
+## Not shipped
+
+- Automatic Schema Scout or arbitrary spreadsheet import.
+- The historical Consultant + Advocate + Challenger revision/acceptance protocol and its approval-receipt contracts.
+- Live bank feeds, autonomous payments, transfers, trades or product applications.
+- Reinforcement learning, independently validated personalized financial advice, or guaranteed optimal questions.
+- A2UI/Rive migration; current visuals use the existing React/SVG/chart/motion stack.
+
+See [the agent inventory](agents/README.md) for the distinction between runtime roles, deterministic components and proposed future roles.

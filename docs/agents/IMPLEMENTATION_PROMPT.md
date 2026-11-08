@@ -1,5 +1,7 @@
 # Copyable implementation prompt: post-intake agentic planning
 
+> **Historical proposal, not shipped behavior (status clarified November 8, 2026).** This document preserves an earlier design or handoff prompt. Its proposed roles, APIs and approval contracts are not the current runtime. Start with the [current architecture](../architecture.md) and compare any proposed work with the implementation before using these instructions.
+
 Paste the following into the implementing coding agent. It is a development task prompt; runtime role prompts are in [03-agent-prompts.md](03-agent-prompts.md).
 
 ---

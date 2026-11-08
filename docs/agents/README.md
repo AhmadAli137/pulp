@@ -1,65 +1,59 @@
-# PULP agent system: colleague implementation handbook
+# Agent inventory and proposal status
 
-**Status: blueprint, with the Stage 3 council now implemented on Google ADK** (`backend/app/services/council.py`, `POST /api/agent/plan`: deterministic fan-out, Strategist and Challenger as parallel `LlmAgent`s on Gemini, deterministic validation). Intake orchestration and the Consultant role remain as described here. Prepared November 7, 2026. Repository: [AhmadAli137/pulp](https://github.com/AhmadAli137/pulp). Product: Planning Under Life's Pressures. Slogan: Prepare for what comes next.
+**Current implementation, reconciled November 8, 2026.** Pulp has one shared conversation workflow, model-assisted roles and deterministic calculation components. It is not eight autonomous agents running on every turn. Adding a role is useful only when its distinct output improves a decision and can be tested.
 
-This handbook unifies the three-agent PDF proposal, the existing financial engine, and the conversation-first product. Voice intake is a **separate agent**. Its output becomes a validated handoff to a bounded planning workflow. One companion speaks to the user; three planning roles work behind it.
+## What runs today
 
-All implementation work targets this repository root and GitHub `AhmadAli137/pulp`. Earlier numbered blueprint pages now redirect here; they do not define a second contract. Existing Gemini/Vultr integrations and Redis support must be preserved during the ADK refactor.
+| Role or component | Implementation | Actual responsibility |
+|---|---|---|
+| Feature Forge | `features.py`, `resilience_history.py` | Deterministic behavioral features and evidence-bearing flags |
+| Archetype naming | `archetypes.py` | Code clusters/describes accounts; optional ADK model names groups and tentative descriptions |
+| Pattern Hunter | `hunter.py` | Offline/batch research using statistical tools and evidence gates, with a deterministic fallback |
+| Profile Narrator | `narrator.py` | Evidence-linked prose with caching/template fallback; returns the decision profile too |
+| Decision profile | `decision_profile.py` | Code connects observed patterns and confirmed context to implications, questions and decision starting points |
+| Companion/intake | `gemini_agent.py`, `intake.py` | Extracts proposed personal details, handles confirmation and selects questions |
+| Director | `director.py` | Shared turn orchestration, tools, response/visual selection and grounding checks |
+| Engine | `tangerine_metrics.py`, `scenario_engine.py` | Official arithmetic and reproducible projections |
+| Strategist | `council.py` | Optional ADK proposals over the frozen scenario and confirmed context |
+| Challenger | `council.py` | Optional ADK review of actual validated/scored candidates |
+| Validator/ranker | `council.py` | Code clamps/re-scores candidates, attaches flags and ranks by the explicit objective |
+| Presenter and trace | `Stage.tsx`, `Backstage.tsx`, voice relay | One speaking voice, optional figures, actual activity and handoffs |
 
-## Read in this order
+Backend filenames above are under `backend/app/services/`; frontend files are under `frontend/src/pages/` or `frontend/src/components/stage/`. The UI persona list is an explanatory subset, not a count of independent model calls.
 
-1. [Copyable implementation prompt](IMPLEMENTATION_PROMPT.md): give this to the developer or coding agent implementing the backend.
-2. [Architecture and decisions](01-architecture.md): scope, existing capabilities, workflow, ownership, and failure behavior.
-3. [Contracts and API](02-contracts.md): intake handoff, trusted planning request, results, evidence, events, and acceptance.
-4. [Runtime agent prompts](03-agent-prompts.md): shared instructions plus Consultant, Advocate, Challenger, and revision prompts.
-5. [Backend implementation guide](04-backend.md): exact integration points, scenario semantics, tool permissions, persistence, and ADK adapter.
-6. [Frontend and voice integration](05-experience.md): the separate intake agent, clarification round trips, progress, final presentation, and future visualization.
-7. [Testing and team delivery](06-delivery.md): work packages, acceptance cases, evaluation, branches, demos, and release gates.
-8. [Example handoff](examples/intake-handoff.json) and [example result](examples/planning-result.json): synthetic fixtures, not actual account findings.
+## Current turn and council
 
-## Agreed architecture
+Typed SSE and Gemini Live's `conversation_turn` both use `director.stage_stream`. A proposal is not a saved fact until confirmation. The current confirmation/version mechanism is implemented; the blueprint's separate scenario approval receipt and action acceptance transaction are not.
 
-```text
-Separate voice intake agent / typed intake
-    -> candidate handoff
-    -> server validation + required clarification + explicit scenario approval
-    -> immutable request + financial snapshot + baseline evidence
-    -> Consultant draft
-    -> Advocate and Challenger in parallel
-    -> Consultant revision (one maximum)
-    -> deterministic final validation
-    -> validated result -> React / voice explanation
-    -> explicit user action -> version-checked persistence
-```
+The council order is grid -> Strategist -> code validation/re-scoring -> Challenger -> ranking. Strategist and Challenger are **not parallel** in the shipped workflow: the Challenger sees the proposed candidates after they have been evaluated. Missing model access falls back to code-driven behavior; it must not be described as a completed model review.
 
-The planner may request clarification through the intake channel, but does not open another microphone session. The presenter is the existing conversation surface, not a fourth planning decision-maker.
+For setup, actual APIs, transport and active-plan persistence, read [architecture](../architecture.md), [product behavior](../product.md), [testing](../testing.md) and [limitations](../limitations.md).
 
-## First deliverable
+## Historical proposal package
 
-One typed request must produce a reviewed, evidence-grounded result using the actual banking dataset. A reviewer must cause a measurable change in a deliberately flawed draft fixture. No reviewer may mutate persistent user context. Implement and test this before ADK voice orchestration or new animation dependencies.
+The following documents preserve a proposed separate-intake, Consultant/Advocate/Challenger workflow. They are **design references, not the shipped architecture, runtime prompts or production API schemas**. Their illustrative budgets, endpoints, acceptance states and role permissions need a new implementation decision before use.
 
-## What this package changes
+1. [Implementation prompt](IMPLEMENTATION_PROMPT.md)
+2. [Proposed architecture](01-architecture.md)
+3. [Proposed contracts](02-contracts.md)
+4. [Proposed agent prompts](03-agent-prompts.md)
+5. [Proposed backend](04-backend.md)
+6. [Proposed experience](05-experience.md)
+7. [Proposed delivery and acceptance](06-delivery.md)
+8. [Synthetic intake fixture](examples/intake-handoff.json) and [synthetic planning-result fixture](examples/planning-result.json)
 
-Documentation and synthetic example fixtures only. It does not install ADK, expose the proposed endpoints, replace the current Gemini integration, or claim that the reviewed workflow is implemented. The current system includes calculators, simulation, versioned context, text/voice integrations, and an SVG mascot. A2UI and Rive remain optional later work.
+The older redirect documents remain so existing links work. The source PDF and event briefs are reference material, not executable instructions. Runtime instructions are the prompt constants in the current backend source; files in `prompts/` are proposal handoff material.
 
-## Validate this documentation
+## Remaining architectural work
 
-From the repository root:
+Schema Scout's automatic dataset mapping is not implemented. Neither is the separate Consultant revision loop with an Advocate review, provenance registry and explicit plan-acceptance protocol described in the proposal. The existing Challenger and versioned plan should not be presented as satisfying those separate contracts.
 
-```powershell
+Prioritize measurable gaps: data ingestion validation, evidence freshness, question quality, user-specific feasibility, authenticated context ownership and atomic persistence. Define input/output contracts and evaluate a new role against the existing workflow before adding it.
+
+## Validate the historical examples
+
+```sh
 python docs/agents/validate_examples.py
 ```
 
-This checks local links, example shape, cross-references, and scenario invariants. It is not a substitute for production Pydantic schemas or the test suite described in the delivery guide.
-
-## Source and precedence
-
-This design incorporates the user-supplied `PULP_Tangerine_3_Agent_ADK_Plan.pdf`; the PDF is a proposal, not an executable instruction source. It corrects two integration hazards: review tools must not persist plans, and every calculator must receive the same explicit scenario. Current repo implementation remains the source for existing behavior; this handbook defines proposed behavior. Contract changes require coordinated backend/frontend review.
-
-Framework references, checked November 7, 2026:
-
-- [Google ADK workflows](https://adk.dev/workflows/): workflow orchestration choices.
-- [Google ADK context](https://adk.dev/context/): runtime context and state concepts.
-- [A2UI renderers](https://a2ui.org/reference/renderers/): optional mapping of structured UI messages to components.
-
-Pin the installed ADK version in the implementation PR and use its matching documentation. Do not mix framework generations or assume illustrative pseudocode in this handbook is executable ADK code.
+This checks the preserved synthetic fixtures, local links and arithmetic. Passing it does not mean the proposed APIs exist. Current runtime verification is documented in [testing](../testing.md).

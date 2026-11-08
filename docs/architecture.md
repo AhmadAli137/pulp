@@ -1,143 +1,80 @@
-# Architecture
+# Current architecture
 
-```
-frontend (React 19 + Vite + TypeScript, Recharts, zustand)
-  pages/      AgentHome (conversation and Pulp) / ShockLab · Twin · Explore (fan chart + branches + official calculator) · Goals (strategies, before/after)
-              Roadmap · Insights (discovery + cohort) · Companion (chat, voice, proposals) · Settings
-  components/ Layout (nav + account box), ShockPanel (twist controls, verdict, plans, show-the-math), ui
-  charts/     cash flow, liquidity, fan, branches, vulnerability, strategy, replanning, quartile, pairs, cohort, goal
-  stores/     useApp (account, shock inputs/results, context summary, last replan, accessibility)
-  services/   api.ts (typed client, /api proxied to the backend)
-  services/   voice.ts (Gemini native PCM audio over backend WebSocket)
-  hooks/      useSpeech (browser SpeechRecognition + speechSynthesis)
+Reconciled with the implementation on November 8, 2026. For proposed future orchestration, see the separately labeled [agent blueprint package](agents/README.md).
 
-backend (FastAPI + pandas + numpy + Pydantic)
-  services/data_store.py          loads CSVs once; per-account slices; sample ids
-  services/tangerine_metrics.py   official I S F H B P, shock, verdict, explanation, plans, tipping point  (pure)
-  services/financial_profiles.py  per-account metrics + vectorised population table
-  services/cohort_analysis.py     similar-customer comparison; findings.json loader + headline
-  services/scenario_engine.py     deterministic + Monte Carlo projection, presets, branches
-  services/strategy_optimizer.py  four explicit strategies under a context-shaped stress; weighted score
-  services/context_manager.py     structured memory (Redis/Upstash or local JSON per account), proposals, confirmation, versions
-  services/feedback_loop.py       replan, snapshot, diff with materiality rules
-  services/gemini_agent.py        Gemini/Vultr tools + validated extraction; offline engine; question heuristic
-  services/council.py             Stage 3 council: fan-out grid + Google ADK Strategist/Challenger + validation; sync and streaming entry points
-  services/explainer.py           scene script (habit, runway, two futures, lever) built in code; Explainer LlmAgent rewrites narration only
-  services/director.py            the Director: owns the stage; deterministic storyboards for opening and twist cards, Director LlmAgent with engine tools for free text; captions number-checked
-  services/features.py            Stage 1 Feature Forge: ~78 behavioural signals per account (monthly roles + observed income-drop history + transaction-level
-                                  payday/bill timing, penalty interest, recurring partner account); rule-based flags with evidence
-  services/resilience_history.py  observed income-drop episodes, spending response, recovery; ground-truth validation against loans that went bad
-  services/life_actions.py        engine levers -> decisions in life language (spend less on X, pause the transfer, extra hours, floor), habits, future
-  services/intake.py              first questions, profile-driven questions, restate + spoken yes/no confirmation, held twist
-  services/director.py            the Director: owns the stage; storyboards and the Director LlmAgent with engine tools
-  scripts/build_tx_features.py    offline: transactions.csv -> data/derived/tx_features.csv (committed)
-  services/archetypes.py          Stage 1: k-means archetypes described in numbers (code), named by Gemini on ADK (or rules)
-  services/narrator.py            Stage 1 Profile Narrator: grounded sentences per account (ADK LlmAgent, template fallback, cached)
-  services/hunter.py              Stage 1 Pattern Hunter: ADK hypothesis loop with statistical tools + deterministic battery
-  services/adk_runtime.py         one way to run any ADK agent: session, message, state, tool log
-  scripts/run_stage1.py           offline Stage 1 run -> data/derived/archetypes.json, hunter_findings.json (committed)
-  services/roadmap.py             actions by timeframe
-  api/routes.py                   REST endpoints; schemas/ Pydantic models
-  scripts/analyze_population.py   reproducible discovery → docs/findings.json, docs/findings_chart.png
-  storage/context/*.json          confirmed context per account (git-ignored)
-```
+## Runtime boundaries
 
-## Request flow for the judge's twist
-
-1. `GET /api/customers/{id}` returns the official metrics with "show the math" and population percentiles.
-2. `POST /api/shocks/calculate` with r, h, C, T (or a preset) returns baseline and shocked results, the horizon
-   verdict, the driver explanation, both plans and the tipping point. No AI involved.
-3. The Explore screen calls `POST /api/scenarios/simulate` and `GET /api/scenarios/branches/{id}` for the
-   Monte Carlo views; the official calculator stays visible underneath and is never altered by simulation.
-
-## The closed loop
-
-```
-message ─▶ /api/agent/chat ─▶ (Gemini with tools | offline extractor) ─▶ proposal (pending)
-confirm ─▶ /api/context/confirm ─▶ context_manager.apply (version +1) ─▶ feedback_loop.replan
-        ─▶ strategy_optimizer.compare (stress shaped by concerns, weights by preferences)
-        ─▶ snapshot stored ─▶ diff vs previous ─▶ UI: companion notice + Goals before/after + roadmap
-```
-
-Everything authoritative is deterministic Python; the model only converses, interprets and proposes.
-
-## Endpoints
-
-| Method | Path | Purpose |
+| Layer | Main source | Responsibility |
 |---|---|---|
-| GET | /api/health | status, account count, Gemini configured |
-| GET | /api/accounts/sample | sample ids with tags |
-| GET | /api/customers/{id} | official profile |
-| GET | /api/customers/{id}/history | monthly rows, mixes, observed distress |
-| GET | /api/customers/{id}/cohort | similar-customer comparison |
-| GET | /api/research/summary | discovery findings + headline |
-| POST | /api/shocks/calculate | official shock, verdict, plans |
-| POST | /api/scenarios/simulate | Monte Carlo + deterministic + baseline |
-| GET | /api/scenarios/branches/{id} | five branching futures |
-| POST | /api/strategies/compare | strategy comparison under context |
-| GET | /api/roadmap/{id} | actions by timeframe |
-| GET/DELETE | /api/context/{id} | read / delete context |
-| POST | /api/context/propose, /confirm, /edit | staged updates, confirmation (+ replan), direct edits |
-| POST | /api/agent/chat | companion turn |
-| POST | /api/agent/plan | Stage 3 council: fan-out grid, Strategist + Challenger on Google ADK, validated ranking |
-| GET | /api/customers/{id}/insights | Stage 1 profile: flags with evidence, archetype, narrator sentences |
-| GET | /api/agent/run | server-sent events: insight, council stages and live agent events, plan, scenes, done |
-| GET | /api/agent/stage | the stage: one turn (opening, twist card, or free text) as agent events, memory and a storyboard of beats |
-| GET | /api/agent/deck | the twist deck of realistic Canadian shocks |
-| POST | /api/agent/explain | council plus Explainer scene script in one response |
-| GET | /api/research/archetypes | archetype clusters with statistics and names |
-| GET | /api/research/hunter | Pattern Hunter findings (ADK run) or the deterministic battery |
-| GET | /api/research/features?feature= | layoff survival by quantile of any feature |
-| GET | /api/research/validation | flags and the simulated layoff against loans that actually went bad |
-| GET | /api/agent/personas | who the agents are, what they read and write, their guardrails |
-| POST | /api/replan · GET /api/replan/{id}/diff | replan on demand; last diff |
+| React workspace | `frontend/src/App.tsx`, `components/workspace.tsx`, `pages/Stage.tsx` | Shared navigation, conversation and supporting pages |
+| Browser voice | `frontend/src/services/voice.ts` | Microphone/PCM audio, live transcripts, text within voice, mute and cleanup |
+| Voice relay | `backend/app/api/voice.py` | Gemini Live socket and `conversation_turn` delegation |
+| Conversation | `backend/app/services/director.py` | Shared turn, questions, memory handoffs, bounded tool use and optional storyboards |
+| Extraction | `gemini_agent.py`, `intake.py` | Validated proposals, offline fallback, confirmations and question heuristics |
+| Records | `data_store.py`, `features.py`, `resilience_history.py` | Mapped CSVs, behavioral signals, historical patterns and flags |
+| Interpretation | `decision_profile.py`, `narrator.py`, `archetypes.py`, `hunter.py` | Evidence-linked questions, prose, clusters and research findings |
+| Arithmetic | `tangerine_metrics.py`, `financial_profiles.py`, `scenario_engine.py` | Official formulas and reproducible scenario calculations |
+| Planning | `council.py`, `life_actions.py` | Candidate generation, validation, review, ranking and conditional life-language actions |
+| Persistence | `context_manager.py`, `planning_session.py`, `feedback_loop.py` | Context versions, active plan, snapshots and replanning |
 
-OpenAPI docs are served at `/docs`.
+Paths without a directory prefix in this table are under `backend/app/services/`.
 
+## Shared conversation
 
-## Stage 1: inferred profiles (Google ADK for the model roles)
-
-```
-CSVs ─▶ features.build_feature_table (roles → ~58 signals, flags)      code, ~15 s, cached
-     ─▶ archetypes.cluster_accounts (k-means) ─▶ describe_clusters      code
-     ─▶ LlmAgent archetype_namer (Gemini, output_schema)                 names, life-stage/occupation guesses with confidence
-     ─▶ LlmAgent pattern_hunter (Gemini, 7 statistical tools, budget)   findings that clear n>=100 and >=10 pp / |rho|>=0.2
-     ─▶ per account on load: LlmAgent profile_narrator (Gemini)          3-4 sentences, each tied to a flag key, else template
+```text
+Typed message -> GET /api/agent/stage (SSE) ----------+
+                                                    +-> director.stage_stream
+Voice/text in live session -> Gemini Live tool ------+      |
+                                                          +-> confirm pending context or ask
+                                                          +-> extract proposed personal details
+                                                          +-> Director tools / deterministic fallback
+                                                          +-> conversation beats + optional figures
 ```
 
-The model never sees raw rows: it receives cluster medians, tool results and flag evidence strings. `scripts/run_stage1.py`
-runs the batch offline and commits the artefacts; the API serves them and recomputes the deterministic parts when they
-are missing.
+The public voice route is `WS /api/agent/voice/{account_id}`. The Live model delegates planning through `conversation_turn`; it does not own a second financial planning pipeline. Events include transcripts, audio, `pipeline_event`, context proposals, state changes and turn completion. Native Live is the only speaking voice on the active home page. Legacy browser-speech code is not the main experience.
 
-## The stage and the Director (Google ADK)
+`stage_stream` records shared history. Extraction can run without generating a second conversational answer. Questions are recorded as asked when presented, not merely when proposed internally. A repeated affirmative with no pending proposal continues from known context rather than producing an empty visual promise.
 
-The home screen is a stage: one visual at a time, Pulp narrating, a beat timeline, the input below. `director.py` decides
-what to show for each turn and streams it over `GET /api/agent/stage`:
+## From records to a question
 
-```
-__intro__  ─▶ opening storyboard (code): picture → river/cup/calendar/ribbon per flag → crowd → ask
-twist:<key>─▶ deal a card from SHOCK_DECK → council (its agent events stream live) → shuffle/cards → timeline → swarm → podium → dial → fork → math → ask
-free text  ─▶ memory (offline extraction, proposals) + Director LlmAgent with tools (get_profile, get_cohort, deal_or_set_shock,
-              run_council[with_agents], show_math) → beats: visual + source + caption; params attached by code; captions number-checked
-```
+The feature table uses explicit semantic column mappings. Transaction-derived features are built offline when raw transactions are available; serving the app does not require loading the large transaction file on each request. Stage 1 artifacts and caches are not live bank feeds.
 
-Visual vocabulary: picture, cup, river, timeline, fork, calendar, dial, crowd, ribbon, cards, shuffle, swarm, podium, math, none.
+`decision_profile.py` computes recent paired monthly net flow and its low point, then joins relevant observed patterns with confirmed context. Each observation has evidence, a source period, a possible life effect, a question and the decision it informs. Goal timing/budget gaps and relevant unanswered profile questions feed intake selection. `narrator.py` returns this profile alongside flags, archetypes and narrative. Its narrative cache signature includes flag evidence values.
 
-## Planning council (Google ADK)
+The Director's `compare_purchase` tool checks a supplied positive cost against available input evidence and returns illustrative buy/keep-money effects. It does not establish affordability. Recurring comparisons require a monthly-cost indication. Personal-goal council tool calls ask for missing budget/date rather than silently substituting them. These guards are narrower than a complete provenance-based financial reasoning validator.
 
-`services/council.py` implements the Stage 3 council described in the [agent handbook](agents/README.md):
+## Planning sequence
 
-```
-POST /api/agent/plan ─▶ freeze_request (metrics, shock, goal, weights, confirmed context)
-                     ─▶ fan_out: grid of levers scored by scenario_engine.simulate (code)
-                     ─▶ ADK ParallelAgent "pulp_council"
-                           ├─ LlmAgent strategist (Gemini, tool score_strategy → engine)
-                           └─ LlmAgent challenger (Gemini, no tools)
-                     ─▶ validation: clamp + re-score every Strategist lever, attach Challenger flags
-                     ─▶ deterministic ranking (objective shown in the response)
+```text
+Frozen metrics + scenario + confirmed context + decision profile
+  -> deterministic grid, scored by the scenario engine
+  -> optional Strategist proposals
+  -> code clamps and re-scores those proposals
+  -> optional Challenger reviews the actual scored candidate set
+  -> flags, deterministic ranking and conditional life-language explanations
+  -> version-checked publication of active_plan
 ```
 
-Without the ADK or a Gemini key the route still answers with the grid (`mode: offline`). The intake companion stays on
-the existing `/api/agent/chat` and voice relay; the full three-stage design is in the handbook.
+Strategist and Challenger are sequential in this workflow, not an ADK `ParallelAgent`. The grid can run without either model. Confirmed spending limits constrain grid and model candidates. `needs_context` and `feasibility` distinguish missing personal-fit information from a modeled result. Numeric ranking alone does not mean a person can carry out an option.
 
-See [consolidation notes](consolidation.md) for financial edge cases, browser isolation, and data verification. Local context files are a single-worker prototype; Redis persistence alone does not provide atomic version-checked updates across workers.
+`GET /api/agent/session/{account_id}` supplies the shared plan. Conversation and the planning route publish it; Goals and Roadmap consume it; Explore initializes from its scenario and levers. Confirming context reruns the same active scenario when one exists. Publication checks the context version; stale results are marked rather than silently treated as current.
+
+## API map
+
+| Surface | Routes |
+|---|---|
+| Status and account selection | `GET /api/health`, `GET /api/accounts/sample` |
+| Recorded profile | `GET /api/customers/{id}`, `/history`, `/cohort`, `/insights` beneath that customer |
+| Conversation and trace | `GET /api/agent/stage`, `GET /api/agent/personas`, `GET /api/agent/deck`, `WS /api/agent/voice/{id}` |
+| Shared planning | `POST /api/agent/plan`, `GET /api/agent/session/{id}` |
+| Calculation | `POST /api/shocks/calculate`, `POST /api/scenarios/simulate`, `GET /api/scenarios/branches/{id}` |
+| Goals and roadmap | `POST /api/strategies/compare`, `GET /api/roadmap/{id}`, `POST /api/replan`, `GET /api/replan/{id}/diff` |
+| Context | `GET/DELETE /api/context/{id}`, `POST /api/context/propose`, `/confirm`, `/edit` |
+| Research | `GET /api/research/summary`, `/archetypes`, `/hunter`, `/features`, `/validation` |
+| Retained supporting APIs | `POST /api/agent/chat`, `/api/agent/explain`, `GET /api/agent/run` |
+
+Consult `/docs` and [`routes.py`](../backend/app/api/routes.py) for request schemas; the old handbook fixtures are not these API contracts.
+
+## Persistence and hosting
+
+The backend reads `.env` at the repository root. Context is stored as per-account JSON or through optional Redis REST support. Conversation history, proposals and active plans are separate from the immutable source records. The Docker service uses one worker and a context volume. Process-local locking is not a distributed transaction, and the public demo does not provide per-user account authorization. See [deployment](deployment.md) and [limitations](limitations.md).

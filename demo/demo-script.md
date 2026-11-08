@@ -1,46 +1,29 @@
 # Demo script
 
-Prep: backend on :8000 with GEMINI_API_KEY in .env, frontend on :5173, intro played once (or skip it), Insights page opened once (findings cached), context for the demo
-account deleted (Settings → Delete personal context). Suggested demo account: 47788 (fails the layoff twist by
-0.4 months, so every plan number is non-trivial). Have a second account ready for the judge.
+Use [askpulp.com](https://askpulp.com). This is an anonymized-account planning demo, not a live connection to the presenter's bank. Confirm microphone permission beforehand; type if voice is unavailable.
 
-## Five-minute version
+## Five-minute walkthrough
 
-**Opening (20 s).** "Every financial decision creates possibilities, but most financial tools only show us our
-past. PULP helps us explore our future."
+1. **A recognizable decision.** Open the Planning room, select a demo account and say or type a real goal, such as a vacation. Confirm only what Pulp correctly heard. Supply a budget and timing when asked; do not suggest that it already knows those details.
+2. **Why the record matters.** Open Your financial picture, then Insights & evidence. Show an observation, its possible effect, and the missing question. An unexplained transfer may be savings, a bill or support; Pulp should ask before proposing to change it.
+3. **A small choice.** Return to the Planning room and use A small everyday decision. Give an explicit monthly price if discussing a service. Explain the dollar trade-off without presenting historical room as guaranteed affordability.
+4. **A controlled setback.** Open Prepare for a setback. Enter the judge's retained-income fraction, bill increase, upfront cost and horizon. Read the official verdict and show the assumptions. Use Compare possibilities if the audience wants uncertainty paths.
+5. **A coherent plan.** Review Goals & choices and Your next steps. Explain any Option to discuss label: a ranked calculation may still need personal context. Show the same active scenario across pages.
+6. **Optional agent evidence.** Open Agents from the conversation. Explain actual calls and handoffs. The trace is not private model reasoning, and a deterministic fallback is not a completed model review.
 
-**Discovery (50 s, Insights).** "We matched 2,238 pairs of accounts with near-identical inflows and hit both with
-the same six-month layoff at 55% income. In 78 pairs the account with more cash ran out first. Across all
-4,486 accounts the buffer quartile told us almost nothing, 70% to 73% survival top to bottom, while the
-spending-to-income ratio told us everything: 99% in the leanest quartile, 25% in the heaviest." Point at the
-two-panel chart, then the representative pair: "$4,574 more in the bank, $1,372 more out every month, and it
-runs out first."
+## First-minute research alternative
 
-**Live account (30 s, Home).** Type the judge's id into Pip's box. Read Pip's summary line and the four stats; Shock Lab has the full tiles. "Typical inflow, spending, fixed
-costs, buffer, and the baseline runway. Show the math is one click."
+If the judging format asks for a discovery first, use [the original findings](../docs/findings.md): under a defined modeled layoff, 78 of 2,238 matched pairs exhausted the larger cash buffer first. Retain the denominator, scenario and distinction from observed events. Then move to one account and one decision.
 
-**Live shock (60 s).** Read the twist card to Pip in plain words (or click a suggestion); the verdict card appears inline. For exact values, open Shock Lab. Read the verdict and the official runway.
-"Why did this change: income fell by $X a month." Read the goal plan and the backup plan. If the judge changes
-the size: edit the field, Recalculate.
+## Presentation rules
 
-**Personal goal (60 s, Home).** Click or say "I want to buy a home in five years." Confirm the proposal.
-"The plan engine now compares four strategies under a stress test and recommends one, with the weights shown."
+- Keep conversation short; open a visual only when it explains the decision.
+- State that records end in December 2025 and ask about present changes.
+- Do not call occupation guesses facts, percentages forecasts, or the demo a regulated bank.
+- Do not claim automatic Excel ingestion, an Advocate/Consultant revision workflow, live bank feeds or transaction execution.
+- Use current page names; avoid the retired separate companion experience.
+- Historical research replay starts paused. Press Play deliberately if showing it.
 
-**Adaptive replanning (50 s, Home → My Goals).** Say "Actually, I want to start a business next year, and
-my income may become irregular." Confirm. Read the replanning notice. Open My Goals: previous versus current
-plan, what changed and why. "If the new information had not changed the best strategy, it would say so."
+## Pre-demo check
 
-**Closing (10 s).** "Financial resilience isn't just about surviving uncertainty. It's about preserving the
-freedom to pursue what matters."
-
-## Official format (1 + 3 + 1)
-
-- 1-minute pitch: opening sentence + discovery chart + "any account, any twist, plans in dollars and months".
-- 3-minute twist: steps "Live account" and "Live shock" above, then one of: Explore Futures fan chart, or the
-  companion goal → replan if the judge asks about personalization.
-- 1-minute Q&A: likely questions and answers are in `docs/findings.md` (why reversals are rare), `docs/methodology.md`
-  (EI assumption, medians, buffer window) and `docs/limitations.md`.
-
-## Video (2–3 minutes)
-
-Record the five-minute flow at 1.5× pace with the cursor visible; keep the first 30 seconds on the finding.
+Verify health, account selection, one typed turn and one short voice turn. Check the current release and microphone output. Do not reset a shared demo account without intending to remove its saved context. Keep the exact-input calculator available if provider access fails.

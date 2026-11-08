@@ -1,5 +1,7 @@
 # Runtime prompts: after separate voice/text intake
 
+> **Historical proposal, not shipped behavior (status clarified November 8, 2026).** This document preserves an earlier design or handoff prompt. Its proposed roles, APIs and approval contracts are not the current runtime. Start with the [current architecture](../architecture.md) and compare any proposed work with the implementation before using these instructions.
+
 These are proposed production prompt templates. Supply structured inputs as separate serialized data messages; do not interpolate untrusted transcript text into system instructions. The schemas in [02-contracts.md](02-contracts.md) are supplied through the provider's structured-output mechanism and enforced again by the server.
 
 ## Shared system instructions: all three planning roles

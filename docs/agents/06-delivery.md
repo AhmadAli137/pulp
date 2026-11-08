@@ -1,5 +1,7 @@
 # Team delivery, validation, and demo guide
 
+> **Historical proposal, not shipped behavior (status clarified November 8, 2026).** This document preserves an earlier design or handoff prompt. Its proposed roles, APIs and approval contracts are not the current runtime. Start with the [current architecture](../architecture.md) and compare any proposed work with the implementation before using these instructions.
+
 ## Work packages and ownership
 
 Use feature branches from current GitHub `master`; do not push to the historical Entire remote. Do not reset or force-push a colleague's branch.

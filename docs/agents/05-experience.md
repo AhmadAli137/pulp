@@ -1,5 +1,7 @@
 # Voice, frontend, and visualization blueprint
 
+> **Historical proposal, not shipped behavior (status clarified November 8, 2026).** This document preserves an earlier design or handoff prompt. Its proposed roles, APIs and approval contracts are not the current runtime. Start with the [current architecture](../architecture.md) and compare any proposed work with the implementation before using these instructions.
+
 ## Ownership boundaries
 
 The **voice-intake agent** listens, transcribes, clarifies, and stages structured input. The **planning workflow** evaluates an approved scenario. The **presentation surface** renders and explains a validated result. The same Gemini voice session may provide intake and later presentation, but its tool permissions and instructions must switch explicitly; it must not silently become the planning authority.

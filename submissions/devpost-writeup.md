@@ -1,5 +1,7 @@
 # PULP — Planning Under Life's Pressures. Prepare for what comes next.
 
+**Draft updated November 8, 2026.** This local file has not been published to Devpost by this update.
+
 **Track:** Tangerine, Resilience Rewired · Sheridan Datathon 2026
 
 ## The question we asked
@@ -39,7 +41,9 @@ negative-balance days (6.4% of accounts) are reported separately.
 
 FastAPI + pandas backend with pure, tested implementations of the sponsor formulas; React + Recharts frontend;
 structured JSON memory with confirmation and versioning; strategy comparison with explicit weights; Gemini
-optional. 47 backend tests, a reproducible discovery script, and documented assumptions and limitations.
+optional for deterministic calculation. The current workspace shares one native Gemini Live/text workflow and a versioned active plan. Strategist proposals are validated before Challenger review. Evidence-driven profiles ask about missing context rather than assuming transfers or card spending can be cut. The November 8 code verification passed 126 backend tests and 13 browser tests, plus a voice-client regression. Research scripts, assumptions and limitations are documented.
+
+See the [current product guide](../docs/product.md) and [limitations](../docs/limitations.md). Arbitrary Excel ingestion, live bank feeds and autonomous financial actions are not implemented.
 
 ## Sources
 

@@ -9,7 +9,7 @@
 | `accounts.csv`, `districts.csv` | 4,500 / 77 | ID validation, district name shown on the profile |
 | `standing_orders.csv` | 6,471 | Recurring obligations shown on the twin (snapshot only) |
 
-Checks performed (`scripts/inspect` logic in the data store and tests): no missing values; every account has at
+The preserved data audit and regression checks report: no missing values; every account has at
 least 12 monthly rows; the parts of `money_in` and `money_out` sum exactly to the totals; 14 accounts have a
 zero median inflow and are excluded from cohort and discovery analyses (they still get a profile and shock
 calculation). `transactions.csv` is not loaded by the API; the monthly summary is derived from it.
@@ -23,15 +23,25 @@ cross-checked against the per-account function in tests.
 
 ## 3. Shock and plans
 
-See the README formulas. Verdicts use unrounded runway. Plans:
+For retained income `r`, bill increase `h`, one-off cost `C`, and horizon `T`:
 
-- Goal plan: `need = C + T × max(0, gap)`; `additional = max(0, need − B)`; months to target = additional ÷ (I − S)
-  when the surplus is positive, otherwise reported as not reachable from surplus alone.
-- Backup plan: `immediate = max(0, C − B)`; recurring gap = `max(0, gap)`; monthly improvement =
-  `max(0, gap − buffer_left / T)` when the buffer survives the one-off, otherwise the whole recurring gap plus
-  the immediate need. Unresolved gap over the horizon = `max(0, gap × T − buffer_left) + immediate`.
-- Tipping point: `h_max = (buffer_left / T − (S − r × I)) / H`, with explicit cases for `H = 0`, `buffer_left ≤ 0`
-  and a baseline that already fails.
+```text
+income_after = r * I
+spending_after = S + h * H
+buffer_left = B - C
+gap = spending_after - income_after
+```
+
+Official `I` and `S` are medians of monthly inflow and outflow. `F` is the median of each month's bills + insurance + loan payments; `H` is median bills; `B` is the mean average daily balance of the last six monthly rows; `P` is the payment on a running loan (status C or D). Fixed costs are already inside `S` and must not be added again.
+
+Runway is zero if the remaining buffer is exhausted, no shortfall when the remaining buffer is positive and `gap <= 0`, otherwise `buffer_left / gap`, with a display cap of 120 months. Display rounding does not determine the horizon verdict. See [`tangerine_metrics.py`](../backend/app/services/tangerine_metrics.py) for all boundary cases.
+
+Plans:
+
+- Goal reserve: `need = C + T * max(0, gap)`; `additional = max(0, need - B)`. If additional reserve is needed and `I - S` is positive, months to build it is `additional / (I - S)`. Otherwise it cannot be built from that estimated surplus alone. This is the calculator's reserve calculation, not an invented personal goal budget.
+- Backup: `immediate = max(0, C - B)` and `recurring = max(0, gap)`. If `buffer_left <= 0`, monthly improvement needed is `recurring`, separately from today's immediate need. Otherwise it is `max(0, gap - buffer_left / T)`.
+- Total uncovered amount over the horizon: `max(0, recurring * T - max(0, buffer_left)) + immediate`. Do not count the upfront funding gap twice or treat later income as paying today's bill.
+- Tipping point, when applicable: `h_max = (buffer_left / T - (S - r * I)) / H`. The implementation handles zero bills, exhausted buffer and a baseline that already fails explicitly.
 
 ## 4. Discovery
 
@@ -50,31 +60,32 @@ The screen shows medians, within-cohort percentiles and a runway histogram under
 
 ## 6. Scenario simulation
 
-Month-by-month projection (`scenario_engine.py`). Monte Carlo paths resample historical months of the same
-account (money in and money out jointly) scaled so the typical month equals I and S; shocks apply over a
-window; the one-off cost is charged at the shock start; strategy knobs are explicit dollar rules. The
-deterministic path reproduces the official runway: with a 55% shock covering the horizon, cash first goes
-negative in month ⌊runway⌋ + 1 (tested). Seeds make results reproducible.
+`scenario_engine.py` projects month by month. Monte Carlo paths resample paired inflow/outflow months from the same account and scale them to the official typical-month values. The chosen shock applies over its specified window; one-off costs and strategy rules are explicit.
 
-## 7. Strategy comparison
+The deterministic path agrees with official calculations in aligned constant-flow cases. Discrete monthly boundaries differ from fractional runway. Upfront expenses and initially negative balances are checked explicitly; a plotted month-end balance can hide an earlier intramonth funding shortfall. Seeds make modeled results reproducible, not predictive.
 
-Four explicit strategies (stay the course, buffer first, goal first, balanced) run under a stress scenario shaped
-by confirmed concerns. Score = w_res × (1 − P(shortfall)) + w_goal × goal progress at the deadline, with weights
-from stated preferences (default 50/50; safety 70/30; speed 30/70; +10% resilience when income loss or irregular
-income is a concern). Infeasible strategies (no surplus and nothing stated as freeable) are shown as such.
+## 7. Planning and personal feasibility
 
-## 8. Context, confirmation and replanning
+The shared active council plan is distinct from the retained four-strategy fallback comparison. The council freezes metrics, the explicit shock, goal, weights, confirmed context and decision profile; it scores a grid, optionally adds Strategist proposals, re-scores them in code, then has the Challenger review those actual candidates before ranking. The objective includes shortfall resilience, goal progress and disruption, with review penalties. Inspect `council.py` for current coefficients rather than copying them into a second implementation.
 
-Proposals are staged in `context_manager.py` and applied only on confirmation; each item records source,
-timestamps and confirmation. `feedback_loop.py` reruns the comparison, stores a snapshot and diffs it against
-the previous one, with explicit materiality thresholds (strategy change, goal change, ≥ 5 points of shortfall
-probability, ≥ 10% change in the emergency target, stress change). If nothing material changed, it says so.
+Confirmed spending limits bound grid and model proposals. Capacity must cover an existing deficit before it can fund a goal. Unknown non-emergency goal budgets remain unknown; a conversational council call asks for budget/date before substituting a personal goal. Legacy paths and modeled scenario defaults remain disclosed assumptions, not user-confirmed details.
 
-## 9. Testing
+`life_actions.py` translates levers into conditional choices. Card/cash totals do not establish cuttable spending. Unexplained transfers require a purpose, extra income requires realistic capacity, and reserve targets require life context. `needs_context` identifies unresolved feasibility questions. Numeric ranking is not a guarantee of suitability.
 
-`backend/tests/` contains 47 tests: the synthetic arithmetic check from the brief, edge cases (exhausted
-buffer, no shortfall, capped runway, exact horizon, unrounded vs displayed runway), per-account recomputation
-against pandas for 12 sampled accounts, population-table consistency, the loan rule, API validation and 404s,
-simulation reproducibility and the official-runway reproduction, the full propose → confirm → replan → diff
-loop, the no-material-change case, the offline companion extraction and the signature replanning scenario, and
-survival of a simulated Gemini outage.
+## 8. Evidence-driven questions
+
+`decision_profile.py` computes the median of paired monthly `money_in - money_out` over up to the latest six recorded rows, plus the lowest monthly room. This is not necessarily equal to the difference of the all-history medians `I - S`. Both figures retain their own meaning.
+
+The profile joins those observations with transfer, timing, pension and fee signals and confirmed goals/constraints. It returns evidence, source periods, possible life effects, the question needed and the decision it unlocks. Goal timing and budget gaps receive explicit attention; confirmed answers suppress corresponding unknowns. Intake uses heuristic relevance and repetition penalties. There is no claim of learned optimal question selection.
+
+The deterministic purchase-comparison tool uses an explicitly supported price, describes retaining money versus the cost, and discloses historical cash-flow assumptions. It does not certify affordability. The Director is instructed to ask about present circumstances and protected costs.
+
+## 9. Context and shared plans
+
+`context_manager.py` stores proposals separately from confirmed structured facts, checks versions on confirmation and retains conversation history. `planning_session.py` publishes the active result against its context version. Conversation, Goals and Roadmap share it; Explore initializes from its scenario and levers. Confirmation can rerun the same scenario. Stale results need review.
+
+`feedback_loop.py` retains before/after snapshots and materiality comparisons. Context confirmation, a computed plan and execution of a financial action are different things: the application never executes transactions. The historical approval-receipt/acceptance protocol is still a proposal.
+
+## 10. Reproduction and validation
+
+Use [testing](testing.md) for current commands and actual CI coverage. [Findings](findings.md) and the committed JSON artifacts retain their original denominators. Rebuilding features or research is an explicit batch operation, not evidence of a live bank feed.

@@ -1,35 +1,32 @@
-# PULP consolidation and verification
+# Implementation history and verification
 
-Updated November 7, 2026. The active checkout is the repository root, with GitHub origin `AhmadAli137/pulp` and branch `master`. All ongoing changes belong here. The retired comparison checkout must not be edited or pushed. The historical Entire remote is not the publishing destination.
+This is a dated change summary, not an alternative architecture specification. See [current architecture](architecture.md) and [testing](testing.md) for maintained instructions.
 
-## Changes brought into this application
+## November 7 baseline
 
-- Simulation records immediate funding failure before later monthly income and includes an initially negative balance in cumulative shortfall. Buffer percentile charts and minimum-buffer statistics still describe monthly boundaries; an intramonth upfront shortfall may occur between those plotted points.
-- Strategy capacity is `max(0, inflow - spending + confirmed reduction)`, with reductions bounded by current spending. A reduction cannot fund savings until it covers an existing deficit.
-- Non-emergency goals without a budget no longer receive an invented target. Contributions and completion claims wait for a target. Emergency targets use the selected stress, and the roadmap uses that same comparison.
-- Legacy goal comparisons project through the goal deadline and disclose extensions through `requested_horizon_months`, `projection_note`, and the visible explanation. The future reviewed workflow requires an explicitly approved horizon instead.
-- Stale context confirmation returns HTTP 409. Existing confirmation idempotency remains intact.
-- Voice scenarios stay staged until explicit confirmation, display their stated values, and preserve unspecified inputs. Account and calculation request guards prevent older responses from replacing newer selections.
-- The agent handbook now has one contract, runtime prompts, implementation guidance, team milestones, and validated synthetic examples. Older guide paths redirect to the canonical documents.
+Earlier consolidation corrected upfront simulation shortfalls, initially negative balances, deficit-aware saving capacity, unknown goal budgets and stale context confirmation. Original data-audit artifacts remain at [data-validation.json](data-validation.json), with supplementary research in [pulp-findings.json](pulp-findings.json). The historical handbook introduced synthetic fixtures for a separate proposed reviewed-planning protocol; those fixtures do not demonstrate implemented endpoints.
 
-The TypeScript routes, mascot, Gemini relay, Vultr provider, Redis/file context support, and deployment remain in place. The separate intake and three-role ADK planning system is a blueprint, not shipped orchestration.
+## November 8 conversation and planning
 
-## Reproduced checks
+- Native Gemini Live and typed messages now delegate to the same `stage_stream` workflow. One speaking voice; silent text-only mode.
+- A versioned active plan connects conversation, goals, roadmap and initial explorer settings.
+- Strategist candidates are validated and scored before the Challenger reviews them. Confirmed spending limits constrain the grid and proposals.
+- Vacation confirmation and repeated affirmative replies continue into useful missing details. Ungrounded plain replies no longer become empty promises of a visual. Internally generated but unspoken questions are not counted as asked.
+- Agent flow starts closed and displays actual latest-turn activity and handoffs.
 
-| Check | Result |
-|---|---|
-| Backend suite | 84 passed; temporary context, no live AI or Redis |
-| Production frontend | TypeScript and Vite build passed |
-| Browser suite | 11 passed against isolated API on port 8002 |
-| Handbook validator | Two synthetic fixtures, arithmetic, references, negative checks, and 26 local links passed |
-| Full organizer export | 4,500 accounts, 185,326 monthly rows, 1,056,320 transactions |
-| Transaction reconciliation | Zero-cent maximum inflow and outflow differences |
-| Supplementary research | Recomputed longitudinal groups and inflow deciles; separate denominators from original research |
+## November 8 decision interpretation
 
-The deployment and full-export `monthly_summary.csv` files have identical SHA-256 hashes. See [data-validation.json](data-validation.json), [supplementary findings](pulp-findings.json), and the [root README](../README.md) for commands. The browser suite covers home navigation, accept/reload, decline, mobile layout, intro replay, chat failure, microphone denial, simulation, missing goal budget, invalid account, and voice proposal confirmation.
+- Recent paired monthly room, evidence periods, practical implications and unresolved questions form a deterministic decision profile.
+- Ordinary purchases and bigger life decisions have conversation entry points. Explicit-price comparison remains conditional on historical records and present context.
+- Transfer purpose, protected spending and extra-income feasibility are not assumed. Candidate presentation identifies questions that remain unresolved.
+- An audit exercised profile construction across 4,500 source accounts: 1,393 had recurring-transfer signals, 254 possible timing-dip signals and 740 predominantly pension inflow signals. These are dataset signal counts, not confirmed personal facts or proof of question quality.
 
-Live Gemini/Vultr calls and production deployment were not exercised by these offline regressions. Vite still reports a large JavaScript bundle. Redis support is preserved, but transactional multi-worker acceptance and authentication remain implementation requirements described in the handbook.
+## November 8 workspace
 
-## Next colleague task
+Eight destinations share navigation labels, editorial typography, evergreen/paper/copper colors and clear onward links. Insights connect evidence to an editable conversation draft. Goal forms load saved details. Tables and comparison layouts are bounded on phones. Historical agent replay starts paused and scrolls inside its own panel.
 
-Start with the [post-intake implementation prompt](agents/IMPLEMENTATION_PROMPT.md) and [delivery milestones](agents/06-delivery.md). Implement explicit scenario contracts and a pure evaluator before connecting the Consultant, Advocate, and Challenger. Keep scenario approval, memory confirmation, and plan acceptance separate.
+## Verification checkpoint
+
+The latest application-code checks before this documentation revision passed 126 backend tests, 13 browser tests and one voice-client test. The frontend build passed with its existing large-bundle warning. The code release was deployed through GitHub Actions and checked for expected frontend assets and backend health. Offline tests do not independently certify live model correctness, voice quality or production privacy controls.
+
+Remaining work includes automatic spreadsheet schema discovery, authenticated context ownership, atomic multi-worker writes, human evaluation of questions and the separately proposed Consultant/Advocate acceptance protocol. Do not reintroduce old claims that these are shipped.

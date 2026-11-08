@@ -1,5 +1,7 @@
 # Architecture and design decisions
 
+> **Historical proposal, not shipped behavior (status clarified November 8, 2026).** This document preserves an earlier design or handoff prompt. Its proposed roles, APIs and approval contracts are not the current runtime. Start with the [current architecture](../architecture.md) and compare any proposed work with the implementation before using these instructions.
+
 ## Product intent
 
 PULP helps a speaker explore the finances of an anonymized banking account. It does not identify the real account holder or connect to a live bank. The experience begins with conversation and only reveals the visualization needed for the current question. Pulp remains the single visible companion.
