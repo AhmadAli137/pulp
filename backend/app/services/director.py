@@ -322,14 +322,28 @@ class _Tools:
 
     def deal_or_set_shock(self, card_key: str = "custom", income_fraction: float = 1.0, bills_increase: float = 0.0,
                           one_off_cost: float = 0.0, duration_months: int = 6) -> dict:
-        """Set the shock to study. card_key: a deck card (layoff, furnace, combined, hours_cut, rent_up, bills_inflation, car_repair, dental, vet, sick_leave, parental, moving, random) or 'custom' with explicit numbers. Returns the official shock result."""
+        """Set the shock to study. card_key: a deck card (layoff, furnace, combined, hours_cut, rent_up, bills_inflation, car_repair, dental, vet, sick_leave, parental, moving, random) or 'custom' with explicit numbers: income_fraction (0.55 = 55% of income kept), bills_increase (0.15 = bills up 15%; a dollar amount per month is also accepted), one_off_cost in dollars, duration_months. Returns the official shock result."""
         if card_key != "custom":
             self.card = deal_card(card_key)
             self.shock = card_shock(self.card, self.m.typical_spending)
         else:
-            self.card = {"key": "custom", "title": "Your scenario", "text": "The scenario you described."}
-            self.shock = {"r": float(income_fraction), "h": float(bills_increase), "one_off": float(one_off_cost), "duration": int(duration_months)}
+            r, h, note = float(income_fraction), float(bills_increase), None
+            if r > 5:          # dollars of income per month instead of a fraction
+                r = max(0.0, r / self.m.typical_inflow) if self.m.typical_inflow > 0 else 1.0
+                note = f"income given in dollars, read as {r:.2f} of typical inflow"
+            if h > 3:          # dollars of extra bills per month instead of a fraction of H
+                if self.m.household_bills > 0:
+                    note = f"bills increase of ${h:,.0f}/month read as {h / self.m.household_bills:.2f} of household bills"
+                    h = h / self.m.household_bills
+                else:          # no labelled bills: the same monthly drain is modelled as lower income
+                    note = f"this account has no labelled household bills; ${h:,.0f}/month more cost modelled as income reduced by that amount"
+                    r = max(0.0, r - h / self.m.typical_inflow) if self.m.typical_inflow > 0 else r
+                    h = 0.0
+            self.card = {"key": "custom", "title": "Your scenario", "text": "The scenario you described." + (f" ({note})" if note else "")}
+            self.shock = {"r": r, "h": h, "one_off": float(one_off_cost), "duration": int(duration_months)}
         out = timeline_params(self.m, self.shock, self.card)
+        if self.card.get("key") == "custom" and "(" in self.card["text"]:
+            out["note"] = self.card["text"]
         self.results["deal_or_set_shock"] = out
         return {k: out[k] for k in ("duration_months", "income_after", "spending_after", "monthly_gap", "buffer_start", "runs_out_month", "runway_label", "verdict")}
 
