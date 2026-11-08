@@ -125,6 +125,11 @@ docs/                  findings, methodology, architecture, limitations, judging
 demo/                  demo script       submissions/   Devpost write-up
 ```
 
+## Agent layer: guides for contributors
+
+The two-stage agent design (voice intake → planning council of three Google ADK agents), its contracts, test matrix and
+hand-off prompts live in [docs/agents/](docs/agents/README.md) and [prompts/](prompts/).
+
 ## Limitations (short)
 
 See [docs/limitations.md](docs/limitations.md). Highlights: the bank data is a static 2020–2025 snapshot of
