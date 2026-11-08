@@ -43,6 +43,12 @@ def find_data_dir() -> Path:
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip()
+# Vultr Serverless Inference (OpenAI-compatible). Key from Vultr Console -> Compute -> Serverless Inference -> Overview.
+VULTR_INFERENCE_API_KEY = os.environ.get("VULTR_INFERENCE_API_KEY", "").strip()
+VULTR_INFERENCE_MODEL = os.environ.get("VULTR_INFERENCE_MODEL", "deepseek-v4.1-flash-1017").strip()
+VULTR_INFERENCE_BASE_URL = os.environ.get("VULTR_INFERENCE_BASE_URL", "https://api.vultrinference.com/v1").strip()
+# Which AI provider answers the companion: auto (Gemini if keyed, else Vultr if keyed, else offline) | gemini | vultr | offline
+AI_PROVIDER = os.environ.get("AI_PROVIDER", "auto").strip().lower()
 STORAGE_DIR = Path(__file__).resolve().parent / "storage" / "context"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 

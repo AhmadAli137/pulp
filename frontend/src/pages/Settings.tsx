@@ -24,10 +24,10 @@ export default function Settings() {
           ['API', health ? <Chip>connected</Chip> : <Chip tone="danger">unreachable</Chip>],
           ['Accounts loaded', health ? health.accounts.toLocaleString() : '—'],
           ['Data folder', health?.data_dir ?? '—'],
-          ['Gemini', health?.gemini_configured ? <Chip>{health.gemini_model}</Chip> : <Chip tone="gray">not configured · offline companion</Chip>],
+          ['AI provider', health ? <Chip tone={health.ai_provider === 'offline' ? 'gray' : ''}>{health.ai_label}{health.ai_model ? ` · ${health.ai_model}` : ''}</Chip> : '—'],
           ['Voice', 'Browser speech recognition and synthesis (no credentials needed)'],
         ]} />
-        <p className="tiny muted" style={{ marginTop: 10 }}>To enable Gemini, put GEMINI_API_KEY in the repo's .env and restart the backend. Keys are never sent to the browser.</p>
+        <p className="tiny muted" style={{ marginTop: 10 }}>Put GEMINI_API_KEY or VULTR_INFERENCE_API_KEY in the repo's .env and restart the backend (AI_PROVIDER picks between them). Keys are never sent to the browser.</p>
       </Card>
       <Card title="Accessibility">
         <label className="row small"><input type="checkbox" checked={accessible} onChange={(e) => setAccessible(e.target.checked)} /> Always show results as tables beside charts (no colour needed to read a verdict)</label>

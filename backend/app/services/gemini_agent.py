@@ -17,7 +17,7 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, ValidationError
 
-from ..config import GEMINI_API_KEY, GEMINI_MODEL
+from ..config import AI_PROVIDER, GEMINI_API_KEY, GEMINI_MODEL, VULTR_INFERENCE_API_KEY, VULTR_INFERENCE_MODEL
 from . import context_manager as cm
 from .financial_profiles import get_metrics
 from .scenario_engine import ScenarioSpec, simulate
@@ -417,6 +417,31 @@ def gemini_turn(account_id: int, text: str, summary: dict, history: list[dict]) 
 
 
 # ----------------------------------------------------------------------------- entry point
+def active_provider() -> str:
+    """Which engine answers: gemini | vultr | offline, honouring AI_PROVIDER and the keys that are present."""
+    if AI_PROVIDER == "offline":
+        return "offline"
+    if AI_PROVIDER == "gemini":
+        return "gemini" if GEMINI_API_KEY else "offline"
+    if AI_PROVIDER == "vultr":
+        return "vultr" if VULTR_INFERENCE_API_KEY else "offline"
+    if GEMINI_API_KEY:
+        return "gemini"
+    if VULTR_INFERENCE_API_KEY:
+        return "vultr"
+    return "offline"
+
+
+def provider_info() -> dict:
+    p = active_provider()
+    model = GEMINI_MODEL if p == "gemini" else VULTR_INFERENCE_MODEL if p == "vultr" else None
+    label = {"gemini": "Gemini companion", "vultr": "Vultr Serverless Inference companion", "offline": "offline companion"}[p]
+    return {"ai_provider": p, "ai_model": model, "ai_label": label}
+
+
+AI_MODES = ("gemini", "vultr")
+
+
 def chat(account_id: int, text: str, prefer_offline: bool = False) -> dict:
     ctx = cm.load_context(account_id)
     summary = cm.summarize(ctx)
@@ -426,14 +451,27 @@ def chat(account_id: int, text: str, prefer_offline: bool = False) -> dict:
     tools_used: list[dict] = []
     reply = ""
     extraction = AgentExtraction()
-    if GEMINI_API_KEY and not prefer_offline:
+    provider = "offline" if prefer_offline else active_provider()
+    if provider == "gemini":
         try:
             reply, extraction, tools_used = gemini_turn(account_id, text, summary, ctx["conversation"][:-1])
             mode = "gemini"
         except Exception as e:  # any API failure degrades gracefully
             log.warning("Gemini unavailable, using offline engine: %s", e)
             mode = "offline_fallback"
-    if mode != "gemini":
+    elif provider == "vultr":
+        try:
+            from .vultr_inference import vultr_turn
+            ex_prompt = EXTRACT_PROMPT.format(
+                goal_types=list(GOAL_LABELS.keys()),
+                concern_types=["income_loss", "irregular_income", "rising_costs", "rent_increase", "debt", "unexpected_expense", "other"],
+                context=json.dumps({k: summary[k] for k in ("goals", "concerns", "constraints", "preferences")}), message=text)
+            reply, extraction, tools_used = vultr_turn(account_id, text, summary, ctx["conversation"][:-1], SYSTEM_PROMPT, ex_prompt, AgentExtraction)
+            mode = "vultr"
+        except Exception as e:
+            log.warning("Vultr inference unavailable, using offline engine: %s", e)
+            mode = "offline_fallback"
+    if mode not in AI_MODES:
         # Treat pending (not yet confirmed) proposals as known context so follow-up answers resolve correctly.
         known = json.loads(json.dumps(summary))
         for p in pending:
@@ -441,16 +479,16 @@ def chat(account_id: int, text: str, prefer_offline: bool = False) -> dict:
                 known.setdefault(ch["field"], []).append(ch.get("value", {}))
         extraction = offline_extract(text, known)
     question = next_question(summary, pending + ([{"changes": [c.model_dump() for c in extraction.proposed_changes]}] if extraction.proposed_changes else []))
-    if mode != "gemini":
+    if mode not in AI_MODES:
         reply, tools_used = offline_reply(account_id, text, extraction, summary, question)
     elif question and extraction.follow_up_question is None and "?" not in reply:
         reply = f"{reply} {question['text']}"
-    if mode == "gemini" and extraction.follow_up_question:
+    if mode in AI_MODES and extraction.follow_up_question:
         question = {"key": "gemini_follow_up", "text": extraction.follow_up_question, "value": None}
     proposal = None
     if extraction.proposed_changes:
         proposal = cm.propose(account_id, [c.model_dump() for c in extraction.proposed_changes],
-                              source="gemini" if mode == "gemini" else "offline_extractor", rationale=extraction.rationale or "Extracted from conversation")
+                              source=mode if mode in AI_MODES else "offline_extractor", rationale=extraction.rationale or "Extracted from conversation")
     if question and question.get("key") and question["key"] != "gemini_follow_up":
         cm.record_question(account_id, question["key"])
     cm.record_turn(account_id, "assistant", reply, {"mode": mode})
@@ -458,5 +496,5 @@ def chat(account_id: int, text: str, prefer_offline: bool = False) -> dict:
         "account_id": int(account_id), "mode": mode, "reply": reply,
         "extraction": extraction.model_dump(), "proposal": proposal, "tool_results": tools_used,
         "next_question": question, "context": cm.summarize(cm.load_context(account_id)),
-        "notice": None if mode == "gemini" else "AI service not configured or unavailable; offline companion is answering from the calculator.",
+        "notice": None if mode in AI_MODES else "AI service not configured or unavailable; offline companion is answering from the calculator.",
     }

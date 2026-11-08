@@ -12,7 +12,7 @@ from ..services.cohort_analysis import cohort_for, research_summary
 from ..services.data_store import get_store
 from ..services.feedback_loop import replan, replanning_diff
 from ..services.financial_profiles import get_metrics, get_population, percentile_of
-from ..services.gemini_agent import chat, next_question
+from ..services.gemini_agent import chat, next_question, provider_info
 from ..services.roadmap import build_roadmap
 from ..services.scenario_engine import ScenarioSpec, StrategyAdjust, branches, resolve_preset, simulate_both
 from ..services.strategy_optimizer import compare_strategies
@@ -45,7 +45,7 @@ def _metrics_or_404(account_id: int):
 def health():
     store = get_store()
     return {"ok": True, "accounts": len(store.account_ids), "data_dir": str(store.data_dir),
-            "gemini_configured": bool(GEMINI_API_KEY), "gemini_model": GEMINI_MODEL if GEMINI_API_KEY else None}
+            "gemini_configured": bool(GEMINI_API_KEY), "gemini_model": GEMINI_MODEL if GEMINI_API_KEY else None, **provider_info()}
 
 
 @router.get("/accounts/sample")

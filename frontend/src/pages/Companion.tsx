@@ -16,7 +16,7 @@ const STARTERS = [
 ]
 
 export default function Companion() {
-  const { accountId, profile, context, refreshContext, setLastReplan, geminiConfigured } = useApp()
+  const { accountId, profile, context, refreshContext, setLastReplan, geminiConfigured, aiLabel } = useApp()
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -84,7 +84,7 @@ export default function Companion() {
 
   return (
     <div className="grid" style={{ gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
-      <Card title="Conversation" right={<Chip tone={geminiConfigured ? '' : 'gray'}>{geminiConfigured ? 'Gemini' : 'offline companion'}</Chip>}>
+      <Card title="Conversation" right={<Chip tone={geminiConfigured ? '' : 'gray'}>{aiLabel}</Chip>}>
         {notice && <p className="callout" style={{ marginBottom: 10 }}>{notice}</p>}
         <div className="chat" aria-live="polite">
           {msgs.map((m, i) => (

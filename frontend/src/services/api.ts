@@ -35,7 +35,7 @@ const post = <T,>(p: string, body: unknown) => request<T>(p, { method: 'POST', b
 const del = <T,>(p: string) => request<T>(p, { method: 'DELETE' })
 
 // ------------------------------------------------------------------ types
-export interface Health { ok: boolean; accounts: number; data_dir: string; gemini_configured: boolean; gemini_model: string | null }
+export interface Health { ok: boolean; accounts: number; data_dir: string; gemini_configured: boolean; gemini_model: string | null; ai_provider: 'gemini' | 'vultr' | 'offline'; ai_model: string | null; ai_label: string }
 export interface SampleAccount { account_id: number; I: number; S: number; B: number; months: number; has_active_loan: boolean; tag: string }
 export interface HistoryRow {
   month: string; money_in: number; money_out: number; household_bills: number; insurance: number; loan_payments: number

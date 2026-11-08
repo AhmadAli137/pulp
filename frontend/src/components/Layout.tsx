@@ -28,13 +28,13 @@ const TITLES: Record<string, [string, string]> = {
 }
 
 export default function Layout() {
-  const { accountId, loadAccount, loadingProfile, profileError, setGemini, geminiConfigured } = useApp()
+  const { accountId, loadAccount, loadingProfile, profileError, setGemini, aiLabel } = useApp()
   const [draft, setDraft] = useState(accountId ? String(accountId) : '')
   const loc = useLocation()
   const [title, subtitle] = TITLES[loc.pathname] ?? ['PULP', '']
 
   useEffect(() => {
-    api.health().then((h) => setGemini(h.gemini_configured)).catch(() => setGemini(false))
+    api.health().then((h) => setGemini(h.ai_provider !== 'offline', h.ai_label)).catch(() => setGemini(false))
     // Restore the last account on any page after a reload so deep links keep working.
     const saved = (() => { try { return localStorage.getItem('pulp.account') } catch { return null } })()
     if (!accountId && saved && Number.isInteger(Number(saved))) void loadAccount(Number(saved))
@@ -69,7 +69,7 @@ export default function Layout() {
         <div className="foot">
           Tangerine track · Sheridan Datathon 2026<br />
           Prepare for what comes next.<br />Data: PKDD'99 Financial dataset (anonymized). Amounts in CAD.<br />
-          AI: {geminiConfigured == null ? '…' : geminiConfigured ? 'Gemini connected' : 'offline companion'}
+          AI: {aiLabel}
         </div>
       </aside>
       <main className="main">

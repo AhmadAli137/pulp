@@ -40,7 +40,7 @@ function ShockCard({ r, onOpen }: { r: ShockReport; onOpen: () => void }) {
 }
 
 export default function Home() {
-  const { accountId, profile, loadAccount, loadingProfile, context, refreshContext, setInputs, runShock, setLastReplan, geminiConfigured } = useApp()
+  const { accountId, profile, loadAccount, loadingProfile, context, refreshContext, setInputs, runShock, setLastReplan, aiLabel } = useApp()
   const [thread, setThread] = useState<Turn[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -199,7 +199,7 @@ export default function Home() {
 
       <div className="home-foot">
         <label><input type="checkbox" checked={voiceOut} onChange={(e) => { setVoiceOut(e.target.checked); if (!e.target.checked) sp.stopSpeaking() }} disabled={!sp.ttsSupported} /> read replies aloud</label>
-        {' · '}{geminiConfigured ? 'Gemini companion' : 'offline companion'} · every number comes from the calculator, never from the model · anonymized data, not your identity
+        {' · '}{aiLabel} · every number comes from the calculator, never from the model · anonymized data, not your identity
       </div>
     </div>
   )

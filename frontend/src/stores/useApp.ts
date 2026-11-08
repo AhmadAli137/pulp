@@ -22,6 +22,7 @@ interface AppState {
   lastReplan: ReplanResult | null
   accessible: boolean
   geminiConfigured: boolean | null
+  aiLabel: string
   loadAccount: (id: number) => Promise<void>
   clearAccount: () => void
   setInputs: (p: Partial<ShockInputs>, preset?: string | null) => void
@@ -30,7 +31,7 @@ interface AppState {
   refreshContext: () => Promise<void>
   setLastReplan: (r: ReplanResult | null) => void
   setAccessible: (v: boolean) => void
-  setGemini: (v: boolean) => void
+  setGemini: (v: boolean, label?: string) => void
 }
 
 const DEFAULT_INPUTS: ShockInputs = { income_fraction: 0.55, bills_increase: 0, one_off_cost: 0, horizon_months: 6 }
@@ -49,6 +50,7 @@ export const useApp = create<AppState>((set, get) => ({
   lastReplan: null,
   accessible: (() => { try { return localStorage.getItem('pulp.accessible') === '1' } catch { return false } })(),
   geminiConfigured: null,
+  aiLabel: 'offline companion',
 
   loadAccount: async (id) => {
     set({ loadingProfile: true, profileError: null, shock: null, lastReplan: null })
@@ -93,5 +95,5 @@ export const useApp = create<AppState>((set, get) => ({
   },
   setLastReplan: (r) => set({ lastReplan: r }),
   setAccessible: (v) => { try { localStorage.setItem('pulp.accessible', v ? '1' : '0') } catch { /* ignore */ } set({ accessible: v }) },
-  setGemini: (v) => set({ geminiConfigured: v }),
+  setGemini: (v, label) => set({ geminiConfigured: v, aiLabel: label ?? (v ? 'Gemini companion' : 'offline companion') }),
 }))
