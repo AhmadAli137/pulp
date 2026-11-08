@@ -209,6 +209,7 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
           <div className="composer-bottom">
             <button type="button" className="composer-context" onClick={() => nav('/shock')}><Leaf size={15} /><span>{account ? 'Your financial context is here' : loading ? 'Reading your financial context…' : 'No account loaded yet'}</span></button>
             <div>
+              <button type="button" className="composer-context" disabled={!account || busy} onClick={() => choose("Council: retain 55% income; bills +15%; 6 months")}>Planning council</button>
               <button type="button" className={`composer-voice ${voice ? 'active' : ''}`} onClick={toggleVoice} disabled={loading || !account} aria-label={voice ? 'Stop voice conversation' : 'Start voice conversation'}>{voice ? <Square size={16} /> : <Mic size={18} />}<span>{voice ? (listening ? 'Listening' : 'Connecting') : 'Talk'}</span></button>
               <button className="composer-send" aria-label="Send message" disabled={!draft.trim() || busy || confirming || loading || !account || !contextReady}><ArrowUp size={19} /></button>
             </div>

@@ -444,6 +444,24 @@ AI_MODES = ("gemini", "vultr")
 
 def chat(account_id: int, text: str, prefer_offline: bool = False) -> dict:
     ctx = cm.load_context(account_id)
+    previous = (ctx.get("conversation") or [{}])[-1]
+    pending_card = previous.get("council_review") if previous.get("role") == "assistant" else None
+    explicit = text.lower().lstrip().startswith("council:")
+    scenario_turn = bool(re.search(r"(?:\b(?:car|repair|furnace)\b.*\$|\$[\d,]+.*\b(?:car|repair|furnace)\b|\bretain \d+% income|\b(?:layoff|laid off)\b.*\d+%)", text, re.I))
+    followup = pending_card and (pending_card.get("clarifying") or text.strip().lower() in ("confirm", "yes", "confirm scenario"))
+    if explicit or scenario_turn or followup:
+        from .planning_council import coordinate
+        request = text.lstrip().split(":", 1)[1].strip() if text.lower().lstrip().startswith("council:") else text
+        result = coordinate(account_id, request, pending=None if explicit or scenario_turn else pending_card, enable_ai=not prefer_offline)
+        cm.record_turn(account_id, "user", text)
+        extra = {"council_review": {"state": result["state"]}} if result["status"] == "review" else {}
+        if result.get("clarifying"):
+            extra = {"council_review": {"clarifying": result["clarifying"]}}
+        mode = "gemini" if result["model_roles"] else "offline"
+        cm.record_turn(account_id, "assistant", result["reply"], {"mode": mode, **extra})
+        return {"account_id": account_id, "mode": mode, "reply": result["reply"], "proposal": None,
+                "tool_results": [result], "next_question": None, "extraction": AgentExtraction().model_dump(),
+                "context": cm.summarize(cm.load_context(account_id)), "notice": None}
     summary = cm.summarize(ctx)
     pending = summary["pending_proposals"]
     cm.record_turn(account_id, "user", text)
