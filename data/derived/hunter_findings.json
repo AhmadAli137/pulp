@@ -1,11 +1,232 @@
 {
- "mode": "baseline",
- "model": null,
- "ran_at": "2026-11-08T06:30:11Z",
- "budget": null,
- "tool_calls_made": 27,
- "tool_log": [],
+ "mode": "adk",
+ "model": "gemini-3.5-flash",
+ "ran_at": "2026-11-08T07:01:39Z",
+ "budget": 24,
+ "tool_calls_made": 23,
+ "tool_log": [
+  {
+   "tool": "list_features",
+   "args": {}
+  },
+  {
+   "tool": "compare_flag",
+   "args": {
+    "flag": "savings_elsewhere"
+   }
+  },
+  {
+   "tool": "compare_flag",
+   "args": {
+    "flag": "lifestyle_creep"
+   }
+  },
+  {
+   "tool": "compare_flag",
+   "args": {
+    "flag": "balance_sliding"
+   }
+  },
+  {
+   "tool": "record_finding",
+   "args": {
+    "title": "Balance sliding flag strongly depresses layoff survival"
+   }
+  },
+  {
+   "tool": "survival_by_quantile",
+   "args": {
+    "feature": "balance_trend_pm",
+    "shock": "layoff",
+    "bins": 4
+   }
+  },
+  {
+   "tool": "record_finding",
+   "args": {
+    "title": "Declining balance trend reduces six-month layoff survival by 25 percentage points"
+   }
+  },
+  {
+   "tool": "compare_flag",
+   "args": {
+    "flag": "fee_bleed"
+   }
+  },
+  {
+   "tool": "record_finding",
+   "args": {
+    "title": "Fee bleed flag correlates with counterintuitively higher layoff survival"
+   }
+  },
+  {
+   "tool": "compare_flag",
+   "args": {
+    "flag": "timing_dips"
+   }
+  },
+  {
+   "tool": "survival_by_quantile",
+   "args": {
+    "feature": "timing_dip_share",
+    "shock": "layoff",
+    "bins": 4
+   }
+  },
+  {
+   "tool": "survival_by_quantile",
+   "args": {
+    "feature": "n_standing_orders",
+    "shock": "layoff",
+    "bins": 4
+   }
+  },
+  {
+   "tool": "record_finding",
+   "args": {
+    "title": "Higher number of standing orders reduces layoff survival"
+   }
+  },
+  {
+   "tool": "crosstab_survival",
+   "args": {
+    "feature_a": "spending_ratio",
+    "feature_b": "income_cv",
+    "bins": 3,
+    "shock": "layoff"
+   }
+  },
+  {
+   "tool": "record_finding",
+   "args": {
+    "title": "Income volatility sharply reduces layoff survival for moderate-spending households"
+   }
+  },
+  {
+   "tool": "survival_by_quantile",
+   "args": {
+    "feature": "bills_share",
+    "shock": "layoff",
+    "bins": 4
+   }
+  },
+  {
+   "tool": "correlation",
+   "args": {
+    "feature_a": "bills_share",
+    "feature_b": "spending_ratio"
+   }
+  },
+  {
+   "tool": "record_finding",
+   "args": {
+    "title": "High household bills share of outflow correlates with greater layoff survival"
+   }
+  },
+  {
+   "tool": "compare_flag",
+   "args": {
+    "flag": "cash_economy"
+   }
+  },
+  {
+   "tool": "record_finding",
+   "args": {
+    "title": "Cash economy flag reduces layoff survival despite higher nominal inflows"
+   }
+  },
+  {
+   "tool": "survival_by_quantile",
+   "args": {
+    "feature": "december_spend_ratio",
+    "shock": "layoff",
+    "bins": 4
+   }
+  },
+  {
+   "tool": "compare_flag",
+   "args": {
+    "flag": "loan_stress"
+   }
+  },
+  {
+   "tool": "record_finding",
+   "args": {
+    "title": "Loan stress severely degrades household layoff survival"
+   }
+  }
+ ],
  "findings": [
+  {
+   "title": "Balance sliding flag strongly depresses layoff survival",
+   "statement": "Accounts flagged for balance_sliding (n=493) have a six-month layoff survival rate of 34.7%, 33.5 percentage points lower than accounts without the flag (68.2%, n=4007).",
+   "evidence": "compare_flag tool on flag 'balance_sliding' showing n=493 with survival 34.7% vs n=4007 without survival 68.2%.",
+   "strength": "strong",
+   "caveat": "Accounts with balance_sliding also have lower median cash buffers (13,748 vs 24,223) and higher spending ratios (0.997 vs 0.910), which contributes to their lower survival.",
+   "recorded_after_call": 5
+  },
+  {
+   "title": "Declining balance trend reduces six-month layoff survival by 25 percentage points",
+   "statement": "Accounts in the lowest quartile of monthly balance trend (balance_trend_pm from -23 to -0.004, n=1125) have a six-month layoff survival rate of 47.3%, compared to 72.5% for accounts in the third quartile (n=1125).",
+   "evidence": "survival_by_quantile tool on 'balance_trend_pm' with 4 bins showing survival rates from 47.3% (Q1, n=1125) to 72.5% (Q3, n=1125).",
+   "strength": "strong",
+   "caveat": "Balance trends are correlated with overall buffer levels and net cash flow direction.",
+   "recorded_after_call": 7
+  },
+  {
+   "title": "Fee bleed flag correlates with counterintuitively higher layoff survival",
+   "statement": "Accounts flagged for fee_bleed (n=310) achieve a six-month layoff survival rate of 96.8%, compared to 62.1% for non-fee-bleed accounts (n=4190), representing a 34.7 percentage point increase.",
+   "evidence": "compare_flag tool for 'fee_bleed' showing n=310 with 96.8% layoff survival vs n=4190 without at 62.1% survival.",
+   "strength": "strong",
+   "caveat": "Fee bleed accounts have much lower median spending ratios (0.658 vs 0.930) and spending amounts, giving them larger income cushions relative to expenses despite high relative fees.",
+   "recorded_after_call": 9
+  },
+  {
+   "title": "Higher number of standing orders reduces layoff survival",
+   "statement": "Accounts with 2 to 5 standing orders (n=706) have a six-month layoff survival rate of 48.0%, compared to 69.7% for accounts with 0 to 1 standing orders (n=2845), a 21.7 percentage point drop.",
+   "evidence": "survival_by_quantile tool on 'n_standing_orders' with 3 distinct quantile bins showing 69.7% layoff survival for 0-1 standing orders (n=2845) versus 48.0% for 2-5 standing orders (n=706).",
+   "strength": "strong",
+   "caveat": "Accounts with more standing orders may have higher baseline fixed commitments, reducing overall spending flexibility.",
+   "recorded_after_call": 13
+  },
+  {
+   "title": "Income volatility sharply reduces layoff survival for moderate-spending households",
+   "statement": "For households in the middle spending-ratio tier (0.821 to 0.976), high income volatility (income_cv > 0.314, n=411) reduces six-month layoff survival to 56.4%, compared to 79.7% for low income volatility (income_cv <= 0.208, n=360), a 23.3 percentage point drop.",
+   "evidence": "crosstab_survival tool for spending_ratio by income_cv (bins=3) showing for spending_ratio 0.821-0.976, low income_cv (0.003-0.208, n=360) has 79.7% survival while high income_cv (0.314-3.21, n=411) drops to 56.4%.",
+   "strength": "strong",
+   "caveat": "High income volatility accounts may have variable bonus months or seasonal income that affect buffer accumulation differently depending on baseline surplus.",
+   "recorded_after_call": 15
+  },
+  {
+   "title": "High household bills share of outflow correlates with greater layoff survival",
+   "statement": "Accounts in the top tier of household bills share (bills_share from 0.404 to 0.894, n=1125) achieve an 86.7% six-month layoff survival rate, compared to 56.2% for accounts with bills share below 0.199 (n=2250), a 30.5 percentage point advantage.",
+   "evidence": "survival_by_quantile tool on 'bills_share' showing 86.7% layoff survival for the top bin (0.404 to 0.894, n=1125) versus 56.2% for the bottom bin (0 to 0.199, n=2250).",
+   "strength": "strong",
+   "caveat": "Accounts with a high bills share have a lower overall spending ratio (Spearman rho = -0.242), indicating that higher fixed bill proportions coincide with larger income surpluses.",
+   "recorded_after_call": 18
+  },
+  {
+   "title": "Cash economy flag reduces layoff survival despite higher nominal inflows",
+   "statement": "Accounts flagged for cash_economy (n=1022) have a six-month layoff survival rate of 50.2%, 18.5 percentage points lower than non-cash economy accounts (68.7%, n=3478).",
+   "evidence": "compare_flag tool for 'cash_economy' flag showing n=1022 accounts with 50.2% layoff survival versus n=3478 without at 68.7% survival.",
+   "strength": "strong",
+   "caveat": "Cash economy accounts have higher median inflow (11,079 vs 7,038) but also higher median spending ratios (0.975 vs 0.908), leaving less margin when income drops.",
+   "recorded_after_call": 20
+  },
+  {
+   "title": "Loan stress severely degrades household layoff survival",
+   "statement": "Accounts flagged for loan_stress (n=103) achieve a six-month layoff survival rate of only 28.2%, compared to 65.4% for accounts without loan stress (n=4397), a 37.2 percentage point deficit.",
+   "evidence": "compare_flag tool for 'loan_stress' flag showing n=103 with 28.2% layoff survival versus n=4397 without at 65.4%.",
+   "strength": "strong",
+   "caveat": "Accounts under loan stress have higher median spending ratios (1.009 vs 0.916), reflecting fixed debt burdens that cannot be easily scaled down during income shocks.",
+   "recorded_after_call": 23
+  }
+ ],
+ "summary": "Beyond liquid cash reserves, fixed commitments like standing orders and loan obligations substantially diminish household survival during income shocks. Income volatility sharply reduces six-month layoff survival for households operating at moderate spending levels, whereas a steady balance trend strongly protects resilience. Automated signals such as balance sliding, cash economy reliance, and heavy loan stress identify vulnerable accounts before buffers are fully depleted.",
+ "best_finding": "Income volatility sharply reduces layoff survival for moderate-spending households",
+ "seconds": 39.6,
+ "n_accounts": 4500,
+ "baseline_findings": [
   {
    "title": "I / district average salary spreads survival by 62 points",
    "statement": "Lowest quartile of inflow_vs_district_salary (-0.001 to 0.564) survives 95% of the time; highest quartile (2.25 to 8.22) 33%.",
@@ -102,9 +323,5 @@
    "caveat": "Quartile spread; not adjusted for income.",
    "effect": 30.6
   }
- ],
- "summary": null,
- "best_finding": "I / district average salary spreads survival by 62 points",
- "seconds": null,
- "n_accounts": 4500
+ ]
 }

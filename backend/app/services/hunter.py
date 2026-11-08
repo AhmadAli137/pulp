@@ -22,7 +22,7 @@ from .adk_runtime import LlmAgent, adk_available, agent_output, run_agent
 from .features import FEATURE_DOCS, FLAG_RULES, flag_matrix, get_features
 
 ARTEFACT = "hunter_findings.json"
-MAX_TOOL_CALLS = 28
+MAX_TOOL_CALLS = 24
 MIN_GROUP = 100              # accounts per group for a finding to count
 MIN_EFFECT_PP = 10.0         # percentage points of survival difference
 MIN_RHO = 0.2
@@ -45,10 +45,23 @@ class Toolbox:
 
     # --- bookkeeping
     def _spend(self, name: str, args: dict) -> dict | None:
+        """Exploration calls count against the budget; record_finding never does, so recording cannot be starved."""
         self.calls.append({"tool": name, "args": args})
-        if len(self.calls) > self.budget:
-            return {"error": f"tool budget of {self.budget} calls exhausted; write your final JSON summary now"}
+        if name == "record_finding":
+            return None
+        used = sum(1 for c in self.calls if c["tool"] != "record_finding")
+        if used > self.budget:
+            return {"error": f"exploration budget of {self.budget} calls exhausted; call record_finding for every result that cleared the bar, then write your final JSON summary"}
         return None
+
+    def _hint(self, result: dict) -> dict:
+        used = sum(1 for c in self.calls if c["tool"] != "record_finding")
+        left = self.budget - used
+        if left <= 4 and not self.findings:
+            result["budget_note"] = f"{left} exploration calls left and nothing recorded yet: record the findings you already have before exploring further"
+        elif left <= 4:
+            result["budget_note"] = f"{left} exploration calls left"
+        return result
 
     def _survival(self, idx: pd.Index, shock: str) -> float:
         col = "survives6_layoff" if shock == "layoff" else "survives6_combined"
@@ -92,7 +105,7 @@ class Toolbox:
         for interval, idx in valid.groupby(q, observed=True).groups.items():
             rows.append({"range": f"{interval.left:.3g} to {interval.right:.3g}", "n": int(len(idx)), "survive6_pct": round(self._survival(idx, shock), 1)})
         spread = max(r["survive6_pct"] for r in rows) - min(r["survive6_pct"] for r in rows)
-        return {"feature": feature, "shock": shock, "bins": rows, "spread_pp": round(spread, 1)}
+        return self._hint({"feature": feature, "shock": shock, "bins": rows, "spread_pp": round(spread, 1)})
 
     def correlation(self, feature_a: str, feature_b: str) -> dict:
         """Spearman rank correlation between two numeric features (runway_layoff_capped is runway with no-shortfall as 120)."""
@@ -105,7 +118,7 @@ class Toolbox:
         b = pd.to_numeric(self.f[feature_b], errors="coerce")
         ok = a.notna() & b.notna()
         rho = float(a[ok].corr(b[ok], method="spearman")) if ok.sum() > 10 else float("nan")
-        return {"feature_a": feature_a, "feature_b": feature_b, "n": int(ok.sum()), "spearman": None if np.isnan(rho) else round(rho, 3)}
+        return self._hint({"feature_a": feature_a, "feature_b": feature_b, "n": int(ok.sum()), "spearman": None if np.isnan(rho) else round(rho, 3)})
 
     def compare_flag(self, flag: str) -> dict:
         """Accounts with a flag versus without: counts, survival under both shocks, and medians of I, S, B and S/I."""
@@ -125,7 +138,7 @@ class Toolbox:
         out["effect_pp_layoff"] = round(out["with"]["survive6_layoff_pct"] - out["without"]["survive6_layoff_pct"], 1)
         if flag in TAUTOLOGICAL_FLAGS:
             out["warning"] = "this flag is defined using the layoff runway, so the comparison is circular; do not record it as a finding"
-        return out
+        return self._hint(out)
 
     def crosstab_survival(self, feature_a: str, feature_b: str, bins: int = 3, shock: str = "layoff") -> dict:
         """Two-way grid: bins of feature_a by bins of feature_b, six-month survival in each cell (for interactions)."""
@@ -146,7 +159,7 @@ class Toolbox:
         tab = self.f.loc[ok, col].groupby([qa, qb], observed=True).agg(["mean", "size"])
         cells = [{"a_range": f"{ia.left:.3g} to {ia.right:.3g}", "b_range": f"{ib.left:.3g} to {ib.right:.3g}", "n": int(n), "survive6_pct": round(float(m) * 100, 1)}
                  for (ia, ib), (m, n) in tab.iterrows()]
-        return {"feature_a": feature_a, "feature_b": feature_b, "shock": shock, "cells": cells}
+        return self._hint({"feature_a": feature_a, "feature_b": feature_b, "shock": shock, "cells": cells})
 
     def record_finding(self, title: str, statement: str, evidence: str, strength: str, caveat: str = "") -> dict:
         """Record a finding. Statement = one sentence with the numbers; evidence = which tool result supports it; strength = strong|moderate|weak."""
@@ -171,10 +184,12 @@ Method, strictly:
 2. Form hypotheses one at a time and test each with one or two tool calls (survival_by_quantile, compare_flag,
    correlation, crosstab_survival). Do not re-test what the population numbers already show (buffer and spending
    ratio predicting runway is already known; look for what adds to or contradicts that).
-3. Record a finding with record_finding only when groups have at least {MIN_GROUP} accounts and the effect is at least
-   {MIN_EFFECT_PP:.0f} percentage points of survival or |rho| >= {MIN_RHO}. Put the exact numbers in the statement.
-   Mark strength honestly. Add a caveat when the comparison could be confounded.
-4. You have a budget of {MAX_TOOL_CALLS} tool calls in total. Stop early if you run out of good hypotheses.
+3. Record a finding with record_finding IMMEDIATELY after the tool result that supports it, before the next hypothesis,
+   when groups have at least {MIN_GROUP} accounts and the effect is at least {MIN_EFFECT_PP:.0f} percentage points of
+   survival or |rho| >= {MIN_RHO}. Put the exact numbers in the statement. Mark strength honestly. Add a caveat when the
+   comparison could be confounded (for example drawdown and buffer both depend on the balance).
+4. You have a budget of {MAX_TOOL_CALLS} exploration calls; record_finding is free. Aim for 5 to 8 recorded findings.
+   Stop early if you run out of good hypotheses.
 5. Finish with ONLY a JSON object: {{"summary": "<three sentences for the pitch>", "best_finding": "<title>", "findings_recorded": <n>}}.
 Never compute numbers yourself; quote the tools."""
 

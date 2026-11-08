@@ -20,7 +20,7 @@
   "account_age_years"
  ],
  "naming_source": "google-adk/gemini-3.5-flash",
- "built_at": "2026-11-08T06:26:23Z",
+ "built_at": "2026-11-08T06:59:14Z",
  "n_accounts": 4500,
  "clusters": [
   {
@@ -110,12 +110,12 @@
     20396,
     20448
    ],
-   "name": "Regular Cash Earner",
-   "description": "Account holders receive steady cash deposits and spend most of it through cash withdrawals and household bills, maintaining a moderate balance buffer.",
-   "likely_life_stage": "Established adult",
-   "likely_occupation": "Self-employed / cash trades",
+   "name": "Regular Cash Wage Earners",
+   "description": "Receives steady monthly cash deposits above local average salary and spends almost all of it through cash withdrawals and bills.",
+   "likely_life_stage": "Mid-career / Working age",
+   "likely_occupation": "Salaried employee or cash trade worker",
    "confidence": 0.85,
-   "evidence": "99% cash deposit share, 0.96 spending ratio, median age 40.9"
+   "evidence": "cash_deposit_share: 0.99, inflow_vs_district_salary: 1.61, spending_ratio: 0.96"
   },
   {
    "id": 1,
@@ -204,12 +204,12 @@
     20549,
     20699
    ],
-   "name": "Retired Pension Receiver",
-   "description": "Inflows consist almost entirely of regular pension payments, with money spent mainly on household bills while accumulating a deep balance buffer.",
-   "likely_life_stage": "Retired",
-   "likely_occupation": "Pensioner",
+   "name": "Retired Pension Earners",
+   "description": "Receives nearly all income from pensions and spends roughly two-thirds on regular household expenses while holding strong reserves.",
+   "likely_life_stage": "Retirement / Senior",
+   "likely_occupation": "Retired",
    "confidence": 0.95,
-   "evidence": "98% pension share, median age 71.6, 6.5 buffer months"
+   "evidence": "pension_share: 0.98, owner_age: 71.6, buffer_months: 6.46"
   },
   {
    "id": 2,
@@ -298,12 +298,12 @@
     20636,
     20737
    ],
-   "name": "Digital Inflow Saver",
-   "description": "Income arrives almost entirely via electronic transfers into low-earning accounts, maintaining very healthy liquidity and a strong safety cushion.",
-   "likely_life_stage": "Working-age adult",
-   "likely_occupation": "Salaried employee / digital worker",
-   "confidence": 0.85,
-   "evidence": "97% transfer inflow share, median monthly inflow of 2,375.37, 6.3 buffer months"
+   "name": "Digital Transfer Low Earners",
+   "description": "Relies almost exclusively on digital bank transfers for low monthly inflows while maintaining modest spending and a solid savings buffer.",
+   "likely_life_stage": "Working age",
+   "likely_occupation": "Part-time worker or supported dependent",
+   "confidence": 0.8,
+   "evidence": "transfer_in_share: 0.97, inflow_vs_district_salary: 0.41, buffer_months: 6.28"
   },
   {
    "id": 3,
@@ -392,12 +392,12 @@
     20487,
     20556
    ],
-   "name": "High Volatility Cash Depositor",
-   "description": "High volume of cash moves through the account with unpredictable timing, and nearly all funds are quickly withdrawn in cash, leaving thin reserves.",
-   "likely_life_stage": "Mid-career adult",
-   "likely_occupation": "Self-employed / cash business owner",
+   "name": "Irregular High Cash Earners",
+   "description": "Brings in substantial but highly unpredictable cash deposits and withdraws almost all funds immediately in cash.",
+   "likely_life_stage": "Mid-career / Working age",
+   "likely_occupation": "Self-employed or cash business owner",
    "confidence": 0.85,
-   "evidence": "Income CV of 0.99, 92% cash withdrawal share, 1.8 buffer months"
+   "evidence": "income_cv: 0.99, cash_wd_share: 0.92, inflow_vs_district_salary: 2.47"
   },
   {
    "id": 4,
@@ -486,12 +486,12 @@
     20331,
     20731
    ],
-   "name": "High Earning Borrowers",
-   "description": "High monthly cash deposits are balanced by high spending and an active bank loan, leaving slim monthly cash margins despite strong revenue.",
-   "likely_life_stage": "Established adult",
-   "likely_occupation": "Self-employed / business owner with loan",
-   "confidence": 0.9,
-   "evidence": "100% active loan prevalence, median monthly spending of 13,593.15, 0.95 spending ratio"
+   "name": "High Earners With Loans",
+   "description": "Generates strong cash earnings and spends most of it monthly while actively paying off an ongoing bank loan.",
+   "likely_life_stage": "Mid-career / Working age",
+   "likely_occupation": "Self-employed or high-earning cash worker",
+   "confidence": 0.85,
+   "evidence": "has_running_loan: 1.0, spending_ratio: 0.95, inflow_vs_district_salary: 2.34"
   },
   {
    "id": 5,
@@ -580,12 +580,12 @@
     20976,
     21132
    ],
-   "name": "Buffered Young Adult",
-   "description": "Young account holders receive small, irregular cash inflows and spend more than they bring in monthly, relying on a large existing savings buffer.",
-   "likely_life_stage": "Young adult / student",
-   "likely_occupation": "Student / part-time worker",
+   "name": "Young Deficit Cash Handlers",
+   "description": "Young accountholders with low, unpredictable income who spend more than they earn each month by drawing on existing cash balances.",
+   "likely_life_stage": "Young adult / Student",
+   "likely_occupation": "Student or casual worker",
    "confidence": 0.9,
-   "evidence": "Median age 21.7, income CV of 1.64, spending ratio of 1.42 with 10.3 buffer months"
+   "evidence": "owner_age: 21.7, spending_ratio: 1.42, buffer_months: 10.26"
   }
  ],
  "labels": {
