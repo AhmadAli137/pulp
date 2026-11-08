@@ -231,3 +231,28 @@
 @media (prefers-reduced-motion:reduce){
   .lp-sd,.lp-sd circle,.lp-sd-finalist,.lp-fade-in{transition:none!important;animation:none!important}
 }
+/* Clarity pass: what to do first, as numbered steps; secondary detail in disclosures */
+.lp-first{border:1px solid #E8E2D6;border-radius:14px;background:#FFFCF6;padding:16px 18px}
+.lp-first>h3{font-size:18px}
+.lp-lead{margin:0 0 12px;font-size:15px;line-height:1.5;color:#22352c}
+.lp-lead b{color:#183B2D}
+.lp-steps{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:12px}
+.lp-steps li{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start}
+.lp-step-num{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:#fff;font-weight:800;font-size:14px}
+.lp-step-title{margin:2px 0 2px;font-size:15px;line-height:1.35}
+.lp-step-when{display:inline-block;margin-left:6px;font-size:12.5px;font-weight:700;color:#6a5a43;background:#F4ECDF;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.lp-step-detail{margin:0;font-size:14px;line-height:1.5;color:#33433a}
+.lp-step-why{margin:4px 0 0;font-size:13px;line-height:1.45;color:#5b665f}
+.lp-steps-empty{margin:0 0 12px;font-size:14px}
+.lp-more{border:1px solid #E3E8DF;border-radius:14px;background:#fff;padding:0}
+.lp-more>summary{cursor:pointer;padding:13px 16px;font-weight:700;color:#183B2D;list-style:none;display:flex;gap:8px;align-items:center}
+.lp-more>summary::-webkit-details-marker{display:none}
+.lp-more>summary::before{content:'';width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+.lp-more[open]>summary::before{transform:rotate(45deg)}
+.lp-more>:not(summary){margin-left:16px;margin-right:16px}
+.lp-more[open]{padding-bottom:14px}
+.lp-more-body{display:grid;gap:22px;margin-top:8px}
+.lp-weights-details>summary{cursor:pointer;font-weight:700;font-size:14px;color:#183B2D;margin-bottom:8px}
+.lp-summary .lp-steps{margin-bottom:8px}
+.lp-summary-foot{margin:0;font-size:13.5px;color:#4f5a50}
+@media (prefers-reduced-motion:reduce){.lp-more>summary::before{transition:none}}

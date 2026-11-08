@@ -9,7 +9,7 @@ import './discovery.css'
 const SEVERITY_LABEL = { risk: 'Needs attention', watch: 'Worth watching', info: 'Good to know' } as const
 
 /** The biggest discovery for this account, shown first: what PULP found, the evidence, how rare it is, one thing to do. */
-export default function DiscoveryHighlight({ accountId, compact = false }: { accountId: number; compact?: boolean }) {
+export default function DiscoveryHighlight({ accountId, compact = false, line = false }: { accountId: number; compact?: boolean; line?: boolean }) {
   const [data, setData] = useState<DiscoveryResult | null>(null)
   const [failed, setFailed] = useState(false)
   const openPulp = useApp(s => s.openPulp)
@@ -23,9 +23,15 @@ export default function DiscoveryHighlight({ accountId, compact = false }: { acc
   if (failed) return null
   const d = data?.discovery
   if (!data) {
+    if (line) return null
     return <section className="discovery discovery-loading" aria-busy="true"><PulpMark size={22} /><span>Squeezing your records for the biggest discovery…</span></section>
   }
   if (!d) return null
+  if (line) {
+    return (
+      <p className="discovery-line"><Sparkles size={15} aria-hidden="true" /> <span>Pulp’s biggest discovery about you: <b>{d.title}</b>.</span> <Link to="/">See it on Overview</Link></p>
+    )
+  }
   return (
     <section className={`discovery sev-${d.severity}${compact ? ' compact' : ''}`} aria-labelledby="discovery-title">
       <div className="discovery-head">

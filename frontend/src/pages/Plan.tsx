@@ -7,6 +7,7 @@ import { useLifePlans, usePlanHistory } from '../components/plans/usePlanData'
 import { SqueezeLoader } from '../components/PulpMascot'
 import ScenarioPlans from '../components/ScenarioPlans'
 import '../components/twist-deck.css'
+import '../components/clarity.css'
 import { Card, ErrorBox, fmt } from '../components/ui'
 import { matchesShockInputs } from '../services/api'
 import { PRESETS, useApp } from '../stores/useApp'
@@ -25,14 +26,12 @@ export default function Plan() {
 
   return (
     <div className="stack">
-      {ready && shock && (
-        <Card title="Your current scenario" right={<Link to="/shock">Change shock</Link>}>
-          <p>{shock.applied_inputs.horizon_months} {shock.applied_inputs.horizon_months === 1 ? 'month' : 'months'} with <strong className="scenario-amount">{fmt.money(shock.shocked.income_after, 2)}</strong> coming in each month,
-            <strong className="scenario-amount"> {fmt.money(shock.shocked.spending_after, 2)}</strong> in regular monthly spending,
-            and <strong className="scenario-amount">{fmt.money(shock.applied_inputs.one_off_cost, 2)}</strong> in upfront costs.</p>
-          {shockHasHappened && <p className="small muted">You marked this shock as already happened. Your backup plan comes first.</p>}
-        </Card>
-      )}
+      <p className="page-lead">
+        {ready && shock
+          ? <>For the shock you set up: <b>{shock.applied_inputs.horizon_months} {shock.applied_inputs.horizon_months === 1 ? 'month' : 'months'}</b> with <strong className="scenario-amount">{fmt.money(shock.shocked.income_after, 2)}</strong> coming in and <strong className="scenario-amount">{fmt.money(shock.shocked.spending_after, 2)}</strong> going out each month{shock.applied_inputs.one_off_cost ? <>, plus <strong className="scenario-amount">{fmt.money(shock.applied_inputs.one_off_cost, 2)}</strong> up front</> : null}. <Link to="/shock">Change shock</Link></>
+          : <>Here is what PULP would do over the next five years with no shock. <Link to="/shock">Set up a shock</Link> to plan for one.</>}
+        {shockHasHappened && <> You marked this shock as already happened, so the backup plan comes first.</>}
+      </p>
 
       <div className="plan-tabs" role="tablist" aria-label="Which plan">
         <button type="button" role="tab" aria-selected={active === 'long'} className={active === 'long' ? 'on' : ''} onClick={() => setTab('long')}>Long term</button>
@@ -40,8 +39,7 @@ export default function Plan() {
       </div>
 
       {active === 'long' && (
-        <Card title="Your long-term plan" className="plan-card">
-          <p className="scenario-intro">Five years with no shock: the same search over the same real decisions, aimed mainly at your goals and your cushion.</p>
+        <Card title="What should I do over the next five years?" className="plan-card">
           {longTerm.result ? <LifePlansView key={`lt-${longTerm.result.account_id}`} result={longTerm.result} /> : <SqueezeLoader label="Squeezing five years of options from your records…" />}
         </Card>
       )}
@@ -49,7 +47,7 @@ export default function Plan() {
       {active === 'shock' && (ready && shock ? (
         <>
           <ScenarioPlans report={shock} responseFirst={shockHasHappened} />
-          <Card title="Plans for this shock" className="plan-card" right={<Link to="/shock">Compare again</Link>}>
+          <Card title="What should I do?" className="plan-card">
             {shockPlans.result ? <LifePlansView key={`s-${JSON.stringify(shockPlans.result.shock)}`} result={shockPlans.result} /> : <SqueezeLoader label="Squeezing plans out of your records…" />}
           </Card>
         </>
@@ -61,10 +59,11 @@ export default function Plan() {
         </Card>
       ))}
 
-      <Card title="How your plans changed">
+      <details className="disclose">
+        <summary>How your plans changed over time</summary>
         <p className="scenario-intro">Every time the planners run, after a twist card, a shock you mention to Pulp or a change to your goals, the four finalists are kept here.</p>
         <PlanHistory history={history.history} preview={!history.live && history.history != null} />
-      </Card>
+      </details>
     </div>
   )
 }

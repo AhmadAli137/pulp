@@ -15,6 +15,7 @@ _MONTHS = re.compile(r"(\d{1,2}|a|one|two|three|four|five|six|eight|nine|ten|twe
 _WORDS = {"a": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "eight": 8, "nine": 9, "ten": 10, "twelve": 12}
 
 PAST = re.compile(r"\b(i|we)\s+(just\s+)?(lost|got laid off|was laid off|were laid off|got fired|was fired|got let go|had to)|\b(just|already)\s+(happened|broke|died)|\bbroke down\b|\bhas gone up\b|\bwent up\b|\bwe had a baby\b", re.I)
+NOW = re.compile(r"\b(tomorrow|today|tonight|this week|right now|this month)\b", re.I)
 FUTURE = re.compile(r"\b(might|may|could|worried|afraid|scared|thinking|considering|planning|going to|gonna|next (month|year)|soon|if i|what if|should i|should we)\b", re.I)
 
 PATTERNS: list[tuple[str, re.Pattern, dict]] = [
@@ -24,6 +25,8 @@ PATTERNS: list[tuple[str, re.Pattern, dict]] = [
      {"title": "Hours or pay cut", "r": 0.75, "h": 0.0, "duration": 6, "category": "income"}),
     ("rent_up", re.compile(r"\b(rent|bills|utilities|hydro|heating)\b.*\b(up|increase|rais|higher|more)|\b(increase|rais)\w*\s+(the\s+|my\s+|our\s+)?(rent|bills)", re.I),
      {"title": "Rent and bills going up", "r": 1.0, "h": 0.15, "duration": 12, "category": "housing"}),
+    ("bill", re.compile(r"\b(bill|bills|invoice|fine|ticket|fee|deductible|expense)\b.*\d|\d.*\b(bill|invoice|fine|ticket|fee|deductible|expense)\b", re.I),
+     {"title": "An unexpected bill", "r": 1.0, "h": 0.0, "duration": 6, "one_off_S": 0.3, "category": "costs"}),
     ("repair", re.compile(r"\b(car|furnace|roof|transmission|fridge|washer|boiler|engine|laptop)\b.*\b(broke|died|dead|repair|fix|replace|gone)|\bbroke down\b", re.I),
      {"title": "A big repair", "r": 1.0, "h": 0.0, "duration": 6, "one_off_S": 0.5, "category": "transport"}),
     ("health", re.compile(r"\b(sick|illness|surgery|injur|hospital|medical leave|sick leave|burn ?out)\b", re.I),
@@ -43,10 +46,20 @@ DECISIONS: list[tuple[str, re.Pattern, str]] = [
 ]
 
 
+_BARE = re.compile(r"\b(?:of|for|about|around|is|costs?|be)\s+(\d[\d,]{2,}(?:\.\d+)?)\s*(k|K|thousand)?\b")
+
+
 def _amount(text: str) -> float | None:
     m = _MONEY.search(text)
     if not m:
-        return None
+        b = _BARE.search(text)
+        if not b:
+            return None
+        try:
+            v = float(b.group(1).replace(",", "")) * (1000 if b.group(2) else 1)
+        except ValueError:
+            return None
+        return v if v > 0 else None
     raw = (m.group(1) or m.group(3) or "").replace(",", "")
     try:
         v = float(raw)
@@ -72,7 +85,7 @@ def detect(text: str) -> dict | None:
     t = (text or "").strip()
     if len(t) < 6 or t.startswith(("twist:", "decision:", "__")):
         return None
-    timing = "now" if PAST.search(t) else "soon" if FUTURE.search(t) else "now"
+    timing = "now" if (PAST.search(t) or NOW.search(t)) else "soon" if FUTURE.search(t) else "now"
     for key, rx, base in PATTERNS:
         if rx.search(t):
             d = {"kind": "shock", "key": key, "timing": timing, **{k: v for k, v in base.items()}}
@@ -86,7 +99,7 @@ def detect(text: str) -> dict | None:
             if key in ("hours_cut",) and pct:
                 v = float(pct.group(1)) / 100
                 d["r"] = max(0.0, 1 - v) if re.search(r"cut|reduc|less", t, re.I) and v < 0.9 else v
-            if key in ("repair", "health", "family") and amt:
+            if key in ("bill", "repair", "health", "family") and amt:
                 d["one_off"] = amt
                 d.pop("one_off_S", None)
             if months:

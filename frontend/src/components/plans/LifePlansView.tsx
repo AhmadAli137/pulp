@@ -13,10 +13,12 @@ import { FallsShort, FinalistCards, WeightSliders, statedWeights, type UserWeigh
 import PlanSearchView from './PlanSearchView'
 import PlanTimeline from './PlanTimeline'
 import StandingPanel from './StandingPanel'
+import StepList, { outcomeLine } from './StepList'
 import TradeoffChart, { TradeoffLegend } from './TradeoffChart'
 import './plans.css'
 
-export default function LifePlansView({ result, compact = false }: { result: LifePlanResult; compact?: boolean }) {
+/** variant 'summary' (the Shocks page): only what to do first, with a link to the full view in My Plan. */
+export default function LifePlansView({ result, compact = false, variant = 'full' }: { result: LifePlanResult; compact?: boolean; variant?: 'full' | 'summary' }) {
   const longTerm = result.plan_mode === 'long_term'
   const finalists = result.plans
   const cautionary = result.cautionary ?? []
@@ -71,46 +73,71 @@ export default function LifePlansView({ result, compact = false }: { result: Lif
     )
   }
 
+  if (variant === 'summary') {
+    return (
+      <section className="lp lp-summary" aria-label="What to do first">
+        <p className="lp-lead"><b>{recommended.role_label ?? 'Best balance'}:</b> {recommended.name}. {outcomeLine(recommended, horizon, longTerm)}</p>
+        <StepList plan={recommended} horizon={horizon} longTerm={longTerm} />
+        <p className="lp-summary-foot">
+          Chosen from {result.search?.generated ?? finalists.length} plans the agents tried for this shock.{' '}
+          <Link to="/plan">See all four plans and how they were chosen in My Plan</Link>
+        </p>
+      </section>
+    )
+  }
+
   return (
     <section className="lp" aria-label={longTerm ? 'Long-term plans' : 'Life plans'}>
       <p className="lp-context">
-        {longTerm ? <>Five-year plans with no shock, over {Math.round(horizon / 12)} years.</> : <>For <b>{result.shock.label}</b>: income at {pct(result.shock.r)}{result.shock.h ? `, bills ${result.shock.h > 0 ? '+' : ''}${pct(result.shock.h)}` : ''}{result.shock.one_off ? `, ${dollars(result.shock.one_off)} once` : ''} for {result.shock.duration} months, starting in month {shock?.start}.</>}
+        {longTerm ? <>Five-year plans with no shock, over {Math.round(horizon / 12)} years.</> : <>For this shock: income at {pct(result.shock.r)}{result.shock.h ? `, bills ${result.shock.h > 0 ? '+' : ''}${pct(result.shock.h)}` : ''}{result.shock.one_off ? `, ${dollars(result.shock.one_off)} once` : ''} for {result.shock.duration} months, starting in month {shock?.start}.</>}
         {' '}{result.search ? `${result.search.generated} plans tried, four kept.` : ''}
         {preview && <span className="lp-preview" title="The planner endpoint is not answering yet; these are illustrative numbers from the same formulas.">preview data</span>}
       </p>
 
-      <div className="lp-block">
-        <h3>Where you stand <span className="lp-sub">with “{selected.name}”</span></h3>
-        <StandingPanel plan={selected} baseline={result.baseline} shockMonths={result.shock.duration} longTerm={longTerm} sMonthly={S} />
+      <div className="lp-block lp-first">
+        <h3>{selected.id === recommended.id ? 'What to do first' : <>Steps for <span className="lp-sub">“{selected.name}”</span></>}</h3>
+        <p className="lp-lead">{selected.role_label ? <b>{selected.role_label}: </b> : null}{outcomeLine(selected, horizon, longTerm)}</p>
+        <StepList plan={selected} horizon={horizon} longTerm={longTerm} />
+        {(selected.versus || selected.why) && <p className="lp-read"><JuiceDrop /> <b>Pulp’s read</b> {selected.versus ?? selected.why}</p>}
+        {selected.id !== recommended.id && <button type="button" className="lp-btn ghost" onClick={() => setSelectedId(recommended.id)}>Back to the recommended plan</button>}
       </div>
 
-      {result.search && (
-        <div className="lp-block">
-          <h3>How the agents chose these four</h3>
-          <PlanSearchView search={result.search} plans={finalists} />
-        </div>
-      )}
-
       <div className="lp-block">
-        <h3>The finalists</h3>
+        <h3>Four ways to do it <span className="lp-sub">each best at something different; pick one to see its steps</span></h3>
         <div className="lp-final-wrap">
           <FinalistCards plans={finalists} selectedId={selectedId} onSelect={setSelectedId} userBestId={userBest?.finalist ? userBest.id : null} longTerm={longTerm} />
-          <div className="lp-weights-wrap">
+          <details className="lp-weights-wrap lp-weights-details">
+            <summary>Change what matters most to you</summary>
             <WeightSliders value={weights} onChange={setWeights} stated={stated} longTerm={longTerm} onReset={() => setWeights(stated)} />
             <p className="small muted lp-weights-note" role="status">
               {userBest
                 ? userBest.finalist ? <>With your weights, <b>{userBest.name}</b> comes out on top.</> : <>With your weights, <b>{userBest.name}</b> would come out on top. It is not one of the four, so its month-by-month plan is not drawn.</>
                 : <>Move a slider to re-rank all {result.search?.feasible ?? finalists.length} feasible plans with your own priorities. The agents’ own choice uses the stated weights.</>}
             </p>
-          </div>
+          </details>
         </div>
       </div>
 
+      <div className="lp-block">
+        <h3>Where you stand <span className="lp-sub">with “{selected.name}”</span></h3>
+        <StandingPanel plan={selected} baseline={result.baseline} shockMonths={result.shock.duration} longTerm={longTerm} sMonthly={S} />
+      </div>
+
       {!longTerm && (
-        <div className="lp-block">
-          <h3>Plans that fall short</h3>
+        <details className="lp-block lp-more">
+          <summary>Plans that fall short{cautionary.length ? ` (${cautionary.length})` : ''}</summary>
           <p className="lp-lede">Plausible plans the agents tried that still run out of money, for comparison.</p>
           <FallsShort plans={cautionary} onSelect={setSelectedId} selectedId={selectedId} />
+        </details>
+      )}
+
+      <details className="lp-block lp-more">
+        <summary>How the agents chose this, in detail</summary>
+        <div className="lp-more-body">
+      {result.search && (
+        <div className="lp-block">
+          <h3>How the agents chose these four</h3>
+          <PlanSearchView search={result.search} plans={finalists} />
         </div>
       )}
 
@@ -146,9 +173,6 @@ export default function LifePlansView({ result, compact = false }: { result: Lif
 
       <div className="lp-block">
         <h3>How you get there <span className="lp-sub">“{selected.name}”</span></h3>
-        {(selected.versus || selected.why) && (
-          <p className="lp-read"><JuiceDrop /> <b>Pulp’s read</b> {selected.versus ?? selected.why}</p>
-        )}
         <PlanTimeline plan={selected} horizon={horizon} shock={shock} longTerm={longTerm} />
         <CategoryLegend used={selected.steps.map((s) => s.category)} />
       </div>
@@ -171,6 +195,8 @@ export default function LifePlansView({ result, compact = false }: { result: Lif
           <p className="small muted">Goal weights: {result.objective.goal_weights.map((g) => `${g.label} ${pct(g.weight)}`).join(' · ')}. Weight = importance × urgency (short 1.0, medium 0.75, long 0.5), normalised.</p>
         )}
       </div>
+        </div>
+      </details>
     </section>
   )
 }

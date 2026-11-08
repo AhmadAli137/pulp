@@ -1025,12 +1025,9 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
                     result = ev
                 yield et, ev
             if result:
-                params = tools.params_for("timeline", "deal_or_set_shock")
-                if params:
-                    cap = tools.template_caption("timeline")
-                    if cap:
-                        beats.append(_beat("stage3", "timeline", cap, params, 9))
-                beats.append(_beat("plans", "none", summary_line(result, detected), {}, 6))
+                # The Shocks tab already shows the cushion month by month; the chat gives the short answer and the plans.
+                cap = tools.template_caption("timeline") if tools.params_for("timeline", "deal_or_set_shock") else None
+                beats.append(_beat("plans", "none", ((cap + " ") if cap else "") + summary_line(result, detected), {}, 6))
         else:
             async for et, ev in _life_plans(account_id, None, f"You asked about: {detected['title'].lower()}", None, mode="long_term"):
                 if et == "lifeplans":

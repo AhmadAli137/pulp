@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { matchesShockInputs, type Beat, type ShockInputs, type ShockReport } from '../services/api'
 import { PRESETS, useApp } from '../stores/useApp'
 import LifePlansView, { VerdictMark } from './plans/LifePlansView'
@@ -41,7 +40,7 @@ export default function ShockPanel() {
   return (
     <div className="stack scenario">
       <Card title="Set up a shock">
-        <p className="scenario-intro">Draw a twist card, shuffle the deck for a random one, or enter your own changes. If income has stopped, enter only what you can count on, including 0% when nothing is confirmed.</p>
+        <p className="scenario-intro">Turn over a card, or type your own numbers below. If income has stopped, enter only what you can count on, including 0% when nothing is confirmed.</p>
         <TwistDeck editing={editing} onPick={() => setDraft({})} />
         <form className="grid scenario-form" onSubmit={submit}>
           <div className="field">
@@ -113,12 +112,15 @@ function ShockResults({ report, responseFirst, showTable }: { report: ShockRepor
       {responseFirst && <ScenarioPlans report={report} responseFirst />}
       <ShockCashChart report={report} showTable={showTable} />
       {!responseFirst && <ScenarioPlans report={report} responseFirst={false} />}
-      <PurchaseComparison key={`${report.account_id}:${JSON.stringify(report.applied_inputs)}`} report={report} showTable={showTable} />
       <ShockLifePlans report={report} happened={responseFirst} />
-      <Card title="How the numbers work">
+      <details className="disclose">
+        <summary>Can a purchase wait? Compare paying now with waiting</summary>
+        <PurchaseComparison key={`${report.account_id}:${JSON.stringify(report.applied_inputs)}`} report={report} showTable={showTable} />
+      </details>
+      <details className="disclose" open={showTable || undefined}>
+        <summary>How the numbers work</summary>
         <p className="scenario-intro">Your cash buffer estimates how much you could draw on from recent balances. The one-time cost comes out first. Each month with a shortfall uses more of what is left.</p>
-        <details open={showTable || undefined} className="scenario-details">
-          <summary>View inputs and formulas</summary>
+        <div className="scenario-details">
           <DataTable caption="Shock inputs and formulas" headers={['Measure', 'Without shock', 'After shock']} rows={[
             ['Income · typical inflow × income retained', fmt.money(baseline.income_after, 2), fmt.money(shocked.income_after, 2)],
             ['Spending · typical spending + change in household bills', fmt.money(baseline.spending_after, 2), fmt.money(shocked.spending_after, 2)],
@@ -127,9 +129,8 @@ function ShockResults({ report, responseFirst, showTable }: { report: ShockRepor
           ]} />
           <p className="small muted">Runway is cash after upfront costs divided by the monthly gap when both are positive. It is zero when upfront costs exhaust the buffer, and shown as no monthly shortfall when income covers spending and cash remains. Results use unrounded inputs.</p>
           <p className="small muted">{report.tipping_point.note}</p>
-        </details>
-        <p><Link to="/plan">Open My Plan</Link></p>
-      </Card>
+        </div>
+      </details>
     </>
   )
 }
@@ -142,9 +143,8 @@ function ShockLifePlans({ report, happened }: { report: ShockReport; happened: b
   const label = (i.preset && PRESETS[i.preset]?.label) || 'This shock'
   const { result } = useLifePlans(accountId, { mode: 'shock', inputs, happened, label, trigger: 'Ran a shock on the Shocks page' })
   return (
-    <Card title="Plans for this shock" className="plan-card">
-      <p className="scenario-intro">Multi-step plans built from real decisions, scored month by month on covering the gap, keeping a cushion and reaching your goals.</p>
-      {result ? <LifePlansView key={`${report.account_id}:${JSON.stringify(i)}:${happened}`} result={result} /> : <SqueezeLoader label="Squeezing plans out of your records…" />}
+    <Card title="What could you do about it?" className="plan-card">
+      {result ? <LifePlansView key={`${report.account_id}:${JSON.stringify(i)}:${happened}`} result={result} variant="summary" /> : <SqueezeLoader label="Squeezing plans out of your records…" />}
     </Card>
   )
 }

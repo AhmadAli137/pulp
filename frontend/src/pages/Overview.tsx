@@ -3,15 +3,13 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import DiscoveryHighlight from '../components/insights/DiscoveryHighlight'
-import { LikeOthers, TraitTrack } from '../components/profile/ProfileParts'
-import { useProfileDoc } from '../components/profile/useProfileDoc'
-import { JuiceDrop, PressIcon, SqueezeLoader, Tangerine } from '../components/PulpMascot'
-import ResilienceEntry from '../components/ResilienceEntry'
+import { Tangerine } from '../components/PulpMascot'
 import ThreadFigure from '../components/stage/ThreadFigure'
 import '../components/twist-deck.css'
 import { Card, fmt } from '../components/ui'
-import type { LifePersona, Profile } from '../services/api'
+import type { Profile } from '../services/api'
 import { useApp } from '../stores/useApp'
+import '../components/clarity.css'
 
 const monthFormat = new Intl.DateTimeFormat('en-CA', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 
@@ -23,9 +21,7 @@ function recordMonth(value: string) {
 export default function Overview() {
   const profile = useApp((state) => state.profile)
   const openPulp = useApp((state) => state.openPulp)
-  const { doc } = useProfileDoc(profile?.account_id ?? null)
   if (!profile) return <DemoAccountPicker />
-  const persona = doc?.account_id === profile.account_id ? doc.persona : null
 
   const { account_id, typical_inflow, typical_spending, typical_surplus } = profile
   const chartMax = Math.max(typical_inflow, typical_spending, 1)
@@ -44,6 +40,7 @@ export default function Overview() {
         <div>
           <span className="bank-demo-badge"><span aria-hidden="true" /> Historical demo data</span>
           <h2 id="bank-summary-title">Account {account_id}</h2>
+          <p className="bank-lead">{lead(profile)}</p>
           <p><CalendarDays size={16} aria-hidden="true" /> {recordMonth(profile.first_month)} to {recordMonth(profile.last_month)} <span>·</span> {profile.months_available} {profile.months_available === 1 ? 'month' : 'months'} of records</p>
         </div>
         <div className="bank-actions">
@@ -54,10 +51,8 @@ export default function Overview() {
 
       <DiscoveryHighlight accountId={account_id} compact />
 
-      <Squeezed persona={persona} loading={!doc} />
-
       <div className="bank-overview-grid">
-        <Card title="Your typical month" className="bank-flow">
+        <Card title="How does a typical month look?" className="bank-flow">
           <p>These figures use the middle of the monthly totals in the records, in Canadian dollars.</p>
           <dl className="bank-flow-rows">
             {([
@@ -107,62 +102,19 @@ export default function Overview() {
         </div>
       </div>
 
-      <section className="card brand-section" aria-labelledby="ov-like-title">
-        <div className="card-head"><h2 id="ov-like-title">You, and people like you</h2><Link to="/profile">Open your profile <ArrowRight size={14} aria-hidden="true" /></Link></div>
-        {persona ? (
-          <>
-            <div className="ov-like">
-              <div className="pf-traits">
-                <h3 className="ov-sub">How you are unique</h3>
-                {[...persona.traits].sort((a, b) => Math.abs((b.percentile ?? 50) - 50) - Math.abs((a.percentile ?? 50) - 50)).slice(0, 3).map((t) => <TraitTrack key={t.label} t={t} />)}
-              </div>
-              <div>
-                <h3 className="ov-sub">How you are like others</h3>
-                <LikeOthers like={persona.like_others} />
-              </div>
-            </div>
-            <p className="ov-teaser"><JuiceDrop /> <b>Pulp’s read:</b> {persona.display_name}, {persona.age != null ? `${persona.age}, ` : ''}{persona.occupation.label.toLowerCase()}. <Link to="/profile">Read the full fictional profile</Link></p>
-          </>
-        ) : <SqueezeLoader label="Squeezing your records for what makes you unusual…" />}
-      </section>
-
       <aside className="bank-next">
         <Tangerine className="bank-next-mascot" />
         <div>
-          <h2>Start with a change you might face</h2>
-          <p>Explore what a drop in income or an unexpected bill could change, then make a goal plan and a backup plan.</p>
+          <h2>What next?</h2>
+          <p>Try a shock to see how long your cushion would last, or look at the person PULP thinks is behind these records.</p>
         </div>
         <div className="bank-next-actions">
           <button type="button" className="bank-button" onClick={() => openPulp('__intro__')}><MessageCircle size={16} aria-hidden="true" /> Talk it through with Pulp</button>
-          <Link to="/twin">See account details <ArrowRight size={16} aria-hidden="true" /></Link>
+          <Link to="/profile">Who PULP thinks you are <ArrowRight size={16} aria-hidden="true" /></Link>
+          <Link to="/insights">How you compare with others <ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
       </aside>
-      <ResilienceEntry researchOnly />
     </div>
-  )
-}
-
-/** A slim strip of what Pulp distilled from the records, with the press mark: records in, a drop of insight out. */
-function Squeezed({ persona, loading }: { persona: LifePersona | null; loading: boolean }) {
-  const chips: { k: string; v: string }[] = []
-  if (persona) {
-    const odd = [...persona.traits].filter((t) => t.percentile != null)
-      .sort((a, b) => Math.abs((b.percentile ?? 50) - 50) - Math.abs((a.percentile ?? 50) - 50)).slice(0, 2)
-    for (const t of odd) {
-      const p = t.percentile ?? 50
-      chips.push({ k: t.label, v: `${t.value} · ${p >= 50 ? 'higher' : 'lower'} than ${Math.round(p >= 50 ? p : 100 - p)}% of accounts` })
-    }
-    chips.push({ k: 'Like', v: `${Math.round(persona.like_others.share * 100)}% of accounts: ${persona.like_others.archetype}` })
-    if (persona.worries[0]) chips.push({ k: 'Watch', v: persona.worries[0].label })
-  }
-  return (
-    <section className="squeezed brand-squeeze" aria-label="What Pulp squeezed from your records">
-      <div className="squeezed-head"><PressIcon size={30} className={loading ? 'pressing' : ''} /><strong>What Pulp squeezed from your records</strong></div>
-      {loading ? <span className="small muted">Squeezing your records…</span> : (
-        <ul className="squeezed-chips">{chips.map((c) => <li key={c.k + c.v}><b>{c.k}</b> {c.v}</li>)}</ul>
-      )}
-      <span className="squeezed-links"><Link to="/insights">Insights</Link><Link to="/profile">Profile</Link></span>
-    </section>
   )
 }
 
@@ -207,4 +159,14 @@ function PictureWhatIf({ profile }: { profile: Profile }) {
       </fieldset>
     </>
   )
+}
+
+/** One plain sentence for "How am I doing?": the typical month and how long the cushion lasts with no shock. */
+function lead(p: Profile): string {
+  const left = p.typical_surplus
+  const month = left >= 0
+    ? `In a typical month ${fmt.money(p.typical_inflow)} comes in and ${fmt.money(p.typical_spending)} goes out, leaving ${fmt.money(left)}.`
+    : `In a typical month ${fmt.money(p.typical_spending)} goes out but only ${fmt.money(p.typical_inflow)} comes in, ${fmt.money(-left)} short.`
+  const months = p.typical_spending > 0 ? p.buffer / p.typical_spending : 0
+  return `${month} Your cushion of ${fmt.money(p.buffer)} is about ${months.toFixed(1)} months of spending.`
 }

@@ -6,6 +6,7 @@ import { useResearch } from '../components/insights/JuiceCups'
 import ProfileInsights from '../components/ProfileInsights'
 import ResearchEvidence, { PairFinding } from '../components/ResearchEvidence'
 import { useApp } from '../stores/useApp'
+import '../components/clarity.css'
 
 export default function Insights() {
   const accountId = useApp(state => state.accountId)
@@ -15,7 +16,8 @@ export default function Insights() {
   const pairs = run?.pairs_unequal_buffer != null ? Number(run.pairs_unequal_buffer).toLocaleString() : '2,238'
   return (
     <div className="stack">
-      {accountId && <DiscoveryHighlight accountId={accountId} />}
+      <p className="page-lead">What the records say about this account, how it compares with people of the same age, household and district, and what holds across all 4,500 accounts.</p>
+      {accountId && <DiscoveryHighlight accountId={accountId} line />}
       {accountId ? <ProfileInsights /> : <DemoAccountPicker />}
       {accountId && <DemographicsSection accountId={accountId} />}
       <ResearchEvidence />
@@ -29,11 +31,7 @@ export default function Insights() {
         <a href="https://github.com/AhmadAli137/pulp/blob/master/docs/findings.md">Read the research method</a>
       </section>
       {accountId && (
-        <section className="card stack" aria-labelledby="try-your-numbers">
-          <h2 id="try-your-numbers">See what would change your plan</h2>
-          <p>Test a change against the selected account’s numbers and see what you could prepare now or do if the shock hits.</p>
-          <Link to="/shock">Run a shock</Link>
-        </section>
+        <p className="link-row"><Link to="/shock">Try a shock on this account</Link><Link to="/plan">See what to do in My Plan</Link><Link to="/profile">See who PULP thinks you are</Link></p>
       )}
     </div>
   )

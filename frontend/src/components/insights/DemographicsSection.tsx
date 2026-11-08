@@ -60,8 +60,16 @@ export default function DemographicsSection({ accountId }: { accountId: number }
         <>
           <DistrictCard data={data} />
           <ol className="demo-insights" aria-label="What your age and location say">
-            {data.insights.map((i) => <InsightRow key={i.key} insight={i} numbers={numbers} />)}
+            {data.insights.slice(0, 4).map((i) => <InsightRow key={i.key} insight={i} numbers={numbers} />)}
           </ol>
+          {data.insights.length > 4 && (
+            <details className="demo-more disclose">
+              <summary>Show {data.insights.length - 4} more about your age and location</summary>
+              <ol className="demo-insights" start={5}>
+                {data.insights.slice(4).map((i) => <InsightRow key={i.key} insight={i} numbers={numbers} />)}
+              </ol>
+            </details>
+          )}
           <GroupCharts data={data} />
           <details className="demo-caveats">
             <summary>How to read this</summary>

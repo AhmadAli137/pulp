@@ -126,6 +126,7 @@ test('combined shock shows matching cash and both plans, with a meaningful wait-
   await finalRow.getByRole('cell', { name: money.format(baselineCash), exact: true }).waitFor()
   await finalRow.getByRole('cell', { name: money.format(cashAfterShock), exact: true }).waitFor()
 
+  await p.getByText('Can a purchase wait? Compare paying now with waiting', { exact: true }).click()
   const purchase = p.getByLabel(/^Remaining optional cost/)
   await purchase.fill(String(purchaseCost))
   const compared = postTo(p, '/api/shocks/compare-purchase')
@@ -280,7 +281,10 @@ test('the Agents page plays all three stages and the panel shows the live workfl
   await p.getByRole('heading', { name: 'Agents', level: 1 }).waitFor()
   for (const title of ['From records to a person', 'Getting to know you', 'When life happens']) await p.getByRole('heading', { name: title, level: 2 }).waitFor()
   const relay = p.getByRole('group', { name: 'Stage 1 relay' })
-  await relay.getByRole('button', { name: 'Technical', exact: true }).click()
+  // The first screen is plain: key steps only. Technical mode lives in the "For the technically curious" section.
+  assert.ok(await relay.getByRole('list', { name: 'Steps in order' }).getByRole('listitem').count() <= 8)
+  await p.getByText('For the technically curious').click()
+  await p.getByRole('button', { name: 'Technical', exact: true }).click()
   await relay.getByRole('button', { name: 'Next step' }).click()
   assert.ok(await relay.getByRole('list', { name: 'Steps in order' }).getByRole('listitem').count() >= 5)
 

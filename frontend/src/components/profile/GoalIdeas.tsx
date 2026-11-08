@@ -23,6 +23,7 @@ export default function GoalIdeas({ accountId, onAdded }: { accountId: number; o
   const [asking, setAsking] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
   const [added, setAdded] = useState<Set<string>>(new Set())
+  const [more, setMore] = useState(false)
 
   useEffect(() => {
     let live = true
@@ -72,7 +73,7 @@ export default function GoalIdeas({ accountId, onAdded }: { accountId: number; o
       {!data && !error && <p className="small muted">Looking through your records…</p>}
       {data && list.length === 0 && <p>No personal goal ideas stand out in these records yet. Tell Pulp what you are working toward and it will add them.</p>}
       <ul className="gi-list">
-        {list.map(i => {
+        {(more ? list : list.slice(0, 3)).map(i => {
           const fam = FAMILY[i.family] ?? FAMILY.safety
           const inProfile = i.in_profile || added.has(i.id)
           return (
@@ -96,6 +97,7 @@ export default function GoalIdeas({ accountId, onAdded }: { accountId: number; o
           )
         })}
       </ul>
+      {list.length > 3 && <button type="button" className="lp-btn ghost" onClick={() => setMore((v) => !v)}>{more ? 'Show fewer ideas' : `Show ${list.length - 3} more ideas`}</button>}
     </section>
   )
 }

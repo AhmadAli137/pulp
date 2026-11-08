@@ -166,3 +166,52 @@
 /* The left column is narrower than the shared expanded-visual minimum (650px): fit the figure to the column instead of cropping it. */
 .visual-pane .visual-pane-canvas.expanded-visual>.stage-svg{min-width:0;width:100%;height:auto;aspect-ratio:1000/560}
 .visual-pane .visual-pane-canvas.expanded-visual{overflow-x:hidden}
+
+/* ---- simplified Agents page (progressive disclosure): three sizes of type, few borders, lots of air */
+.agents-page.simple{display:grid;gap:28px;max-width:1180px;color:#243b31}
+.ag-intro{display:grid;gap:12px}
+.ag-intro p{margin:0;font-size:17px;line-height:1.55;max-width:70ch}
+.ag-intro-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.ag-muted{margin:0;font-size:14px;line-height:1.5;color:#55635b}
+.ag-live{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:#f3f6f1;font-size:14px}
+.ag-live-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ag-live-label{color:#55635b}
+.ag-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.ag-card{position:relative;display:grid;gap:10px;align-content:start;padding:20px;border-radius:16px;background:#fff;border:1px solid #e3e8df;border-top:4px solid var(--stage-color);transition:box-shadow .2s,transform .2s;min-width:0}
+.ag-card:hover{box-shadow:0 6px 22px #1c46391a}
+.ag-card.on{box-shadow:0 0 0 2px var(--stage-color),0 8px 26px #1c46391f}
+.ag-card-num{font-size:14px;font-weight:700;color:var(--stage-color);letter-spacing:.02em}
+.ag-card h2{margin:0;font-size:22px;line-height:1.25}
+.ag-card-btn{all:unset;cursor:pointer;color:#1c4639;font:inherit;font-weight:700}
+.ag-card-btn::after{content:'';position:absolute;inset:0;border-radius:16px}
+.ag-card-btn:focus-visible::after{outline:3px solid #f9b17e;outline-offset:2px}
+.ag-cast{display:flex;align-items:center;flex-wrap:nowrap;min-width:0}
+.ag-cast-item{display:inline-flex;align-items:center}
+.ag-cast-line{display:inline-block;width:14px;height:2px;background:#cdd6cb;margin:0 3px}
+.ag-flow{margin:0;font-size:14px;line-height:1.5;color:#3e4d45}
+.ag-num{margin:0;font-size:17px;font-weight:700;color:#1c4639;font-variant-numeric:tabular-nums}
+.ag-detail{display:grid;gap:18px;padding:22px;border-radius:16px;background:#fbfbf8;border:1px solid #e3e8df;min-width:0}
+.ag-detail-lede{margin:0;font-size:17px;line-height:1.55;max-width:75ch}
+.ag-detail-hint{display:block;font-size:14px;color:#55635b;margin-top:4px}
+.ag-detail h3,.ag-curious h3{margin:0;font-size:17px}
+.ag-hero{display:grid;gap:10px;padding:16px;border-radius:14px;background:#fff;border:1px solid #e3e8df;min-width:0}
+.ag-finalists{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:8px}
+.ag-finalists li{display:grid;gap:2px;font-size:14px;padding:10px 12px;border-radius:10px;background:#f3f6f1}
+.ag-finalists b{color:#9c4f30}
+.ag-side{display:grid;gap:8px}
+.ag-side p{margin:0;font-size:14px}
+.ag-last summary,.ag-curious>summary{cursor:pointer;font-size:14px;font-weight:700;color:#1c4639}
+.ag-last[open]{display:grid;gap:12px}
+.ag-curious{border-top:1px solid #e3e8df;padding-top:16px}
+.ag-curious>summary{display:inline-flex;align-items:center;gap:6px;font-size:17px;list-style:none}
+.ag-curious>summary::-webkit-details-marker{display:none}
+.ag-curious[open]>summary svg{transform:rotate(180deg)}
+.ag-curious-body{display:grid;gap:22px;margin-top:16px}
+.ag-curious-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.ag-rule{margin:0;font-size:14px;line-height:1.5;max-width:80ch}
+.ag-roster-group{display:grid;gap:10px;padding-left:14px;border-left:3px solid var(--stage-color)}
+.relay-every{font:inherit;font-size:13px;font-weight:700;color:#2f6f73;border:1px solid #cbd6c9;background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer}
+.relay-steps>li.lean .relay-step{grid-template-columns:22px 1fr}
+.relay-steps>li.lean .relay-step-text strong{font-weight:600}
+@media (max-width:900px){.ag-cards{grid-template-columns:1fr}.ag-card h2{font-size:19px}}
+@media (max-width:600px){.agents-page.simple{gap:20px}.ag-detail{padding:14px}.ag-card{padding:16px}.ag-intro p,.ag-detail-lede{font-size:16px}}

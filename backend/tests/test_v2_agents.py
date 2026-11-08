@@ -318,3 +318,10 @@ def test_life_fit_adds_stage_of_life_options():
     titles = {s["decision"] for p in older["plans"] for s in p["steps"]}
     assert "cpp_at_60" in titles or "consulting" in titles
     assert "cpp_at_60" not in young
+
+
+def test_a_bill_with_an_amount_is_a_one_off_cost_not_time_off():
+    from app.services.stage3 import detect
+    d = detect("if i get a hospital bill of 4000 tomorrow what will happen to me?")
+    assert d["key"] == "bill" and d["r"] == 1.0 and d["one_off"] == 4000 and d["timing"] == "now"
+    assert detect("I need surgery and will be off work")["r"] == 0.55

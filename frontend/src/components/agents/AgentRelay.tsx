@@ -82,11 +82,29 @@ function curve(a: Pos, b: Pos) {
 }
 const at = (a: Pos, c: Pos, b: Pos, t: number) => ({ x: (1 - t) ** 2 * a.x + 2 * (1 - t) * t * c.x + t ** 2 * b.x, y: (1 - t) ** 2 * a.y + 2 * (1 - t) * t * c.y + t ** 2 * b.y })
 
-export default function AgentRelay({ events, personas, columns, compact = false, live = false, autoplay = true, label = 'Agent relay', defaultMode = 'plain' }: {
+/** The handful of steps that tell the story: handoffs first, then outputs, in the order they happened. */
+export function keySteps(events: TraceEvent[], max = 8): TraceEvent[] {
+  if (events.length <= max) return events
+  const pick = new Set<number>()
+  events.forEach((e, i) => { if (e.kind === 'handoff' && pick.size < max) pick.add(i) })
+  events.forEach((e, i) => { if (e.kind === 'output' && pick.size < max) pick.add(i) })
+  events.forEach((e, i) => { if (e.kind === 'start' && pick.size < max) pick.add(i) })
+  return events.filter((_, i) => pick.has(i))
+}
+
+export default function AgentRelay({ events: allEvents, personas, columns, compact = false, live = false, autoplay = true, label = 'Agent relay', defaultMode = 'plain', mode: modeProp, simplify = false }: {
   events: TraceEvent[]; personas?: Persona[]; columns?: string[][]; compact?: boolean; live?: boolean; autoplay?: boolean; label?: string; defaultMode?: Mode
+  /** Controlled detail level; when set, the relay hides its own Plain/Technical switch. */
+  mode?: Mode
+  /** Plain mode shows only the key steps (at most 8), one short line each, with a "Show every step" toggle. */
+  simplify?: boolean
 }) {
   const reduced = useReducedMotion() ?? false
-  const [mode, setMode] = useState<Mode>(defaultMode)
+  const [ownMode, setMode] = useState<Mode>(defaultMode)
+  const mode = modeProp ?? ownMode
+  const [everyStep, setEveryStep] = useState(false)
+  const short = simplify && mode === 'plain' && !everyStep
+  const events = useMemo(() => (short ? keySteps(allEvents) : allEvents), [short, allEvents])
   const [cur, setCur] = useState(() => (autoplay && !reduced ? -1 : events.length - 1))
   const [prog, setProg] = useState(1)
   const [playing, setPlaying] = useState(false)
@@ -206,10 +224,15 @@ export default function AgentRelay({ events, personas, columns, compact = false,
           <button type="button" onClick={replay} aria-label="Replay relay" title="Replay"><RotateCcw size={14} /></button>
           <span className="relay-count" aria-live="polite">{Math.max(0, cur + 1)} / {events.length}</span>
         </div>
-        <div className="relay-mode" role="group" aria-label="Detail level">
-          <button type="button" aria-pressed={mode === 'plain'} onClick={() => setMode('plain')}>Plain</button>
-          <button type="button" aria-pressed={mode === 'technical'} onClick={() => setMode('technical')}>Technical</button>
-        </div>
+        {modeProp == null && (
+          <div className="relay-mode" role="group" aria-label="Detail level">
+            <button type="button" aria-pressed={mode === 'plain'} onClick={() => setMode('plain')}>Plain</button>
+            <button type="button" aria-pressed={mode === 'technical'} onClick={() => setMode('technical')}>Technical</button>
+          </div>
+        )}
+        {simplify && mode === 'plain' && allEvents.length > keySteps(allEvents).length && (
+          <button type="button" className="relay-every" aria-pressed={everyStep} onClick={() => setEveryStep((v) => !v)}>{everyStep ? 'Key steps only' : `Show every step (${allEvents.length})`}</button>
+        )}
       </div>
 
       <div className="relay-canvas">
@@ -260,13 +283,14 @@ export default function AgentRelay({ events, personas, columns, compact = false,
 
       <ol ref={list} className="relay-steps" aria-label="Steps in order">
         {events.map((ev, i) => {
-          const hasMore = !!(ev.items?.length || (ev.data && Object.keys(ev.data).length))
+          const lean = simplify && mode === 'plain'
+          const hasMore = !lean && !!(ev.items?.length || (ev.data && Object.keys(ev.data).length))
           return (
-            <li key={i} data-step={i} className={`${i === cur ? 'current' : ''} ${i > cur ? 'future' : ''}`}>
+            <li key={i} data-step={i} className={`${i === cur ? 'current' : ''} ${i > cur ? 'future' : ''} ${lean ? 'lean' : ''}`}>
               <button type="button" className="relay-step" onClick={() => jump(i)} aria-current={i === cur ? 'step' : undefined}>
-                <span className="relay-step-time">{fmtT(ev.t)}</span>
+                {!lean && <span className="relay-step-time">{fmtT(ev.t)}</span>}
                 <AgentSymbol agent={firstFrom(ev)} size={22} personas={personas} />
-                <span className="relay-step-text"><strong>{ev.title}</strong><small>{route(ev)}</small></span>
+                <span className="relay-step-text"><strong>{lean ? `${route(ev)}: ${ev.title}` : ev.title}</strong>{!lean && <small>{route(ev)}</small>}</span>
               </button>
               {hasMore && <button type="button" className="relay-more" aria-expanded={open === i} onClick={() => setOpen(open === i ? null : i)}>{open === i ? 'Hide' : mode === 'plain' ? 'What was passed' : 'Payload'}</button>}
               {open === i && (

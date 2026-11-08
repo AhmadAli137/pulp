@@ -1,20 +1,21 @@
-/* The Agents page: every agent across the three stages, as a relay you can play, step and inspect.
-   Stage traces come from GET /api/agents/trace/{id}; until that answers, a sample built from this account's own engine
-   numbers is shown (labelled) and the page keeps checking, switching to live data on its own. */
+/* The Agents page, in layers. The first screen reads in twenty seconds: one sentence and three stage cards (who works,
+   what goes in, what comes out, one number for this account). Opening a card shows that stage's relay with only its key
+   steps, and for Stage 3 the plan search as the hero. Everything else (every step, payloads, Technical mode, the full
+   roster with guardrails) sits in one "For the technically curious" section at the bottom. Stage traces come from
+   GET /api/agents/trace/{id}; until that answers, a labelled sample built from this account's own numbers is shown. */
 import { Component, Suspense, lazy, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react'
-import { MessageCircle, Sparkles } from 'lucide-react'
+import { ChevronDown, MessageCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import AgentRelay from '../components/agents/AgentRelay'
 import AgentSymbol, { STAGE_COLOR, agentKey, metaFor, type Stage } from '../components/agents/AgentSymbol'
 import SearchFunnel from '../components/agents/SearchFunnel'
 import { ROSTER, mockLifePlans, mockTrace } from '../components/agents/fixtures'
-import { api, type AgentTrace, type LifePlan, type LifePlanResult, type Persona, type PlanSearch, type ProfileChange } from '../services/api'
+import { api, type AgentTrace, type LifePlan, type LifePlanResult, type Persona, type PlanSearch, type ProfileChange, type TraceEvent } from '../services/api'
 import { useApp } from '../stores/useApp'
 import { short, useActiveAgents, useAgentFeed } from '../stores/agentFeed'
 import '../components/agents/agents.css'
 
-/* Package B's funnel visual, loaded only if it exists, so this page builds before it lands. */
 type SearchViewProps = { search: PlanSearch; plans: LifePlan[]; animate?: boolean }
 const searchModules = import.meta.glob<{ default: ComponentType<SearchViewProps> }>('../components/plans/PlanSearchView.tsx')
 const searchLoader = Object.values(searchModules)[0]
@@ -25,15 +26,31 @@ class Guard extends Component<{ fallback: ReactNode; children: ReactNode }, { fa
   render() { return this.state.failed ? this.props.fallback : this.props.children }
 }
 
-const COLUMNS: Record<1 | 2 | 3, string[][]> = {
+type N = 1 | 2 | 3
+const COLUMNS: Record<N, string[][]> = {
   1: [['data'], ['schema_scout'], ['feature_forge'], ['pattern_hunter', 'archetype_namer'], ['narrator'], ['persona_builder'], ['shock_generator', 'profile']],
   2: [['you'], ['companion'], ['profile', 'director'], ['engine'], ['stage']],
-  3: [['you', 'companion'], ['shock_generator', 'strategist'], ['life_planner', 'engine'], ['validator'], ['challenger', 'director'], ['stage']],
+  3: [['you', 'companion'], ['shock_dealer', 'shock_generator', 'strategist'], ['life_fit', 'life_planner', 'engine'], ['validator'], ['challenger', 'director'], ['stage']],
 }
-const STAGE_COPY: Record<1 | 2 | 3, { title: string; lede: string; roster: string[] }> = {
-  1: { title: 'From records to a person', lede: 'Before you say a word, eight anonymized bank tables are surveyed, measured and read for patterns, then turned into a short story and a realistic but fictional life, so Pulp asks the right questions from the first message.', roster: ['schema_scout', 'feature_forge', 'pattern_hunter', 'archetype_namer', 'narrator', 'persona_builder'] },
-  2: { title: 'Getting to know you', lede: 'As you talk, the Companion updates your profile directly. Each change is logged with who made it and why, and can be undone. The Director then decides what to show, asking the Engine for every number.', roster: ['companion', 'director', 'engine'] },
-  3: { title: 'When life happens', lede: 'Mention a shock or a big decision and Stage 3 starts on its own: a personal shock is set, hundreds of multi-step plans are generated and simulated, infeasible ones are screened out, and four distinct finalists are argued for.', roster: ['shock_generator', 'shock_dealer', 'strategist', 'life_planner', 'validator', 'challenger'] },
+const STAGES: Record<N, { title: string; flow: string; cast: string[]; roster: string[]; more: string }> = {
+  1: {
+    title: 'From records to a person', cast: ['schema_scout', 'feature_forge', 'pattern_hunter', 'persona_builder'],
+    flow: 'Bank records in, a fictional person with goals and worries out.',
+    roster: ['schema_scout', 'feature_forge', 'pattern_hunter', 'archetype_namer', 'narrator', 'persona_builder'],
+    more: 'Before you say a word, eight anonymized bank tables are surveyed, measured and read for patterns, then turned into a short story and a realistic but fictional life, so Pulp asks the right questions from the first message. Think of a press: raw records go in, each agent presses out something more useful, and insight comes out.',
+  },
+  2: {
+    title: 'Getting to know you', cast: ['you', 'companion', 'director', 'engine'],
+    flow: 'What you say in, an updated profile out, logged and undoable.',
+    roster: ['companion', 'director'],
+    more: 'As you talk, the Companion updates your profile directly. Each change is logged with who made it and why, and can be undone. The Director then decides what to show, asking the Engine for every number.',
+  },
+  3: {
+    title: 'When life happens', cast: ['shock_dealer', 'life_fit', 'life_planner', 'validator', 'challenger'],
+    flow: 'A shock or a decision in, four plans that fit your life out.',
+    roster: ['shock_generator', 'shock_dealer', 'life_fit', 'strategist', 'life_planner', 'validator', 'challenger'],
+    more: 'Mention a shock or a big decision and Stage 3 starts on its own: a shock is dealt, every decision is checked against your age, time and household, hundreds of multi-step plans are simulated month by month, infeasible ones are screened out, and four distinct finalists are argued for.',
+  },
 }
 const DEFAULT_SHOCK = { income_fraction: 0.55, bills_increase: 0, one_off_cost: 0, shock_duration: 6 }
 
@@ -48,6 +65,12 @@ function useNarrow() {
   return narrow
 }
 
+/** The number in the last event title matching the pattern (e.g. "78 signals"): later steps refine earlier ones. */
+function countFrom(events: TraceEvent[], re: RegExp): number | null {
+  for (let i = events.length - 1; i >= 0; i--) { const m = events[i].title.match(re); if (m) return Number(m[1]) }
+  return null
+}
+
 export default function Agents() {
   const accountId = useApp((s) => s.accountId)
   const profile = useApp((s) => s.profile)
@@ -59,6 +82,9 @@ export default function Agents() {
   const [trace, setTrace] = useState<{ data: AgentTrace; live: boolean } | null>(null)
   const [fetchedPlans, setFetchedPlans] = useState<{ data: LifePlanResult; live: boolean } | null>(null)
   const [log, setLog] = useState<ProfileChange[] | null>(null)
+  const [open, setOpen] = useState<N>(1)
+  const [mode, setMode] = useState<'plain' | 'technical'>('plain')
+  const [curious, setCurious] = useState(false)
 
   useEffect(() => { api.personas().then((r) => setLivePersonas(r.personas)).catch(() => undefined) }, [])
 
@@ -106,86 +132,115 @@ export default function Agents() {
   const plans = feedPlans ?? fetchedPlans?.data ?? null
   const plansLive = !!feedPlans || !!fetchedPlans?.live
   const latest = [...turns].reverse().find((t) => t.events.length)
-  const changes = log?.filter((c) => c.kind !== 'seed').slice(-5).reverse() ?? turns.flatMap((t) => t.profile ?? []).slice(-5).reverse()
+  const changes = log?.filter((c) => c.kind !== 'seed').slice(-3).reverse() ?? turns.flatMap((t) => t.profile ?? []).slice(-3).reverse()
+  const nChanges = log ? log.filter((c) => c.kind !== 'seed').length : null
   const stages = trace?.data.stages ?? []
-  const allKeys = ROSTER.map((r) => r.key)
+  const byN = (n: N) => stages.find((s) => s.stage === n)
+  const s1 = byN(1)?.events ?? []
+  const headline: Record<N, string> = {
+    1: [
+      countFrom(s1, /(\d+)\s+signals/i) != null ? `${countFrom(s1, /(\d+)\s+signals/i)} signals` : null,
+      countFrom(s1, /(\d+)\s+(?:archetypes|groups)/i) != null ? `${countFrom(s1, /(\d+)\s+(?:archetypes|groups)/i)} groups` : null,
+      countFrom(s1, /(\d+)\s+goals?/i) != null ? `${countFrom(s1, /(\d+)\s+goals?/i)} goals` : null,
+    ].filter(Boolean).join(' · ') || `${s1.length} steps`,
+    2: nChanges != null ? `${nChanges} profile ${nChanges === 1 ? 'change' : 'changes'} so far` : `${byN(2)?.events.length ?? 0} steps`,
+    3: plans?.search ? `${plans.search.generated} plans → ${plans.plans.length} finalists` : `${byN(3)?.events.length ?? 0} steps`,
+  }
+  const st = byN(open)
+  const copy = STAGES[open]
 
   return (
-    <div className="agents-page">
-      <section className="agents-hero" aria-label="How the agents work">
-        <div>
-          <p><strong>Agents interpret, code calculates.</strong> Pulp squeezes the insight out of financial and life data, and it takes a team of specialised agents to do it. The ones marked AI read, decide and phrase; the ones marked code compute every number. No model ever produces a figure you see: each one comes from the engine and is checked before it is shown.</p>
-          <p>Below is everything they do for this account, stage by stage. Press play to watch the work pass from one agent to the next, or switch to <em>Technical</em> to see each step's kind, timing and the exact data handed on.</p>
-          <div className="agents-rule"><span><Sparkles size={13} />AI: Gemini on Google ADK</span><span className="code">Code: Python, deterministic</span>{trace && !trace.live && <span className="agents-sample" title="The live trace endpoint has not answered yet; this sample uses this account's engine numbers.">Sample trace · switches to live automatically</span>}</div>
+    <div className="agents-page simple">
+      <section className="ag-intro" aria-label="How the agents work">
+        <p>A team of agents turns your bank records into a picture of you, listens as you talk, and plans for what life throws at you. <strong>AI agents read and decide; code does every calculation.</strong></p>
+        <div className="ag-intro-actions">
+          <button type="button" className="agents-try" onClick={() => openPulp('__intro__')}><MessageCircle size={15} />Try it: open Pulp</button>
+          {trace && !trace.live && <span className="agents-sample" title="The live trace endpoint has not answered yet; this sample uses this account's engine numbers.">Sample · switches to live automatically</span>}
         </div>
-        <div className="agents-legend" aria-label="Stage colours">
-          {([1, 2, 3, 0] as Stage[]).map((s) => (
-            <div key={s}><AgentSymbol agent={s === 1 ? 'pattern_hunter' : s === 2 ? 'companion' : s === 3 ? 'strategist' : 'engine'} size={28} /><span><b>{s === 0 ? 'Shared' : `Stage ${s}`}</b> · {s === 1 ? 'from records to a person' : s === 2 ? 'getting to know you' : s === 3 ? 'when life happens' : 'the engine, used by every stage'}</span></div>
+      </section>
+
+      {active.size > 0 && latest && (
+        <section className="ag-live" aria-label="Live agent activity">
+          <strong>Working now</strong>
+          <span className="ag-live-chips">{[...active].map((k) => <span key={k} className="agent-chip on"><AgentSymbol agent={k} size={20} personas={personas} active />{metaFor(k, personas).name}</span>)}</span>
+          <span className="ag-live-label">{latest.label}</span>
+        </section>
+      )}
+
+      {!trace && <p className="agents-loading" role="status">Loading the agents’ work…</p>}
+
+      <div className="ag-cards" aria-label="Stages">
+        {([1, 2, 3] as N[]).map((n) => (
+          <article key={n} className={`ag-card ${open === n ? 'on' : ''}`} style={{ ['--stage-color' as string]: STAGE_COLOR[n as Stage] }}>
+            <span className="ag-card-num">Stage {n}</span>
+            <h2><button type="button" className="ag-card-btn" aria-expanded={open === n} aria-controls="ag-stage-detail" onClick={() => setOpen(n)}>{STAGES[n].title}</button></h2>
+            <span className="ag-cast" aria-hidden="true">
+              {STAGES[n].cast.map((k, i) => <span key={k} className="ag-cast-item">{i > 0 && <i className="ag-cast-line" />}<AgentSymbol agent={k} size={30} personas={personas} /></span>)}
+            </span>
+            <p className="ag-flow">{STAGES[n].flow}</p>
+            <p className="ag-num">{headline[n]}</p>
+          </article>
+        ))}
+      </div>
+
+      {st && (
+        <section id="ag-stage-detail" className="ag-detail" style={{ ['--stage-color' as string]: STAGE_COLOR[open as Stage] }} aria-label={`Stage ${open}: ${copy.title}`}>
+          <p className="ag-detail-lede">{st.summary || copy.flow} <span className="ag-detail-hint">Press play to watch the work pass from one agent to the next.</span></p>
+          {open === 3 && plans?.search && (
+            <div className="ag-hero">
+              <h3>{plans.search.generated} plans in, {plans.plans.length} finalists out</h3>
+              <p className="ag-muted">{plans.shock.label}. {plansLive ? 'From the latest planner run.' : 'Sample run with this account’s numbers.'}</p>
+              {PlanSearchView ? (
+                <Guard fallback={<SearchFunnel search={plans.search} />}><Suspense fallback={<SearchFunnel search={plans.search} />}><PlanSearchView search={plans.search} plans={plans.plans} animate /></Suspense></Guard>
+              ) : <SearchFunnel search={plans.search} />}
+              <ul className="ag-finalists">{plans.plans.map((p) => <li key={p.id}><b>{p.role_label ?? p.name}</b><span>{p.name}</span></li>)}</ul>
+            </div>
+          )}
+          <AgentRelay key={`stage-${open}`} events={st.events} personas={personas} columns={narrow ? undefined : COLUMNS[open]} compact={narrow}
+            label={`Stage ${open} relay`} mode={mode} simplify />
+          {open === 2 && (
+            <div className="ag-side">
+              <h3>Latest profile changes</h3>
+              {changes.length ? (
+                <ul className="agents-changes">{changes.map((c) => <li key={c.id}><AgentSymbol agent={c.agent} size={20} personas={personas} /><span><b>{c.label}</b> {short(c.before)} → {short(c.after)}{c.undone ? ' (undone)' : ''}</span></li>)}</ul>
+              ) : <p className="ag-muted">None yet. Tell Pulp about a goal or a worry and it lands here, with an undo.</p>}
+              <p><Link to="/profile">Full history on your profile</Link></p>
+            </div>
+          )}
+          {open === 2 && latest && (
+            <details className="ag-last">
+              <summary>Replay your last conversation turn ({latest.events.length} steps)</summary>
+              <AgentRelay key={`live-${latest.turn}`} events={latest.events} personas={personas} compact={narrow} live label="Latest conversation turn" mode={mode} simplify />
+            </details>
+          )}
+        </section>
+      )}
+
+      <details className="ag-curious" open={curious} onToggle={(e) => setCurious((e.target as HTMLDetailsElement).open)}>
+        <summary><ChevronDown size={16} aria-hidden="true" /> For the technically curious</summary>
+        <div className="ag-curious-body">
+          <div className="ag-curious-row">
+            <div className="relay-mode" role="group" aria-label="Detail level">
+              <button type="button" aria-pressed={mode === 'plain'} onClick={() => setMode('plain')}>Plain</button>
+              <button type="button" aria-pressed={mode === 'technical'} onClick={() => setMode('technical')}>Technical</button>
+            </div>
+            <span className="ag-muted">Technical shows every step of the stage above with its kind, timing and the exact data handed on.</span>
+          </div>
+          <p className="ag-rule">AI agents run on Gemini through Google’s Agent Development Kit; code agents are deterministic Python. No model produces a figure you see: every number comes from the engine and is checked before it is shown.</p>
+          {([1, 2, 3] as N[]).map((n) => (
+            <div key={n} className="ag-roster-group" style={{ ['--stage-color' as string]: STAGE_COLOR[n as Stage] }}>
+              <h3>Stage {n} · {STAGES[n].title}</h3>
+              <p className="ag-muted">{STAGES[n].more}</p>
+              <div className="agents-roster">{STAGES[n].roster.map((k) => { const p = personas.find((x) => agentKey(x.key) === k); return p ? <AgentCard key={k} p={p} personas={personas} /> : null })}</div>
+            </div>
           ))}
+          <div className="ag-roster-group" style={{ ['--stage-color' as string]: STAGE_COLOR[0] }}>
+            <h3>Every stage · the one source of numbers</h3>
+            <p className="ag-muted">Every stage calls the same engine: the judges’ formula, the month-by-month simulator and the plan scorer.</p>
+            <div className="agents-roster">{['engine'].map((k) => { const p = personas.find((x) => agentKey(x.key) === k); return p ? <AgentCard key={k} p={p} personas={personas} /> : null })}</div>
+          </div>
         </div>
-      </section>
-
-      <section className="agents-live" aria-label="Live agent activity">
-        <div className="agents-live-title"><strong>{active.size ? 'Agents working now' : 'Live from your conversation'}</strong><span>{latest ? `${latest.label}: ${latest.events.length} steps` : 'Talk to Pulp and the agents light up here.'}</span></div>
-        <div className="agents-live-strip">
-          {allKeys.map((k) => <span key={k} className={`agent-chip ${active.has(k) ? 'on' : ''}`}><AgentSymbol agent={k} size={22} personas={personas} active={active.has(k)} />{metaFor(k, personas).name}</span>)}
-        </div>
-        <button type="button" className="agents-try" onClick={() => openPulp('__intro__')}><MessageCircle size={15} />Try it: open Pulp</button>
-      </section>
-
-      {latest && (
-        <section className="agents-stage" style={{ ['--stage-color' as string]: STAGE_COLOR[2] }} aria-label="Your latest conversation turn">
-          <div className="agents-stage-head"><span className="agents-stage-num">Live</span><div><h2>Your last turn, as it happened</h2><p>{latest.label} · recorded from the Pulp conversation on this device.</p></div></div>
-          <AgentRelay key={`live-${latest.turn}`} events={latest.events} personas={personas} compact={narrow} live label="Latest conversation turn" />
-        </section>
-      )}
-
-      {!trace && <p className="agents-loading" role="status">Loading the agents’ trace…</p>}
-      {stages.map((st) => {
-        const n = st.stage as 1 | 2 | 3
-        const copy = STAGE_COPY[n]
-        const side = n === 3 && plans?.search
-        return (
-          <section key={n} className="agents-stage" style={{ ['--stage-color' as string]: STAGE_COLOR[n] }} aria-labelledby={`agents-stage-${n}`}>
-            <div className="agents-stage-head">
-              <span className="agents-stage-num">Stage {n}</span>
-              <div><h2 id={`agents-stage-${n}`}>{copy.title}</h2><p>{st.summary || copy.lede}</p></div>
-            </div>
-            {n === 1 && <p className="agents-press"><svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true"><path d="M5 0C5 0 0 6.2 0 9.2a5 5 0 0 0 10 0C10 6.2 5 0 5 0Z" fill="#ed8a53" /></svg>The press: raw records go in on the left, each agent presses out something more useful, and insight comes out on the right.</p>}
-            <div className={`agents-stage-body ${side || n === 2 ? 'with-side' : ''}`}>
-              <AgentRelay events={st.events} personas={personas} columns={narrow ? undefined : COLUMNS[n]} compact={narrow} label={`Stage ${n} relay`} />
-              {n === 2 && (
-                <aside className="agents-stage-side" aria-label="Recent profile updates">
-                  <h3>Recent profile updates</h3>
-                  {changes.length ? (
-                    <ul className="agents-changes">{changes.map((c) => <li key={c.id}><AgentSymbol agent={c.agent} size={20} personas={personas} /><span><b>{c.label}</b> {short(c.before)} → {short(c.after)}{c.undone ? ' (undone)' : ''}</span></li>)}</ul>
-                  ) : <p>No changes yet. Tell Pulp about a goal or a worry and the Companion writes it straight to your profile, with an undo.</p>}
-                  <p><Link to="/profile">See the full history on your profile</Link></p>
-                </aside>
-              )}
-              {side && plans?.search && (
-                <aside className="agents-stage-side" aria-label="Plan search">
-                  <h3>{plans.search.generated} plans in, {plans.plans.length} finalists out</h3>
-                  <p>{plans.shock.label}. {plansLive ? 'From the latest planner run.' : 'Sample run with this account’s numbers.'}</p>
-                  {PlanSearchView ? (
-                    <Guard fallback={<SearchFunnel search={plans.search} />}><Suspense fallback={<SearchFunnel search={plans.search} />}><PlanSearchView search={plans.search} plans={plans.plans} animate /></Suspense></Guard>
-                  ) : <SearchFunnel search={plans.search} />}
-                  <ul className="agents-finalists">{plans.plans.map((p) => <li key={p.id}><b>{p.role_label ?? p.name}</b><span>{p.name}</span></li>)}</ul>
-                </aside>
-              )}
-            </div>
-            <div className="agents-roster" aria-label={`Stage ${n} agents`}>
-              {copy.roster.map((k) => { const p = personas.find((x) => agentKey(x.key) === k); return p ? <AgentCard key={k} p={p} personas={personas} /> : null })}
-            </div>
-          </section>
-        )
-      })}
-      {stages.length > 0 && (
-        <section className="agents-stage" style={{ ['--stage-color' as string]: STAGE_COLOR[0] }} aria-label="Shared agent">
-          <div className="agents-stage-head"><span className="agents-stage-num">Every stage</span><div><h2>The one source of numbers</h2><p>Every stage calls the same engine: the judges’ formula, the month-by-month simulator and the plan scorer.</p></div></div>
-          <div className="agents-roster">{['engine'].map((k) => { const p = personas.find((x) => agentKey(x.key) === k); return p ? <AgentCard key={k} p={p} personas={personas} /> : null })}</div>
-        </section>
-      )}
+      </details>
     </div>
   )
 }

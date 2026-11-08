@@ -277,7 +277,8 @@ def _stage1(account_id: int, ctx: dict) -> dict:
     ptrace = ctx.get("persona_trace") if isinstance(ctx.get("persona_trace"), list) else []
     st.add("persona_builder", "start", "Imagining a realistic, fictional life for these records", dt=0.2)
     if ptrace:
-        st.extend([e for e in ptrace if isinstance(e, dict) and e.get("kind") != "start"], "persona_builder")
+        # The stored trace's own closing handoff is replaced by the one below (current goal count), so it shows once.
+        st.extend([e for e in ptrace if isinstance(e, dict) and e.get("kind") not in ("start", "handoff")], "persona_builder")
     if persona:
         goals = persona.get("goals") or []
         worries = persona.get("worries") or []

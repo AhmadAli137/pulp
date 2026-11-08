@@ -35,3 +35,6 @@
   .discovery { padding: 14px 14px; }
   .discovery h2 { font-size: 19px; }
 }
+
+.discovery-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0;font-size:15px;color:#22352c}
+.discovery-line svg{color:var(--bank-orange,#9c4f30)}

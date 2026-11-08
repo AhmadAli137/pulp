@@ -1,0 +1,17 @@
+/* Clarity pass: one disclosure style for secondary detail, and the plain lead sentences. */
+.disclose{border:1px solid var(--bank-border,#dde4d9);border-radius:14px;background:#fff;padding:0;min-width:0}
+.disclose>summary{cursor:pointer;list-style:none;padding:14px 18px;font-weight:700;color:var(--bank-green,#1c4639);display:flex;align-items:center;gap:8px}
+.disclose>summary::-webkit-details-marker{display:none}
+.disclose>summary::before{content:'';width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s;flex:none}
+.disclose[open]>summary::before{transform:rotate(45deg)}
+.disclose[open]>summary{border-bottom:1px solid var(--bank-border,#dde4d9)}
+.disclose>:not(summary){margin:14px 18px}
+.disclose>.card,.disclose>section.card{border:0;box-shadow:none;margin:0;padding:14px 18px}
+.page-lead{margin:0;font-size:17px;line-height:1.5;color:#22352c;max-width:70ch}
+.page-lead b{color:var(--bank-green,#1c4639)}
+.bank-lead{font-size:16px !important;line-height:1.5;margin:6px 0 4px !important;max-width:62ch}
+.link-row{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;margin:0}
+@media (prefers-reduced-motion:reduce){.disclose>summary::before{transition:none}}
+.pf .lp-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid #D5DBCD;background:#fff;color:#183B2D;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;justify-self:start;width:max-content}
+.pf .lp-btn:hover{background:#F3F6EE}
+.demo-more.disclose{margin-top:10px}

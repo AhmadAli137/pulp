@@ -8,7 +8,6 @@ import { Tangerine } from '../PulpMascot'
 import PulpText from '../stage/PulpText'
 import Visual from '../stage/Visual'
 import ThreadFigure from '../stage/ThreadFigure'
-import AnimatedWalkthrough from '../stage/AnimatedWalkthrough'
 import LifePlansView from '../plans/LifePlansView'
 import AgentSymbol from '../agents/AgentSymbol'
 import WorkflowColumn from '../agents/WorkflowColumn'
@@ -441,7 +440,18 @@ export default function PulpPanel() {
                   <div className="msg-body"><button type="button" className="pulp-official" onClick={() => void showOfficial(m.card.key)}>See the official numbers for “{m.card.title}” in Shocks</button></div>
                 </div>
               )
-              if (m.kind === 'walkthrough') return <div key={m.id} className="msg pulp has-figure"><div className="msg-body"><AnimatedWalkthrough beats={m.beats} onAction={send} autoplay={m.autoplay} /></div></div>
+              // Several scenes: a compact thumbnail and the first line, like a texted picture; the scenes open in the left column.
+              if (m.kind === 'walkthrough') return (
+                <div key={m.id} className="msg pulp pulp-reply">
+                  {m.beats[0] && (
+                    <div className="pulp-mini">
+                      <div className="pulp-mini-canvas" aria-hidden="true" inert><Visual beat={m.beats[0]} /></div>
+                      <button type="button" className="pulp-mini-open" onClick={() => { setPopout({ beats: m.beats, index: 0 }); setSideView('visual') }} aria-label={`Open the ${m.beats.length} scenes larger`}><span>{m.beats.length} scenes</span></button>
+                    </div>
+                  )}
+                  <div className="msg-body"><PulpText text={m.beats[0]?.caption ?? ''} /></div>
+                </div>
+              )
               return (
                 <div key={m.id} className={`msg pulp ${m.beat && m.beat.visual !== 'none' ? 'has-figure' : ''}`}>
                   <div className="msg-body">

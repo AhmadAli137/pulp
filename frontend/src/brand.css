@@ -52,3 +52,24 @@
 .whatif .lp-btn{justify-self:start}
 .lp-preview{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;border:1px dashed #C9B79E;color:#8a6a3f;font-size:11px;font-weight:700;letter-spacing:.02em;vertical-align:1px;text-transform:uppercase}
 .lp-verdict-mark{display:inline-block;flex:none}
+
+/* ---- the citrus pattern, carried through the rest of the site (background only, never changes layout) ---- */
+/* page title band: the segment rings fade in from the right */
+.bank-page-heading{position:relative;isolation:isolate}
+.bank-page-heading::after{content:'';position:absolute;inset:0 0 0 50%;z-index:-1;pointer-events:none;
+  background-image:var(--pattern-segment-ink);background-size:64px 64px;background-position:right center;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 70%);mask-image:linear-gradient(90deg,transparent,#000 70%)}
+/* Pulp's panel header and the floating launcher's halo */
+.pulp-panel-head{background-image:var(--pattern-segment-ink);background-size:110px 110px;background-position:right -40px top -46px;background-repeat:no-repeat}
+/* the biggest discovery, the selected plan, the Agents and docs introductions, the profile and report covers */
+.discovery,.lp-card.on,.ag-intro,.docs-hero,.gi-item{background-image:var(--pattern-segment-ink),var(--pattern-grain);background-repeat:no-repeat,repeat;background-position:right -36px top -36px,0 0;background-size:120px 120px,auto}
+/* the nav band: a hairline of tiny segments under the tabs */
+.bank-nav-band{background-image:radial-gradient(circle,#F28C2833 0 1.2px,transparent 1.6px);background-size:18px 4px;background-repeat:repeat-x;background-position:left bottom}
+/* a small citrus-segment mark before every card heading, not just plans */
+.card>.card-head h2::before{content:'';display:inline-block;width:9px;height:9px;margin-right:8px;border-radius:50%;vertical-align:1px;
+  background:conic-gradient(#F28C28 0 60deg,#F7A650 60deg 120deg,#F28C28 120deg 180deg,#F7A650 180deg 240deg,#F28C28 240deg 300deg,#F7A650 300deg 360deg)}
+.plan-card>.card-head h2::before,.brand-section>.card-head h2::before{width:10px;height:10px}
+/* empty and loading states get a single faint ring so they don't feel blank */
+.bank-loading,.pulp-panel-empty{background-image:var(--pattern-segment-ink);background-repeat:no-repeat;background-position:center;background-size:140px 140px}
+@media print{.bank-page-heading::after,.bank-nav-band{background:none}}
+.card>.card-head h2:has(svg)::before{display:none}
