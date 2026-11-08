@@ -11,9 +11,10 @@ frontend/dist/
 # Runtime storage (user context is per-demo; keep seeds)
 backend/app/storage/context/*.json
 !backend/app/storage/context/.gitkeep
-# Large data (credit: PKDD'99 Financial dataset via Tangerine track). Keep out of git.
+# Data (credit: PKDD'99 Financial dataset via the Tangerine track). The summary CSVs in data/ are committed so
+# git-triggered Vercel deploys and fresh clones work; the original download folder and the 100 MB transactions file stay out.
 data-*/
-data/*.csv
+data/transactions.csv
 # OS
 .DS_Store
 Thumbs.db
