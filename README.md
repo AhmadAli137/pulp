@@ -163,3 +163,20 @@ a flat 55% without the weekly maximum or the 14–45 week duration; simulated ou
 - Government of Canada, EI regular benefits (55% replacement, 14–45 weeks):
   https://www.canada.ca/en/services/benefits/ei/ei-regular-benefit.html — used for the 55% rate and the
   duration note. No other external numerical values were used in calculations.
+
+
+### Conversation and deployment behavior
+
+The home screen's **Talk to Pulp** button starts the native Gemini Live audio relay, with
+streaming transcripts and interruption support. Ordinary replies are short conversation;
+optional visuals appear inline alongside speech when requested or useful for explaining a
+financial shock. Text remains available. Voice requires microphone permission and the
+WebSocket-capable backend (the static Vercel mirror cannot provide it).
+
+Production deployment uses the runner's OpenSSH client directly, without a third-party SSH
+action or its release-binary download. This removes that source of HTTP 504 failures; it does
+not eliminate general GitHub/network outages. The workflow deploys the exact tested commit,
+serializes production deploys, removes its temporary private key, and checks app health.
+Keep `DEPLOY_ENABLED=true` and the existing `VULTR_HOST`, `VULTR_USER`, and
+`VULTR_SSH_KEY` Actions secrets configured. For an old failed run, start a new workflow run
+on the updated branch so the revised workflow is used.

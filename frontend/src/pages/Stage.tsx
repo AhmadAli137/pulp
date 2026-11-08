@@ -1,6 +1,5 @@
-/* The home: a calm conversation with Pulp. The person's messages on the right, Pulp's on the left with a small
-   mascot. A backend Director turns each turn into a storyboard; its beats arrive one at a time as Pulp messages,
-   each with a small inline figure under the caption. Nothing animates or speaks until the person acts. */
+/* Conversation-first home: native live audio, concise text replies, and optional inline figures.
+   The microphone starts only after the person chooses Talk to Pulp. */
 import { ArrowRight, ArrowUp, ArrowUpRight, BookOpen, Check, ChevronDown, Compass, Dice5, LoaderCircle, Menu, MessageCircle, Mic, RotateCcw, Shuffle, SlidersHorizontal, Sparkles, Square, Users, Volume2, VolumeX, Wallet, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -8,7 +7,7 @@ import { PulpMark, Tangerine, clearIntroSeen } from '../components/PulpMascot'
 import Backstage, { splitKeys, type FeedItem } from '../components/stage/Backstage'
 import { highlightNumbers } from '../components/stage/shared'
 import ThreadFigure from '../components/stage/ThreadFigure'
-import { useSpeech } from '../hooks/useSpeech'
+import { startVoice } from '../services/voice'
 import { API_BASE, api, type Beat, type Persona, type Proposal, type SampleAccount, type StageAgentEvent, type StageHandoffEvent, type StageMemoryEvent, type Storyboard } from '../services/api'
 import { speakStyled } from '../services/ttsVoice'
 import { useApp } from '../stores/useApp'
@@ -38,7 +37,13 @@ const nid = (p: string) => `${p}-${++seq}`
 export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) {
   const { accountId, profile, loadAccount, loadingProfile, profileError, setGemini } = useApp()
   const nav = useNavigate()
-  const speech = useSpeech()
+  const [voice, setVoice] = useState(false)
+  const [voiceReady, setVoiceReady] = useState(false)
+  const [live, setLive] = useState({ user: '', assistant: '' })
+  const voiceStop = useRef<(() => void) | null>(null)
+  const voiceRequest = useRef(0)
+  const liveText = useRef({ user: '', assistant: '' })
+  const [voiceProposal, setVoiceProposal] = useState<Record<string, unknown> | null>(null)
   const [inputId, setInputId] = useState(accountId ? String(accountId) : '')
   const [samples, setSamples] = useState<SampleAccount[]>([])
   const [menu, setMenu] = useState(false)
@@ -76,7 +81,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
     if (!useApp.getState().accountId && saved && Number.isInteger(Number(saved))) void loadAccount(Number(saved))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (accountId) setInputId(String(accountId)) }, [accountId])
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [thread, status])
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [thread, status, live])
 
   /* ---- the beat queue: one Pulp message at a time, spoken, then the next */
   const stopPump = useCallback(() => { if (pumpTimer.current) { clearTimeout(pumpTimer.current); pumpTimer.current = null } pumping.current = false; if ('speechSynthesis' in window) window.speechSynthesis.cancel() }, [])
@@ -90,7 +95,6 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
     if (item.kind === 'proposal') { setThread((t) => [...t, { id: nid('p'), kind: 'proposal', proposal: item.proposal }]); pumpTimer.current = window.setTimeout(next, 300); return }
     const text = item.kind === 'text' ? item.text : item.beat.caption
     setThread((t) => [...t, { id: nid('m'), kind: 'pulp', text, beat: item.kind === 'beat' ? item.beat : undefined }])
-    const dur = item.kind === 'beat' ? Math.min(MAX_BEAT_MS, Math.max(MIN_BEAT_MS, (item.beat.duration_s || 5) * 700)) : MIN_BEAT_MS
     if (!muteRef.current && interacted.current && 'speechSynthesis' in window) {
       let spoken = false, timed = false
       const both = () => { if (spoken && timed) next() }
@@ -98,10 +102,53 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
       const guard = window.setTimeout(() => { spoken = true; timed = true; next() }, MAX_BEAT_MS)
       void speakStyled(text, { onend: () => { clearTimeout(guard); spoken = true; both() }, onerror: () => { clearTimeout(guard); spoken = true; both() } }).catch(() => { clearTimeout(guard); spoken = true; both() })
     } else {
-      pumpTimer.current = window.setTimeout(next, dur)
+      pumpTimer.current = window.setTimeout(next, 0)
     }
   }, [])
   const enqueue = useCallback((items: QueueItem[]) => { queue.current.push(...items); pump() }, [pump])
+
+  const endVoice = useCallback(() => {
+    voiceRequest.current++
+    voiceStop.current?.(); voiceStop.current = null
+    setVoice(false); setVoiceReady(false); setLive({ user: '', assistant: '' })
+  }, [])
+
+  const toggleVoice = async () => {
+    if (voice) { endVoice(); return }
+    if (!id) return
+    endVoice()
+    source.current?.close(); source.current = null
+    stopPump(); queue.current = []; setBusy(false); setStatus(null)
+    const request = ++voiceRequest.current
+    setVoice(true); setVoiceReady(false); setMute(false); setNotice(null)
+    liveText.current = { user: '', assistant: '' }
+    try {
+      const stop = await startVoice(id, (m) => {
+        if (request !== voiceRequest.current) return
+        if (m.type === 'ready') setVoiceReady(true)
+        if (m.type === 'transcript') {
+          liveText.current = { ...liveText.current, [m.role]: liveText.current[m.role] + m.text }
+          setLive(liveText.current)
+        }
+        if (m.type === 'turn_complete') {
+          const text = liveText.current
+          setThread((t) => [...t,
+            ...(text.user ? [{ id: nid('u'), kind: 'user' as const, text: text.user }] : []),
+            ...(text.assistant ? [{ id: nid('m'), kind: 'pulp' as const, text: text.assistant }] : [])])
+          liveText.current = { user: '', assistant: '' }; setLive(liveText.current)
+        }
+        if (m.type === 'visual') setThread((t) => [...t, { id: nid('v'), kind: 'pulp', text: m.beat.caption, beat: m.beat }])
+        if (m.type === 'proposal') setVoiceProposal(m.proposal)
+        if (m.type === 'error') setNotice(m.message)
+        if (m.type === 'closed') { setVoice(false); setVoiceReady(false) }
+      })
+      if (request !== voiceRequest.current) stop(); else voiceStop.current = stop
+    } catch (e) {
+      if (request !== voiceRequest.current) return
+      setVoice(false)
+      setNotice((e as Error).name === 'NotAllowedError' ? 'Microphone access was declined. You can still type here.' : (e as Error).message)
+    }
+  }
 
   /* ---- backstage bookkeeping */
   const light = useCallback((keys: string[]) => {
@@ -122,6 +169,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
   /* ---- one turn */
   const run = useCallback((message: string) => {
     if (!id) return
+    endVoice()
     source.current?.close()
     stopPump(); queue.current = []
     interacted.current = true
@@ -133,7 +181,6 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
     source.current = es
     const mine = () => source.current === es
     let n = 0
-    let pendingQuestion: string | null = null
     es.addEventListener('agent', (e) => {
       if (!mine()) return
       try {
@@ -167,7 +214,6 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
       try {
         const d = JSON.parse((e as MessageEvent).data) as StageMemoryEvent
         if (d.proposal) enqueue([{ kind: 'proposal', proposal: d.proposal }])
-        if (d.next_question?.text) pendingQuestion = d.next_question.text
         light(['companion'])
       } catch { /* ignore */ }
     })
@@ -176,7 +222,6 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
       try {
         const d = JSON.parse((e as MessageEvent).data) as Storyboard
         const items: QueueItem[] = (d.beats ?? []).map((b) => ({ kind: 'beat', beat: { ...b, id: nid(b.id) } }))
-        if (pendingQuestion && !items.some((i) => i.kind === 'beat' && i.beat.caption.trim().endsWith('?'))) items.push({ kind: 'text', text: pendingQuestion })
         enqueue(items)
         setStatus(null)
       } catch { /* ignore */ }
@@ -189,17 +234,18 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
       else if (es.readyState === EventSource.CLOSED) setNotice('The connection dropped. Try again.')
       es.close(); setBusy(false); setStatus(null)
     })
-  }, [id, light, pushFeed, enqueue, stopPump])
+  }, [id, light, pushFeed, enqueue, stopPump, endVoice])
 
   /* New account: a fresh thread with one greeting and the collapsed glance row. Nothing speaks. */
   useEffect(() => {
+    endVoice(); setVoiceProposal(null)
     source.current?.close(); source.current = null
     stopPump(); queue.current = []
     interacted.current = false
     setBusy(false); setStatus(null); setNotice(null); setFeed([]); setActive(new Set()); setGlanceOpen(false)
     setThread(id ? [{ id: nid('g'), kind: 'pulp', text: GREETING }, { id: nid('gl'), kind: 'glance' }] : [])
-    return () => { source.current?.close(); source.current = null; stopPump() }
-  }, [id, stopPump])
+    return () => { endVoice(); source.current?.close(); source.current = null; stopPump() }
+  }, [id, stopPump, endVoice])
 
   const send = (text: string) => { const t = text.trim(); if (!t || !id) return; setDraft(''); run(t) }
   const confirm = async (p: Proposal, accept: boolean) => {
@@ -227,7 +273,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
         </div>
         <div className="stage-header-actions">
           <button className={`stage-backstage-toggle ${backstage ? 'on' : ''}`} aria-pressed={backstage} onClick={() => setBackstage((v) => !v)} title="See the agents and what they pass along"><Users size={15} />Agents{active.size > 0 && <i className="stage-live-dot" />}</button>
-          <button className="agent-icon-button" aria-label={mute ? 'Unmute Pulp' : 'Mute Pulp'} title={mute ? 'Unmute Pulp' : 'Mute Pulp'} onClick={() => setMute((m) => !m)}>{mute ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
+          <button className="agent-icon-button" aria-label={mute ? 'Unmute Pulp' : 'Mute Pulp'} title={mute ? 'Unmute Pulp' : 'Mute Pulp'} onClick={() => { if (voice) endVoice(); setMute((m) => !m) }}>{mute ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
           <button className="account-trigger" aria-expanded={selector} onClick={() => setSelector((v) => !v)}><span className="demo-dot" />Demo account <b>{profile ? '#' + id : '…'}</b><ChevronDown size={13} /></button>
           <button className="agent-icon-button intro-replay" title="Replay the PULP introduction" aria-label="Replay introduction" onClick={replayIntro}><RotateCcw size={16} /></button>
         </div>
@@ -304,6 +350,12 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
                   </div>
                 )
               })}
+              {voice && (live.user || live.assistant) && <div className="msg-body" aria-live="polite">{live.user && <p>You: {live.user}</p>}{live.assistant && <p>Pulp: {live.assistant}</p>}</div>}
+              {voiceProposal && <div className="msg-body"><p>Review your spoken scenario:</p><p>{Object.entries(voiceProposal).filter(([, value]) => value != null).map(([key, value]) => `${key.replaceAll('_', ' ')}: ${value}`).join(' ? ')}</p><button onClick={() => {
+                const values: Record<string, number> = {}
+                for (const key of ['income_fraction', 'bills_increase', 'one_off_cost', 'horizon_months']) if (typeof voiceProposal[key] === 'number') values[key] = voiceProposal[key] as number
+                useApp.getState().setInputs(values); setVoiceProposal(null); nav('/shock')
+              }}>Confirm & review scenario</button><button onClick={() => setVoiceProposal(null)}>Dismiss</button></div>}
               {status && <p className="thread-status" role="status"><span className="stage-status-dot" />{status}</p>}
               {notice && <p className="thread-notice" role="status">{notice}</p>}
               <div ref={endRef} />
@@ -319,14 +371,14 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
             {SUGGESTIONS.map(([label, msg, Icon]) => <button key={msg} type="button" onClick={() => send(msg)}><Icon size={13} />{label}</button>)}
           </div>
         )}
-        <form className={`stage-input ${speech.listening ? 'listening' : ''}`} onSubmit={(e) => { e.preventDefault(); send(draft) }}>
-          <input value={speech.listening && speech.interim ? speech.interim : draft} onChange={(e) => setDraft(e.target.value)} placeholder={profile ? 'Tell me what life’s throwing your way…' : 'Load an account first…'} disabled={!profile || busy} aria-label="Message" maxLength={2000} />
+        <form className={`stage-input ${voice ? 'listening' : ''}`} onSubmit={(e) => { e.preventDefault(); send(draft) }}>
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={profile ? 'Tell me what life’s throwing your way…' : 'Load an account first…'} disabled={!profile || busy} aria-label="Message" maxLength={2000} />
           <button type="button" className="stage-chip" onClick={() => send('twist:cards')} disabled={!profile || busy} title="Pick a twist card"><Dice5 size={15} />Twist card</button>
           <button type="button" className="stage-chip" onClick={() => send('twist:random')} disabled={!profile || busy} title="Deal a random twist"><Shuffle size={15} />Shuffle</button>
-          {speech.supported && <button type="button" className={`stage-mic ${speech.listening ? 'on' : ''}`} onClick={() => speech.listening ? speech.stop() : speech.start((t) => send(t))} disabled={!profile || busy} aria-label={speech.listening ? 'Stop listening' : 'Speak'}>{speech.listening ? <Square size={16} /> : <Mic size={17} />}</button>}
+          <button type="button" className={`stage-mic ${voice ? 'on' : ''}`} onClick={() => void toggleVoice()} disabled={!profile} aria-label={voice ? 'Stop voice conversation' : 'Start voice conversation'}>{voice ? <Square size={16} /> : <Mic size={17} />}<span>{voice ? (voiceReady ? 'Listening ? Stop' : 'Connecting?') : 'Talk to Pulp'}</span></button>
           <button className="stage-send" aria-label="Send" disabled={!draft.trim() || !profile || busy}><ArrowUp size={18} /></button>
         </form>
-        {speech.error && <p className="thread-notice">{speech.error}</p>}
+
         <footer className="stage-footer"><span>Prepare for what comes next.</span><span>Observed, anonymized records · amounts in CAD · every number comes from the engine</span></footer>
       </div>
     </div>

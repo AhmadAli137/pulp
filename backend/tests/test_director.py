@@ -61,3 +61,24 @@ def test_math_lines_show_the_sponsor_formula():
     lines = D.math_params(_m(), {"r": 0.55, "h": 0.15, "one_off": 0.0, "duration": 6})["lines"]
     assert any("0.55" in l and "income after" in l for l in lines)
     assert any("runway" in l for l in lines)
+
+
+def test_plain_conversation_needs_no_visual_data(monkeypatch):
+    def unavailable():
+        raise AssertionError("Conversation must not load chart features")
+    monkeypatch.setattr(D, "get_features", unavailable)
+    assert D._Tools(1, _m()).params_for("none", None) == {}
+
+
+def test_completed_reply_does_not_force_intake_question(monkeypatch):
+    import asyncio
+    from app.services import gemini_agent
+    monkeypatch.setattr(D, "get_metrics", lambda _: _m())
+    monkeypatch.setattr(gemini_agent, "chat", lambda *args: {"reply": "You're welcome.", "proposal": None})
+    async def collect():
+        return [data async for kind, data in D.stage_stream(1, "Thanks", use_ai=False) if kind == "storyboard"]
+    boards = asyncio.run(collect())
+    assert len(boards) == 1
+    assert len(boards[0]["beats"]) == 1
+    assert boards[0]["beats"][0]["visual"] == "none"
+    assert boards[0]["beats"][0]["caption"] == "You're welcome."

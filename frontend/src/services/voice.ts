@@ -1,8 +1,10 @@
+import type { Beat } from './api'
 /* Gemini native-audio relay client: streams microphone PCM to /api/agent/voice/{id} and plays replies.
    Ported from the Codex build (pulp2). Requires the backend websocket relay; falls back with an error message
    where websockets are unavailable (for example on Vercel). */
 
 export type VoiceMessage =
+  | { type: 'visual'; beat: Beat }
   | { type: 'ready'; model?: string }
   | { type: 'transcript'; role: 'user' | 'assistant'; text: string }
   | { type: 'turn_complete' }
@@ -30,20 +32,6 @@ export async function startVoice(accountId: number, onMessage: (m: VoiceMessage)
     void output.close()
   }
   try {
-    await input.audioWorklet.addModule('/pcm-worklet.js')
-    const node = new AudioWorkletNode(input, 'pcm-input')
-    const silence = input.createGain()
-    silence.gain.value = 0
-    input.createMediaStreamSource(stream).connect(node)
-    node.connect(silence)
-    silence.connect(input.destination)
-    node.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
-      if (socket.readyState !== 1 || !socket.pulpReady) return
-      const bytes = new Uint8Array(e.data)
-      let s = ''
-      for (const byte of bytes) s += String.fromCharCode(byte)
-      socket.send(JSON.stringify({ type: 'audio', data: btoa(s) }))
-    }
     socket.onmessage = (e) => {
       const m = JSON.parse(e.data as string) as VoiceMessage & { data?: string }
       if (m.type === 'ready') socket.pulpReady = true
@@ -69,6 +57,23 @@ export async function startVoice(accountId: number, onMessage: (m: VoiceMessage)
     }
     socket.onerror = () => { onMessage({ type: 'error', message: 'Voice connection failed. You can still type here.' }); stop() }
     socket.onclose = () => { stop(); onMessage({ type: 'closed' }) }
+    await Promise.all([input.resume(), output.resume()])
+    if (closed) return stop
+    await input.audioWorklet.addModule('/pcm-worklet.js')
+    if (closed) return stop
+    const node = new AudioWorkletNode(input, 'pcm-input')
+    const silence = input.createGain()
+    silence.gain.value = 0
+    input.createMediaStreamSource(stream).connect(node)
+    node.connect(silence)
+    silence.connect(input.destination)
+    node.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
+      if (socket.readyState !== 1 || !socket.pulpReady) return
+      const bytes = new Uint8Array(e.data)
+      let s = ''
+      for (const byte of bytes) s += String.fromCharCode(byte)
+      socket.send(JSON.stringify({ type: 'audio', data: btoa(s) }))
+    }
     return stop
   } catch (error) {
     stop()

@@ -31,7 +31,10 @@ async def voice(ws: WebSocket, account_id: int):
         from google import genai
         from google.genai import types
         client=genai.Client(api_key=GEMINI_API_KEY,http_options={'api_version':GEMINI_LIVE_API_VERSION})
+        last_shock = None
         declarations=[
+            dict(name='show_visual', description='Show a supporting visual alongside speech ONLY if explicitly requested or necessary to explain a calculated shock. Ordinary conversation needs no visual.', parameters={
+                'type': 'OBJECT', 'properties': {'kind': {'type': 'STRING', 'enum': ['picture', 'timeline']}}, 'required': ['kind']}),
             dict(name='get_financial_profile',description='Read observed financial metrics for the selected account.',parameters={'type':'OBJECT','properties':{}}),
             dict(name='calculate_shock',description='Compute authoritative financial outcomes for an explicitly stated hypothetical scenario.',parameters={
                 'type':'OBJECT','properties':{
@@ -46,7 +49,9 @@ async def voice(ws: WebSocket, account_id: int):
         config=types.LiveConnectConfig(response_modalities=['AUDIO'],input_audio_transcription={},output_audio_transcription={},
             speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=GEMINI_LIVE_VOICE))),
             system_instruction=('You are PULP: Planning Under Life’s Pressures. Be concise, calm and practical. '
-                'Ask one relevant question at a time. Learn goals, deadlines, concerns and explicit financial assumptions. '
+                'Conversation is the primary experience. Usually answer in one or two short sentences. Ask at most one question only when needed. '
+                'Do not turn each reply into a presentation or prolong a completed answer. Use show_visual only if asked or a shock needs visual explanation; keep speaking alongside it. '
+                'Spend more time only when comparing scenarios or life decisions to mitigate a financial shock. Learn goals, deadlines, concerns and explicit financial assumptions. '
                 'All banking data belongs to an anonymized demonstration account, not a verified identity. '
                 'Use get_financial_profile and calculate_shock for financial numbers. Do not calculate or invent results. '
                 'Use propose_scenario to stage explicit values. The user must click Apply to confirm; spoken approval cannot change controls. '
@@ -67,6 +72,7 @@ async def voice(ws: WebSocket, account_id: int):
                     elif message.get('type')=='text':
                         await session.send_realtime_input(text=str(message.get('text',''))[:4000])
             async def receive_gemini():
+                nonlocal last_shock
                 while True:
                     async for response in session.receive():
                         if response.data:
@@ -87,9 +93,21 @@ async def voice(ws: WebSocket, account_id: int):
                                     if call.name=='get_financial_profile':
                                         result=dict(account_id=account_id,typical_inflow=m.typical_inflow,typical_spending=m.typical_spending,
                                             buffer=m.buffer,household_bills=m.household_bills,baseline_runway=m.baseline_runway_label)
+                                    elif call.name=='show_visual':
+                                        from ..services.director import picture_params, timeline_params
+                                        kind = args.get('kind')
+                                        if kind == 'picture':
+                                            params = picture_params(m)
+                                        elif kind == 'timeline' and last_shock:
+                                            params = timeline_params(m, last_shock, None)
+                                        else:
+                                            raise ValueError('Calculate an explicit shock first')
+                                        await ws.send_json(dict(type='visual', beat=dict(id='voice-visual', visual=kind, caption='', params=params, duration_s=0)))
+                                        result = {'status': 'shown', 'kind': kind}
                                     elif call.name=='calculate_shock':
                                         args.pop('account_id',None)
                                         req=ShockRequest(account_id=account_id,**args)
+                                        last_shock = dict(r=req.income_fraction, h=req.bills_increase, one_off=req.one_off_cost, duration=req.horizon_months)
                                         result=full_shock_report(m,r=req.income_fraction,h=req.bills_increase,one_off=req.one_off_cost,horizon_months=req.horizon_months)
                                     elif call.name=='propose_scenario':
                                         result=ScenarioProposal.model_validate(args).model_dump()

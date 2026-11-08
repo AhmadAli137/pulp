@@ -331,12 +331,14 @@ numbers), then reply with ONLY a JSON object:
 Voice: talk like a friend who is good with money, not a report. Short sentences. At most ONE number per sentence, and only
 when it changes what they would do. Name the decision, not the metric ("you could pause that transfer", not "reduce
 outflow by 1.1%"). End the last beat with what they can decide or try next.
-Rules: 2 to 5 beats and at most 3 tool calls (get_profile is cheap; run_council is fast by default, pass with_agents=true only
-when the person asks what they should do). Every number in a caption must come from a tool result. Prefer showing over telling: a cup for the buffer,
-a river for where money comes from and goes, a timeline for a shock, a swarm for the scenarios tried, a podium for the
-ranked strategies, a dial for one lever, a fork for two futures, a crowd for how they compare to 4,500 others, a calendar
-for timing habits, a ribbon for drift, actions for "what should I do" (after run_council), math only if they ask for the
-formula, none when Pulp should just talk or ask one question. If the person describes a life event with money consequences, call deal_or_set_shock with the numbers you can
+Rules: normally ONE concise conversational beat with visual="none". Use 2 to 3 beats only for
+shock mitigation or life-decision comparisons that need explanation. At most 3 tool calls (get_profile is cheap; run_council is fast by default, pass with_agents=true only
+when the person asks what they should do). Every number in a caption must come from a tool result. Conversation is the default. Use a visual only when explicitly requested or when a shock timeline or
+comparison makes a financial decision materially easier to understand. Never decorate a routine answer, greeting,
+clarification or acknowledgement with charts. Keep supporting visuals alongside the explanation, not a slideshow.
+Use none for ordinary conversation, timeline for a shock, fork or podium for comparisons, actions for mitigation,
+and math only when explicitly asked. Ask at most one question only when needed to proceed; do not prolong a completed answer.
+If the person describes a life event with money consequences, call deal_or_set_shock with the numbers you can
 justify from their words and then run_council on it. Never claim anything has been saved or applied."""
 
 VISUALS = ["picture", "cup", "river", "timeline", "fork", "calendar", "dial", "crowd", "ribbon", "cards", "shuffle", "swarm", "podium", "actions", "math", "none"]
@@ -452,6 +454,8 @@ class _Tools:
 
     # mapping (visual, source) -> params, in code
     def params_for(self, visual: str, source: str | None) -> dict | None:
+        if visual == "none":
+            return {}
         f = get_features()
         row = f.loc[self.account_id]
         m = self.m
@@ -572,6 +576,7 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
         yield "handoff", {"t": round(time.perf_counter() - t0, 2), "from": "narrator", "to": "director", "title": insights["narrative"]["headline"],
                           "items": [f"[{i['flag']}] {i['text']}" for i in insights["narrative"]["insights"]] + [f"written by {insights['narrative']['source']}"]}
         beats = opening_storyboard(account_id, m, insights)
+        beats = [_beat("intro", "none", " ".join(b["caption"] for b in beats[:2]), {}, 5)]
         if is_cold(summary):
             ask = _ask_beat(account_id, summary, pending, insights, prefix="That is what the numbers say. Now I'd like to know you a little, so anything we plan fits your life.")
             if ask:
@@ -677,7 +682,7 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
         ctx_summary = cm.summarize(cm.load_context(account_id))
         payload = json.dumps({"message": msg, "confirmed_context": {k: ctx_summary.get(k, []) for k in ("goals", "concerns", "constraints", "preferences", "upcoming_events")},
                               "official": {"I": m.typical_inflow, "S": m.typical_spending, "B": m.buffer, "baseline_runway": m.baseline_runway_label},
-                              "note": "Do not end with a question; the stage adds the next question itself."}, default=float)
+                              "note": "Answer directly. Ask one question only if needed; ordinary replies need no visual."}, default=float)
         agent = LlmAgent(name="director", model=config.GEMINI_MODEL, description="Chooses what the stage shows and writes Pulp's lines.",
                          instruction=DIRECTOR_INSTRUCTION.replace("{visuals}", ", ".join(VISUALS)),
                          tools=[tools.get_profile, tools.get_cohort, tools.deal_or_set_shock, tools.run_council, tools.show_math], output_key="director")
@@ -702,7 +707,7 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
             caption = str(b.get("caption") or "").strip()[:260]
             if not caption:
                 continue
-            if b["visual"] != "none" and not caption_is_grounded(caption, params, json.dumps(tools.results, default=float)):
+            if not caption_is_grounded(caption, params, json.dumps(tools.results, default=float)):
                 caption = tools.template_caption(b["visual"]) or "Here is how that looks in your numbers."
             beats.append(_beat(f"d{i}", b["visual"], caption, params, 9 if b["visual"] != "none" else 5))
         if beats:
@@ -721,7 +726,7 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
         if pt:
             text = text.replace(" Did I get that right?", f" Say yes and I will run the {DECK_BY_KEY.get(pt, {}).get('title', 'twist').lower()} card right after.")
         beats.append(_beat("confirm", "none", text, {"confirm_proposal": proposal["id"], "pending_twist": pt}, 7))
-    elif not beats or "?" not in beats[-1]["caption"]:
+    elif not beats:
         ask = _ask_beat(account_id, summary, pending_proposals(ctx), insights_fast())
         if ask:
             beats.append(ask)
