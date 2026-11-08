@@ -77,6 +77,8 @@ test('an unfamiliar account can be loaded by ID and survives a reload', async t 
 
 test('combined shock shows matching cash and both plans, with a meaningful wait-or-pay decision', async t => {
   const p = await pageFor(t)
+  // The Shocks page also prefetches the dealer's picks and runs the plan search, so give each wait more headroom.
+  p.setDefaultTimeout(60000)
   await p.goto(base)
   await loadAccount(p, account)
   await p.getByRole('heading', { name: `Account ${account}`, exact: true }).waitFor()
