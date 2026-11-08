@@ -16,7 +16,7 @@ tells it what they are living for.
 
 Work only in this checkout and [AhmadAli137/pulp](https://github.com/AhmadAli137/pulp). The comparison checkout is retired and must not receive edits or pushes. GitHub is the source of truth; the Entire remote is historical.
 
-The TypeScript frontend, native Gemini voice relay, Vultr provider, Redis/file context storage, and deployment configuration remain in place. The separate intake plus three-role ADK workflow is **a blueprint, not implemented orchestration**. Start with the [colleague handbook](docs/agents/README.md) and [post-intake implementation prompt](docs/agents/IMPLEMENTATION_PROMPT.md).
+The TypeScript frontend, native Gemini voice relay, Vultr provider, Redis/file context storage, and deployment configuration remain in place. The Stage 3 **planning council runs on Google ADK**: `POST /api/agent/plan` builds a grid of levers scored by the Monte Carlo engine, runs a Strategist and a Challenger (Gemini `LlmAgent`s in an ADK `ParallelAgent`) over the same frozen request, then clamps, re-scores and ranks everything in code ("Planning council" on Shock Lab). The intake agent and Consultant role remain a blueprint. Start with the [colleague handbook](docs/agents/README.md) and [post-intake implementation prompt](docs/agents/IMPLEMENTATION_PROMPT.md).
 
 ## What it does
 

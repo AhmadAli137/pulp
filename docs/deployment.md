@@ -20,77 +20,64 @@ Project settings to make in the Vercel dashboard (Project -> Settings):
 | Environment Variables | `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.5-flash` (or `VULTR_INFERENCE_API_KEY` + `AI_PROVIDER=vultr`) |
 | Storage (optional) | add Upstash Redis from the Marketplace; its `KV_REST_API_URL`/`KV_REST_API_TOKEN` make confirmed context durable. Without it, context lives in the function's `/tmp` and can reset between cold starts. |
 
-Redeploy after changing environment variables. Git-based deploys would lack the CSVs (they are git-ignored), so
-deploy from a machine that has `./data`, or add a build step that downloads them from private storage.
+Redeploy after changing environment variables. The summary CSVs are committed, so git-triggered deploys carry the data. Vercel cannot host the voice websocket or
+long jobs; use it as a static mirror and demo from Vultr (Option B).
 
-## Option B: Vultr + GoDaddy domain + deploy on every push
+## Option B: Vultr, one instance for frontend, API, voice relay and the ADK council (recommended for the demo)
 
-One Docker image serves the API and the built frontend; Caddy in front terminates HTTPS for your domain.
-Every push to `master` runs the tests, builds the frontend, and redeploys the server over SSH.
+One Docker image serves the API and the built frontend; Caddy in front terminates HTTPS. This is the deployment
+that supports everything: the Gemini Live voice relay is a websocket (Vercel's Python functions cannot hold one),
+the browser only allows the microphone on HTTPS, and the Stage 3 council on Google ADK runs inside the same process.
 
 ```
 GitHub (push to master) ──▶ Actions: pytest + npm build ──▶ ssh vultr: git reset --hard, docker compose up -d --build
                                                                   │
-GoDaddy DNS  A @ ──▶ Vultr instance IP ──▶ Caddy :443 (Let's Encrypt) ──▶ app :8000 (FastAPI + dist)
+<ip>.sslip.io or your domain ──▶ Caddy :443 (Let's Encrypt) ──▶ app :8000 (FastAPI + dist + /api/voice websocket)
 ```
 
-## 1. Vultr instance
+### 1. Create the instance
 
-Cloud Compute, Ubuntu 24.04, 2 vCPU / 4 GB is comfortable (the population table and Monte Carlo are in-memory
-pandas/numpy). Add your SSH key when creating it. Then, on the server as root:
+Vultr Cloud Compute, Ubuntu 24.04, Toronto, 2 vCPU / 4 GB (the population table, Monte Carlo and ADK are
+in-memory and light). Add your SSH key when creating it and note the public IP.
+
+### 2. Bootstrap in one command
+
+As root on the server. No domain is needed: the script defaults to `<ip>.sslip.io`, a free hostname that resolves
+to the server, and Caddy obtains a certificate for it.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/AhmadAli137/pulp/master/deploy/vultr-setup.sh | DOMAIN=yourdomain.tld bash
+curl -fsSL https://raw.githubusercontent.com/AhmadAli137/pulp/master/deploy/vultr-setup.sh | GEMINI_API_KEY=AQ.xxxx bash
 ```
 
-This installs Docker, opens ports 22/80/443, clones the repo into `/opt/pulp` and writes a starter `.env`.
+The script installs Docker, opens 22/80/443, clones the repo (the summary CSVs are committed, so no upload step),
+writes `/opt/pulp/.env`, builds the image, starts Caddy + app, waits for `/api/health`, and prints the URL.
+Add `DOMAIN=yourdomain.tld` in front of `bash` once an A record points at the server.
 
-## 2. Data and secrets
+### 3. Keys and models
 
-The CSVs are not in git. From your laptop, in the repo root:
+Edit `/opt/pulp/.env` and rebuild (`cd /opt/pulp && docker compose up -d --build`). Relevant variables:
 
-```bash
-bash deploy/upload-data.sh root@<server-ip>
-```
-
-It uploads the summary CSVs (not the 100 MB transactions file, which the API never loads) and your local `.env`
-(Gemini key). Keep `DOMAIN=yourdomain.tld` in the server's `.env`.
-
-## 3. Domain (GoDaddy)
-
-In GoDaddy DNS for the domain:
-
-| Type | Name | Value | TTL |
-|---|---|---|---|
-| A | @ | `<server-ip>` | 600 |
-| CNAME | www | @ | 600 |
-
-Caddy requests the certificate automatically on first start once DNS resolves (usually within minutes).
-`pulp.ai` and `pulp.app` are already registered; pick an available name and set it as `DOMAIN`.
-
-## 4. First start
-
-```bash
-cd /opt/pulp && DOMAIN=yourdomain.tld docker compose up -d --build
-docker compose logs -f app      # wait for "Population table ready"
-```
-
-Open `https://yourdomain.tld`. The API docs are at `/docs`, health at `/api/health`.
-
-## 5. Deploy on every push
-
-In the GitHub repo, Settings → Secrets and variables → Actions, add:
-
-| Secret | Value |
+| Variable | Purpose |
 |---|---|
-| `VULTR_HOST` | server IP or hostname |
-| `VULTR_USER` | `root` (or a sudo-capable user that can run docker) |
-| `VULTR_SSH_KEY` | private key whose public half is in the server's `~/.ssh/authorized_keys` |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | text roles: companion, Strategist, Challenger (Google ADK uses the same key) |
+| `GEMINI_LIVE_MODEL`, `GEMINI_LIVE_API_VERSION` | native-audio voice relay |
+| `VULTR_INFERENCE_API_KEY` | optional fallback provider when Gemini is down or unkeyed |
+| `AI_PROVIDER` | `auto` (Gemini, else Vultr, else offline) |
 
-Then add the repository **variable** `DEPLOY_ENABLED` = `true` (same page, Variables tab); until it exists the deploy job is skipped
-and pushes only run tests. Optionally create a `production` environment with required reviewers to gate deploys. After that, every push to
-`master` that passes tests redeploys within about two minutes; the workflow waits for `/api/health` and prints
-container logs if it fails.
+### 4. Deploy on every push
+
+Repository settings: secrets `VULTR_HOST` (the IP), `VULTR_USER` (`root`), `VULTR_SSH_KEY` (private key), and the
+variable `DEPLOY_ENABLED=true`. `.github/workflows/deploy.yml` then runs the tests, builds the frontend and redeploys
+over SSH on each push to `master`, waiting for the health check before it reports success.
+
+### 5. Verify
+
+```bash
+curl https://<ip>.sslip.io/api/health          # accounts: 4500, ai_provider: gemini
+curl -X POST https://<ip>.sslip.io/api/agent/plan -H 'content-type: application/json'      -d '{"account_id": 47788, "income_fraction": 0.55, "use_ai": true}'   # mode: adk, two agents, ~12 s
+```
+
+Open the site, load an account, and test the microphone from the home screen: the websocket upgrades through Caddy.
 
 ## Local check of the production image
 

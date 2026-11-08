@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from .. import schemas
 from ..services import context_manager as cm
 from ..services.cohort_analysis import cohort_for, research_summary
+from ..services.council import council_available, run_council
 from ..services.data_store import get_store
 from ..services.feedback_loop import replan, replanning_diff
 from ..services.financial_profiles import get_metrics, get_population, percentile_of
@@ -231,6 +232,18 @@ def post_edit(req: schemas.EditRequest):
 def post_chat(req: schemas.ChatRequest):
     _metrics_or_404(req.account_id)
     return _clean(chat(req.account_id, req.message, prefer_offline=req.prefer_offline))
+
+
+@router.post("/agent/plan")
+def post_plan(req: schemas.PlanRequest):
+    """Stage 3 council: deterministic fan-out, then Strategist and Challenger (Google ADK, Gemini) in parallel,
+    then deterministic validation and ranking. Works without AI (mode = offline)."""
+    m = _metrics_or_404(req.account_id)
+    one_off = req.one_off_cost
+    if req.one_off_in_months_of_spending is not None:
+        one_off = req.one_off_in_months_of_spending * m.typical_spending
+    return _clean(run_council(req.account_id, m, r=req.income_fraction, h=req.bills_increase, one_off=one_off,
+                              duration=req.shock_duration, horizon=req.horizon_months, n_paths=req.n_paths, use_ai=req.use_ai))
 
 
 @router.post("/replan")

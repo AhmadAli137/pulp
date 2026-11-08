@@ -134,6 +134,27 @@ export interface Research {
   representative_pair?: Record<string, number | boolean | null>; variance_decomposition_layoff55?: Record<string, number | string>
   matching_rule?: string; note?: string
 }
+export interface PlanCandidate {
+  label: string; source: 'grid' | 'strategist'
+  levers: { freed_up_per_month: number; goal_contribution_per_month: number; emergency_floor: number; extra_income_per_month: number }
+  prob_shortfall_under_stress: number; median_min_buffer: number; median_end_buffer: number
+  goal_progress_at_deadline: number; goal_amount_at_deadline: number; months_to_goal_deterministic: number | null
+  disruption: number; score: number; adjusted_score: number; buffer_median_path: number[]; goal_median_path: number[]
+  flags: { risk: string; severity: string; because: string }[]; why?: string; evidence?: string; validation?: string[]
+}
+export interface PlanResult {
+  account_id: number; mode: 'adk' | 'offline'
+  framework: { name: string; available: boolean; model: string | null; agents: string[] }
+  error: string | null
+  request: { shock: { label: string; official: Record<string, unknown>; verdict: Record<string, unknown> }; goal: Comparison['goal']; weights: Comparison['weights']; stress_need: number; horizon_months: number }
+  objective: { formula: string; weights: Comparison['weights']; disruption_weight: number }
+  grid_size: number; ranked: PlanCandidate[]; recommended: string | null; why: string | null; stay_the_course: PlanCandidate | null
+  strategist: { levers?: Record<string, unknown>[]; raw?: string } | null
+  challenger: { flags?: Record<string, unknown>[]; questions?: string[]; raw?: string } | null
+  unmatched_flags: Record<string, unknown>[]; validation_notes: string[]
+  tool_calls: { agent: string; tool: string; args: Record<string, unknown> }[]
+  timing_seconds: { fan_out: number; total: number }; disclaimer: string
+}
 export interface RoadmapAction { action: string; amount: number | null; expected_effect: string; goal: string; tradeoffs: string; assumptions: string; review_trigger: string }
 export interface Roadmap { account_id: number; this_week: RoadmapAction[]; this_month: RoadmapAction[]; next_three_months: RoadmapAction[]; next_year: RoadmapAction[]; long_term: RoadmapAction[]; summary: { goal: Comparison['goal']; recommended: string; layoff_verdict: string; goal_plan_note: string; capacity_per_month: number } }
 
@@ -156,6 +177,7 @@ export const api = {
   confirm: (id: number, proposal_id: string, accept = true) => post<{ proposal: Proposal; applied: unknown[]; summary: ContextSummary; replan: ReplanResult | null }>('/api/context/confirm', { account_id: id, proposal_id, accept, replan: true }),
   edit: (id: number, change: { field: string; operation: string; value: Record<string, unknown>; target_id?: string }, replan = false) => post<{ applied: unknown; summary: ContextSummary; replan: ReplanResult | null }>('/api/context/edit', { account_id: id, change, replan }),
   chat: (id: number, message: string) => post<ChatResponse>('/api/agent/chat', { account_id: id, message }),
+  plan: (body: { account_id: number; income_fraction: number; bills_increase: number; one_off_cost: number; shock_duration: number; use_ai: boolean }) => post<PlanResult>('/api/agent/plan', body),
   replan: (id: number, reason = 'manual replan') => post<ReplanResult>('/api/replan', { account_id: id, reason }),
   replanDiff: (id: number) => get<{ has_previous: boolean; current: Snapshot | null; previous: Snapshot | null; diff: Diff | null; note?: string }>(`/api/replan/${id}/diff`),
 }

@@ -21,6 +21,7 @@ backend (FastAPI + pandas + numpy + Pydantic)
   services/context_manager.py     structured memory (Redis/Upstash or local JSON per account), proposals, confirmation, versions
   services/feedback_loop.py       replan, snapshot, diff with materiality rules
   services/gemini_agent.py        Gemini/Vultr tools + validated extraction; offline engine; question heuristic
+  services/council.py             Stage 3 council: fan-out grid + Google ADK Strategist/Challenger + validation
   services/roadmap.py             actions by timeframe
   api/routes.py                   REST endpoints; schemas/ Pydantic models
   scripts/analyze_population.py   reproducible discovery → docs/findings.json, docs/findings_chart.png
@@ -64,13 +65,27 @@ Everything authoritative is deterministic Python; the model only converses, inte
 | GET/DELETE | /api/context/{id} | read / delete context |
 | POST | /api/context/propose, /confirm, /edit | staged updates, confirmation (+ replan), direct edits |
 | POST | /api/agent/chat | companion turn |
+| POST | /api/agent/plan | Stage 3 council: fan-out grid, Strategist + Challenger on Google ADK, validated ranking |
 | POST | /api/replan · GET /api/replan/{id}/diff | replan on demand; last diff |
 
 OpenAPI docs are served at `/docs`.
 
 
-## Reviewed agent workflow (proposed)
+## Planning council (Google ADK)
 
-The separate intake agent and Consultant/Advocate/Challenger planning workflow are specified in the [canonical handbook](agents/README.md), with a [copyable implementation prompt](agents/IMPLEMENTATION_PROMPT.md). They are not implemented ADK orchestration yet. Existing routes remain compatible; proposed `/api/agent/plan` contracts require a coordinated implementation.
+`services/council.py` implements the Stage 3 council described in the [agent handbook](agents/README.md):
+
+```
+POST /api/agent/plan ─▶ freeze_request (metrics, shock, goal, weights, confirmed context)
+                     ─▶ fan_out: grid of levers scored by scenario_engine.simulate (code)
+                     ─▶ ADK ParallelAgent "pulp_council"
+                           ├─ LlmAgent strategist (Gemini, tool score_strategy → engine)
+                           └─ LlmAgent challenger (Gemini, no tools)
+                     ─▶ validation: clamp + re-score every Strategist lever, attach Challenger flags
+                     ─▶ deterministic ranking (objective shown in the response)
+```
+
+Without the ADK or a Gemini key the route still answers with the grid (`mode: offline`). The intake companion stays on
+the existing `/api/agent/chat` and voice relay; the full three-stage design is in the handbook.
 
 See [consolidation notes](consolidation.md) for financial edge cases, browser isolation, and data verification. Local context files are a single-worker prototype; Redis persistence alone does not provide atomic version-checked updates across workers.

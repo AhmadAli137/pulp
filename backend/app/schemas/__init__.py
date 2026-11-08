@@ -116,6 +116,19 @@ class ReplanRequest(BaseModel):
     reason: str = "manual replan"
 
 
+class PlanRequest(BaseModel):
+    """Stage 3 council: the judge's shock plus the confirmed context, frozen for one run."""
+    account_id: int
+    income_fraction: float = Field(0.55, ge=0.0, le=5.0, description="Retained income fraction r (0.55 = EI at 55%)")
+    bills_increase: float = Field(0.0, ge=-1.0, le=10.0, description="Household-bill increase h as a fraction")
+    one_off_cost: float = Field(0.0, ge=0.0, description="One-time cost C in dollars")
+    one_off_in_months_of_spending: Optional[float] = Field(None, ge=0.0, description="Alternative: C as a multiple of typical spending S")
+    shock_duration: int = Field(6, ge=1, le=60, description="Months the shock lasts")
+    horizon_months: int = Field(24, ge=6, le=120)
+    n_paths: int = Field(200, ge=50, le=2000)
+    use_ai: bool = Field(True, description="False runs the deterministic fan-out only")
+
+
 class ErrorOut(BaseModel):
     detail: str
     hint: Optional[str] = None

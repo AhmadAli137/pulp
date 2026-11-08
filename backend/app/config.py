@@ -43,6 +43,8 @@ def find_data_dir() -> Path:
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash").strip()
+# Google ADK uses google-genai, which reads GEMINI_API_KEY directly; keep it on the public API, not Vertex.
+os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "FALSE")
 # Vultr Serverless Inference (OpenAI-compatible). Key from Vultr Console -> Compute -> Serverless Inference -> Overview.
 VULTR_INFERENCE_API_KEY = os.environ.get("VULTR_INFERENCE_API_KEY", "").strip()
 VULTR_INFERENCE_MODEL = os.environ.get("VULTR_INFERENCE_MODEL", "deepseek-v4.1-flash-1017").strip()

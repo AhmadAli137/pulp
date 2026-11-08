@@ -1,6 +1,6 @@
 # PULP agent system: colleague implementation handbook
 
-**Status: implementation blueprint, not a description of a shipped ADK system.** Prepared November 7, 2026. Repository: [AhmadAli137/pulp](https://github.com/AhmadAli137/pulp). Product: Planning Under Life's Pressures. Slogan: Prepare for what comes next.
+**Status: blueprint, with the Stage 3 council now implemented on Google ADK** (`backend/app/services/council.py`, `POST /api/agent/plan`: deterministic fan-out, Strategist and Challenger as parallel `LlmAgent`s on Gemini, deterministic validation). Intake orchestration and the Consultant role remain as described here. Prepared November 7, 2026. Repository: [AhmadAli137/pulp](https://github.com/AhmadAli137/pulp). Product: Planning Under Life's Pressures. Slogan: Prepare for what comes next.
 
 This handbook unifies the three-agent PDF proposal, the existing financial engine, and the conversation-first product. Voice intake is a **separate agent**. Its output becomes a validated handoff to a bounded planning workflow. One companion speaks to the user; three planning roles work behind it.
 
