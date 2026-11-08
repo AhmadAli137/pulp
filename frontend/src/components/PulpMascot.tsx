@@ -1,11 +1,11 @@
-/* Pip the tangerine, the PULP wordmark and the harvest intro. Ported from the Codex build (pulp2). */
+/* Pulp the tangerine, the PULP wordmark and the harvest intro. Ported from the Codex build (pulp2). */
 import { useEffect, useRef, useState } from 'react'
 
 export type PipMood = 'idle' | 'thinking' | 'listening'
 
 export function Tangerine({ className = '', mood = 'idle' }: { className?: string; mood?: PipMood }) {
   return (
-    <svg className={`tangerine-mascot ${className} mood-${mood}`} viewBox="0 0 180 172" role="img" aria-label="Pip, your little tangerine companion">
+    <svg className={`tangerine-mascot ${className} mood-${mood}`} viewBox="0 0 180 172" role="img" aria-label="Pulp, your little tangerine companion">
       <defs>
         <radialGradient id="pip-skin" cx="32%" cy="27%" r="80%"><stop offset="0" stopColor="#ffbd5e" /><stop offset=".55" stopColor="#ff9136" /><stop offset="1" stopColor="#ed6b21" /></radialGradient>
       </defs>

@@ -38,7 +38,7 @@ added to the repository by a parallel contributor and is not wired into the PULP
 
 ## Vultr: hosting and Serverless Inference
 
-Pip can run on **Vultr Serverless Inference** (OpenAI-compatible `https://api.vultrinference.com/v1`, default model
+Pulp can run on **Vultr Serverless Inference** (OpenAI-compatible `https://api.vultrinference.com/v1`, default model
 `deepseek-v4.1-flash-1017`, JSON-schema extraction validated by Pydantic). Set `VULTR_INFERENCE_API_KEY` (and
 `AI_PROVIDER=vultr` to prefer it over Gemini). The backend injects the official numbers into the prompt so the model
 quotes rather than computes; failures fall back to the offline engine. Tested with a mocked transport; a live key was

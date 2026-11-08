@@ -24,7 +24,7 @@ The TypeScript frontend, native Gemini voice relay, Vultr provider, Redis/file c
 
 | Step | Screen | What you see |
 |---|---|---|
-| Ask Pip | Home | Agent-first screen: type an account number, a twist in plain words, or a goal; Pip (the tangerine mascot) answers with calculator numbers, a verdict card and memory proposals |
+| Ask Pulp | Home | Agent-first screen: type an account number, a twist in plain words, or a goal; Pulp (the tangerine mascot) answers with calculator numbers, a verdict card and memory proposals |
 | Know the customer | Shock Lab, My Financial Twin | I, S, F, H, B, P with "show the math", history charts, observed distress, population percentiles |
 | Take a shock | Home, Shock Lab, Explore Futures | Event presets and exact inputs; official runway; horizon verdict; why it changed; results table |
 | Make a plan | Home, Shock Lab | Goal plan (buffer needed before the shock) and backup plan (immediate need and monthly gap), tipping point |

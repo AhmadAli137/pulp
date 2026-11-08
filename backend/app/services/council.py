@@ -28,6 +28,8 @@ from .adk_runtime import ADK_AVAILABLE, LlmAgent, ParallelAgent, adk_available, 
 from .scenario_engine import ScenarioSpec, StrategyAdjust, simulate
 from .strategy_optimizer import _primary_goal, _weights
 from .tangerine_metrics import OfficialMetrics, compute_shock, horizon_verdict
+from .life_actions import humanize_candidate, spending_mix
+from .life_actions import humanize_candidate, spending_mix
 
 DISRUPTION_WEIGHT = 0.25     # penalty per 100% of typical spending cut; documented in the result
 MAX_STRATEGIST_LEVERS = 3
@@ -55,8 +57,14 @@ def freeze_request(m: OfficialMetrics, ctx: dict, *, r: float, h: float, one_off
     spec = ScenarioSpec(scenario_type="stress", income_fraction=r, bills_increase=h, one_off_cost=one_off, shock_start=0,
                         shock_duration=duration, horizon_months=horizon, n_paths=n_paths, seed=seed, label=label)
     summary = cm.summarize(ctx)
+    try:
+        from .features import get_features
+        mix = {k: round(v, 2) for k, v in spending_mix(m, get_features().loc[m.account_id]).items()}
+    except Exception:  # synthetic accounts in tests have no feature row
+        mix = {}
     return {
         "account_id": m.account_id,
+        "spending_mix_per_month": mix,
         "context_version": ctx.get("context_version", 0),
         "metrics": {"I": I, "S": S, "H": H, "B": B, "F": m.typical_fixed_costs, "P": m.active_loan_payment,
                     "surplus": I - S, "months_available": m.months_available},
@@ -198,11 +206,15 @@ STRATEGIST_INSTRUCTION = """You are the Strategist in PULP's planning council fo
 You receive a frozen request as JSON: the customer's official numbers (I inflow, S spending, H household bills, B buffer),
 the shock, their confirmed goal, the weights, the confirmed life context, and the best grid candidates already scored.
 
-Your job: propose up to {max_levers} levers the grid cannot invent because they come from THIS person's context
-(for example pausing a stated recurring transfer, a side income they mentioned, deferring a stated goal, a temporary
-cut tied to a named constraint). Each lever is a set of monthly dollar dials:
+Your job: propose up to {max_levers} levers phrased as DECISIONS a person would recognise from their own life, grounded in
+THIS person's numbers and context: spend less on a named category from spending_mix_per_month (card purchases, cash
+spending, money sent out), pause the recurring transfer if there is one, take extra hours or a second job, defer or
+shrink the stated goal, change a habit named in the flags. The label is the decision in plain words ("Cut card spending
+by about $400 a month", "Pause the $120 transfer to your other account for six months", "Pick up a weekend shift").
+Each lever still has to be expressed in the four monthly dollar dials so the engine can score it:
   freed_up_per_month (spending reduced), goal_contribution_per_month, emergency_floor, extra_income_per_month.
-Never invent facts that are not in the request. If the context is empty, propose at most one generic lever and say so.
+Never invent facts that are not in the request. Never suggest cutting bills, insurance or loan payments. If the context
+is empty, lean on spending_mix_per_month and say so in the evidence.
 
 For every lever you propose, call score_strategy once with those exact dials so the engine scores it.
 Then reply with ONLY a JSON object, no prose:
@@ -335,6 +347,20 @@ class _Run:
         ranked = self.candidates[: self.top_n]
         stay = next((c for c in self.candidates if c["levers"]["freed_up_per_month"] == 0 and c["levers"]["goal_contribution_per_month"] == 0
                      and c["levers"]["extra_income_per_month"] == 0), None)
+        try:  # life language on every candidate (needs the account's feature row; synthetic test accounts skip it)
+            from .features import get_features
+            row = get_features().loc[self.account_id]
+            for c in self.candidates:
+                humanize_candidate(c, self.m, row, self.req, stay)
+        except Exception:
+            pass
+        try:  # life language on every candidate (needs the account's feature row; synthetic test accounts skip it)
+            from .features import get_features
+            row = get_features().loc[self.account_id]
+            for c in self.candidates:
+                humanize_candidate(c, self.m, row, self.req, stay)
+        except Exception:
+            pass
         best = ranked[0] if ranked else None
         why = None
         if best:

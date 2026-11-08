@@ -184,8 +184,9 @@ class Script(BaseModel):
 EXPLAINER_INSTRUCTION = """You are PULP's Explainer, the voice that talks a bank customer through a few animated scenes.
 You receive the scenes as JSON: each has an id, a title, the numbers it will draw (params) and a draft narration written by
 code. Rewrite each narration so it sounds like one calm person speaking: second person, plain words, one or two sentences,
-under 220 characters, warm but never salesy. Use ONLY numbers that already appear in that scene's draft or params, formatted
-the same way. Keep every scene id and return them all. Do not add advice the draft does not contain."""
+under 220 characters, warm but never salesy. At most one number per sentence, and only numbers that already appear in that
+scene's draft or params, formatted the same way. Say what the person could decide, not what the metric did. Keep every scene
+id and return them all. Do not add advice the draft does not contain."""
 
 
 def narrate(scenes: list[dict], use_ai: bool = True) -> tuple[list[dict], str]:

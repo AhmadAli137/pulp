@@ -25,6 +25,7 @@ from .cohort_analysis import cohort_for
 from .council import run_council
 from .explainer import lever_scene, two_futures_scene
 from .features import flags_for, get_features
+from .life_actions import life_actions
 from .financial_profiles import get_metrics
 from .narrator import narrative_for
 from .tangerine_metrics import compute_shock, horizon_verdict
@@ -38,7 +39,7 @@ PERSONAS: list[dict] = [
      "role": "Reads the flags the engine raised on your account and writes the three or four sentences worth hearing.",
      "reads": ["official numbers", "flags with evidence", "archetype"], "writes": ["headline", "one sentence per flag"], "guardrail": "may only talk about the flags it was given; every sentence names its flag"},
     {"key": "director", "name": "Director", "kind": "ai", "runs_on": "Gemini on Google ADK",
-     "role": "Decides what the stage shows for each turn and writes what Pip says. Calls the engine when it needs numbers.",
+     "role": "Decides what the stage shows for each turn and writes what Pulp says. Calls the engine when it needs numbers.",
      "reads": ["your message", "confirmed context", "engine tools"], "writes": ["beats: a visual, a source, a caption"], "guardrail": "numbers come from tools; captions are checked against the data behind each visual"},
     {"key": "engine", "name": "Engine", "kind": "code", "runs_on": "Python (pandas, numpy)",
      "role": "The sponsor formula, the Monte Carlo simulator and the lever grid. The only source of numbers.",
@@ -151,7 +152,7 @@ def swarm_params(plan: dict) -> dict:
     best = cands[0]["label"] if cands else None
     return {"horizon_months": plan["request"]["horizon_months"], "grid_size": plan.get("grid_size", 0),
             "candidates": [{"label": c["label"], "source": c["source"], "score": round(c["adjusted_score"], 3), "prob_shortfall": round(c["prob_shortfall_under_stress"], 3),
-                            "buffer_path": _downsample(c["buffer_median_path"]), "best": c["label"] == best, "flags": len(c["flags"])} for c in cands],
+                            "buffer_path": _downsample(c["buffer_median_path"]), "best": c["label"] == best, "flags": len(c["flags"]), "action": c.get("action")} for c in cands],
             "objective": plan["objective"]["formula"], "weights": plan["objective"]["weights"]}
 
 
@@ -159,7 +160,8 @@ def podium_params(plan: dict) -> dict:
     top = (plan.get("ranked") or [])[:3]
     return {"top": [{"rank": i + 1, "label": c["label"], "source": c["source"], "score": round(c["adjusted_score"], 2),
                      "prob_shortfall": round(c["prob_shortfall_under_stress"], 3), "goal_progress": round(c["goal_progress_at_deadline"], 3),
-                     "levers": c["levers"], "flags": c["flags"][:2], "why": c.get("why", "")} for i, c in enumerate(top)],
+                     "levers": c["levers"], "flags": c["flags"][:2], "why": c.get("why", ""),
+                     "action": c.get("action"), "means": c.get("means"), "horizon": c.get("horizon"), "how": c.get("how")} for i, c in enumerate(top)],
             "objective": plan["objective"]["formula"], "weights": plan["objective"]["weights"], "stay": _stay(plan)}
 
 
@@ -244,30 +246,44 @@ def twist_storyboard(account_id: int, m, card: dict, plan: dict, *, dealt_random
     else:
         beats.append(_beat("card", "cards", f"{card['title']}. {card['text']}", {"cards": [{"key": card["key"], "title": card["title"], "text": card["text"]}]}, 5))
     off = tl["official"]
-    if tl["runs_out_month"] is not None:
-        cap = (f"Month by month: {_m(off['income_after'])} comes in, {_m(off['spending_after'])} goes out, {_m(off['monthly_gap'])} short each month. "
-               f"The {_m(off['buffer_left'])} cushion is empty after {tl['runs_out_month']} of {shock['duration']} months.")
+    short_months = tl["runs_out_month"]
+    if short_months is not None:
+        cap = (f"Here is the hard part. You would be about {_m(off['monthly_gap'])} short every month, and your savings would run out "
+               f"after roughly {short_months:g} months. The shock lasts {shock['duration']}.")
     elif off["monthly_gap"] <= 0:
-        cap = f"Even now {_m(off['income_after'])} covers {_m(off['spending_after'])} of spending. No monthly shortfall, the cushion is untouched."
+        cap = "Good news first. Even with this hit, what comes in still covers what goes out, so your savings stay untouched."
     else:
-        cap = f"{_m(off['monthly_gap'])} short each month, but the {_m(off['buffer_left'])} cushion carries you through all {shock['duration']} months."
-    beats.append(_beat("timeline", "timeline", cap, tl, 10, emphasis="runs_out" if tl["runs_out_month"] is not None else None))
+        cap = f"You would be about {_m(off['monthly_gap'])} short each month, but your savings carry you through the whole {shock['duration']} months."
+    beats.append(_beat("timeline", "timeline", cap, tl, 10, emphasis="runs_out" if short_months is not None else None))
     sw = swarm_params(plan)
-    beats.append(_beat("swarm", "swarm", f"I tried {len(sw['candidates'])} ways through this: {plan['grid_size']} from the grid and "
-                       f"{len(sw['candidates']) - plan['grid_size']} the Strategist invented from your context. Each one is scored on staying solvent, reaching your goal, and how much it disrupts your life.", sw, 10))
+    n_strat = len(sw["candidates"]) - plan["grid_size"]
+    beats.append(_beat("swarm", "swarm", f"So I tried {len(sw['candidates'])} different ways through it" + (f", including {n_strat} the Strategist came up with from what you told me" if n_strat else "")
+                       + ". Each one gets a score for keeping you solvent, getting you to your goal, and not turning your life upside down.", sw, 10))
     pod = podium_params(plan)
     if pod["top"]:
         t = pod["top"][0]
-        beats.append(_beat("podium", "podium", f"Top of the board: '{t['label']}', a {t['prob_shortfall']:.0%} chance of running dry"
-                           + (f" versus {pod['stay']['prob_shortfall']:.0%} if nothing changes" if pod["stay"] else "") + ".", pod, 9))
+        lead = t.get("action") or t["label"]
+        cap = f"The one that comes out on top: {lead[0].lower() + lead[1:]}."
+        if pod["stay"]:
+            cap += f" It takes your chance of running dry from {pod['stay']['prob_shortfall']:.0%} down to {t['prob_shortfall']:.0%}."
+        beats.append(_beat("podium", "podium", cap, pod, 9))
+    try:
+        row = get_features().loc[account_id]
+        flags = flags_for(row)
+        acts = life_actions(plan, m, row, flags)
+        if acts["actions"]:
+            first = acts["actions"][0]
+            beats.append(_beat("actions", "actions", f"In plain terms, here is what you could actually do. Start with this: {first['title'][0].lower() + first['title'][1:]}.", acts, 12))
+    except Exception:
+        pass
     lv = lever_scene(plan)
     if lv:
         beats.append(_beat("dial", "dial", lv["narration"], lv["params"], 9))
     tf = two_futures_scene(plan)
     if tf:
         beats.append(_beat("fork", "fork", tf["narration"], tf["params"], 10))
-    beats.append(_beat("math", "math", "And the arithmetic behind the runway, the same formula the judges use.", math_params(m, shock), 8))
-    beats.append(_beat("ask2", "none", "Push back on any of this. Tell me what you could or could not do, and I will rerun it.", {}, 5))
+    beats.append(_beat("math", "math", "If you want the arithmetic, this is the same runway formula the judges use.", math_params(m, shock), 8))
+    beats.append(_beat("ask2", "none", "Push back on any of this. Tell me what you would or would not do, and I will run it again.", {}, 5))
     return beats
 
 
@@ -305,20 +321,23 @@ def caption_is_grounded(caption: str, params: dict, extra_text: str = "") -> boo
 
 
 # ----------------------------------------------------------------------------- the Director agent (free-text turns)
-DIRECTOR_INSTRUCTION = """You are PULP's Director. You decide what the stage SHOWS for one bank customer's turn, and you write what Pip SAYS.
+DIRECTOR_INSTRUCTION = """You are PULP's Director. You decide what the stage SHOWS for one bank customer's turn, and you write what Pulp SAYS.
 You get the customer's message, their confirmed context, and tools over the engine. Call the tools you need (never guess
 numbers), then reply with ONLY a JSON object:
 {"beats": [{"visual": one of {visuals}, "source": the tool name whose latest result this visual should draw, or null,
             "caption": one or two spoken sentences, second person, under 220 characters}]}
+Voice: talk like a friend who is good with money, not a report. Short sentences. At most ONE number per sentence, and only
+when it changes what they would do. Name the decision, not the metric ("you could pause that transfer", not "reduce
+outflow by 1.1%"). End the last beat with what they can decide or try next.
 Rules: 2 to 5 beats and at most 3 tool calls (get_profile is cheap; run_council is fast by default, pass with_agents=true only
 when the person asks what they should do). Every number in a caption must come from a tool result. Prefer showing over telling: a cup for the buffer,
 a river for where money comes from and goes, a timeline for a shock, a swarm for the scenarios tried, a podium for the
 ranked strategies, a dial for one lever, a fork for two futures, a crowd for how they compare to 4,500 others, a calendar
-for timing habits, a ribbon for drift, math only if they ask for the formula, none when Pip should just talk or ask one
-question. If the person describes a life event with money consequences, call deal_or_set_shock with the numbers you can
+for timing habits, a ribbon for drift, actions for "what should I do" (after run_council), math only if they ask for the
+formula, none when Pulp should just talk or ask one question. If the person describes a life event with money consequences, call deal_or_set_shock with the numbers you can
 justify from their words and then run_council on it. Never claim anything has been saved or applied."""
 
-VISUALS = ["picture", "cup", "river", "timeline", "fork", "calendar", "dial", "crowd", "ribbon", "cards", "shuffle", "swarm", "podium", "math", "none"]
+VISUALS = ["picture", "cup", "river", "timeline", "fork", "calendar", "dial", "crowd", "ribbon", "cards", "shuffle", "swarm", "podium", "actions", "math", "none"]
 
 
 class _Tools:
@@ -416,6 +435,10 @@ class _Tools:
                 return f"Top of the board: '{t['label']}', a {t['prob_shortfall']:.0%} chance of running dry" + (f" versus {pod['stay']['prob_shortfall']:.0%} if nothing changes." if pod["stay"] else ".")
         if visual == "swarm" and self.plan:
             return f"I scored {len(self.plan.get('ranked') or [])} ways through this on staying solvent, reaching your goal and how much each disrupts your life."
+        if visual == "actions" and self.plan:
+            row = get_features().loc[self.account_id]
+            acts = life_actions(self.plan, m, row, flags_for(row))["actions"]
+            return f"Here is what you could actually do. Start with this: {acts[0]['title'][0].lower() + acts[0]['title'][1:]}." if acts else None
         if visual == "cup":
             return f"Your cushion is {_m(m.buffer)}, about {(m.buffer / m.typical_spending) if m.typical_spending else 0:.1f} months of typical spending."
         if visual == "river":
@@ -450,6 +473,10 @@ class _Tools:
             return self.results.get("deal_or_set_shock")
         if visual == "math":
             return math_params(m, self.shock) if self.shock else None
+        if visual == "actions":
+            if not self.plan:
+                return None
+            return life_actions(self.plan, m, row, flags_for(row))
         if visual in ("swarm", "podium", "dial", "fork"):
             if not self.plan:
                 return None
@@ -559,7 +586,7 @@ async def stage_stream(account_id: int, message: str, *, use_ai: bool = True) ->
         ctx_summary = cm.summarize(cm.load_context(account_id))
         payload = json.dumps({"message": msg, "confirmed_context": {k: ctx_summary.get(k, []) for k in ("goals", "concerns", "constraints", "preferences", "upcoming_events")},
                               "official": {"I": m.typical_inflow, "S": m.typical_spending, "B": m.buffer, "baseline_runway": m.baseline_runway_label}}, default=float)
-        agent = LlmAgent(name="director", model=config.GEMINI_MODEL, description="Chooses what the stage shows and writes Pip's lines.",
+        agent = LlmAgent(name="director", model=config.GEMINI_MODEL, description="Chooses what the stage shows and writes Pulp's lines.",
                          instruction=DIRECTOR_INSTRUCTION.replace("{visuals}", ", ".join(VISUALS)),
                          tools=[tools.get_profile, tools.get_cohort, tools.deal_or_set_shock, tools.run_council, tools.show_math], output_key="director")
         result = None

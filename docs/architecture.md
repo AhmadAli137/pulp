@@ -2,7 +2,7 @@
 
 ```
 frontend (React 19 + Vite + TypeScript, Recharts, zustand)
-  pages/      AgentHome (conversation and Pip) / ShockLab · Twin · Explore (fan chart + branches + official calculator) · Goals (strategies, before/after)
+  pages/      AgentHome (conversation and Pulp) / ShockLab · Twin · Explore (fan chart + branches + official calculator) · Goals (strategies, before/after)
               Roadmap · Insights (discovery + cohort) · Companion (chat, voice, proposals) · Settings
   components/ Layout (nav + account box), ShockPanel (twist controls, verdict, plans, show-the-math), ui
   charts/     cash flow, liquidity, fan, branches, vulnerability, strategy, replanning, quartile, pairs, cohort, goal
@@ -103,7 +103,7 @@ are missing.
 
 ## The stage and the Director (Google ADK)
 
-The home screen is a stage: one visual at a time, Pip narrating, a beat timeline, the input below. `director.py` decides
+The home screen is a stage: one visual at a time, Pulp narrating, a beat timeline, the input below. `director.py` decides
 what to show for each turn and streams it over `GET /api/agent/stage`:
 
 ```

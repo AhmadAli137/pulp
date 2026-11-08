@@ -9,8 +9,8 @@
 
 ## Live-twist checklist (three minutes)
 
-1. Type the judge's `account_id` into Pip's box on Home (or the top-right box). Read the stats strip; Shock Lab has the five full tiles with show-the-math.
-2. Read the twist card to Pip in plain words, or pick the preset / type exact values in Shock Lab (income %, bills %, one-time $, months).
+1. Type the judge's `account_id` into Pulp's box on Home (or the top-right box). Read the stats strip; Shock Lab has the five full tiles with show-the-math.
+2. Read the twist card to Pulp in plain words, or pick the preset / type exact values in Shock Lab (income %, bills %, one-time $, months).
 3. Read the verdict line and the official runway; point at "why did this change".
 4. Read the goal plan ("before") and backup plan ("if it happens") amounts; mention the tipping point if asked "how much more could bills rise?".
 5. If time allows: Explore Futures for the fan chart, or Insights for where the account sits among peers.

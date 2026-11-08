@@ -5,7 +5,7 @@ import { api } from '../services/api'
 import { Spinner } from './ui'
 
 const NAV = [
-  { to: '/', label: 'Home (Pip)', ic: '◎' },
+  { to: '/', label: 'Home (Pulp)', ic: '◎' },
   { to: '/shock', label: 'Shock Lab', ic: '⚡' },
   { to: '/twin', label: 'My Financial Twin', ic: '◫' },
   { to: '/explore', label: 'Explore Futures', ic: '⟡' },
@@ -16,7 +16,7 @@ const NAV = [
 ]
 
 const TITLES: Record<string, [string, string]> = {
-  '/': ['Home', 'Ask Pip anything about this account'],
+  '/': ['Home', 'Ask Pulp anything about this account'],
   '/shock': ['Shock Lab', 'Know the customer, take a shock, make a plan'],
   '/twin': ['My Financial Twin', 'Observed banking facts beside confirmed life context'],
   '/explore': ['Explore Futures', 'Simulated paths under the shocks you choose'],

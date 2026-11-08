@@ -2,7 +2,7 @@
 
 ## Product intent
 
-PULP helps a speaker explore the finances of an anonymized banking account. It does not identify the real account holder or connect to a live bank. The experience begins with conversation and only reveals the visualization needed for the current question. Pip remains the single visible companion.
+PULP helps a speaker explore the finances of an anonymized banking account. It does not identify the real account holder or connect to a live bank. The experience begins with conversation and only reveals the visualization needed for the current question. Pulp remains the single visible companion.
 
 The planning workflow is a constrained review process. There are three planning roles, not three competing conversations. The separate voice-intake agent is upstream and is not counted among those three roles. An orchestration function controls execution; it is not another autonomous financial agent.
 
@@ -16,7 +16,7 @@ The planning workflow is a constrained review process. There are three planning 
 | Planning | Single-agent responses and deterministic comparison | Consultant plus two independent reviews |
 | Replanning | `replan()` computes and stores a snapshot | Pure calculation plus separate persistence |
 | Voice | Native audio relay and proposal review | Intake-to-planner handoff, progress, validated result narration |
-| UI | React home, SVG Pip, detailed financial views | Review/diff cards and shared result renderer |
+| UI | React home, SVG Pulp, detailed financial views | Review/diff cards and shared result renderer |
 | Frameworks | `google-genai`; no ADK requirement installed | Pin ADK after compatibility spike; A2UI/Rive optional later |
 
 ## Workflow phases

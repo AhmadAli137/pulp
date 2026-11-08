@@ -24,14 +24,14 @@ These are illustrative messages, not real account results:
 
 ```text
 User: What if my income falls to 70% for three months and I need a repair?
-Pip: How much should we allow for the repair?
+Pulp: How much should we allow for the repair?
 User: Nine hundred dollars.
-Pip: Should the income change start this month?
+Pulp: Should the income change start this month?
 User: Yes. Show me the next six months.
 UI: Editable scenario summary -> Review this scenario
 UI: Preparing your plan -> Checking your priorities and stress cases
 UI: Final result with calculator-backed figures and a review-change card
-Pip: The review changed one recommendation because of your confirmed priority.
+Pulp: The review changed one recommendation because of your confirmed priority.
      Here is the revised plan and the condition that would make us revisit it.
 ```
 
@@ -76,13 +76,13 @@ Use existing React chart capabilities and local SVG/CSS first. Render one useful
 4. **Review-change card:** proposed action before/after and the evidence-backed reason.
 5. **Contingency card:** trigger condition, source evidence, and a proposed next step.
 
-Pip's juice cup can echo the savings buffer, but it cannot replace the labeled chart or conceal negative balances. Define a fixed comparison scale, represent depletion explicitly, and show the numerical amount alongside it. Do not animate financial success merely because a model reply completed. Thinking/listening animations reflect interaction state, not inferred emotion or a financial verdict.
+Pulp's juice cup can echo the savings buffer, but it cannot replace the labeled chart or conceal negative balances. Define a fixed comparison scale, represent depletion explicitly, and show the numerical amount alongside it. Do not animate financial success merely because a model reply completed. Thinking/listening animations reflect interaction state, not inferred emotion or a financial verdict.
 
 ## Future A2UI and Rive
 
 The result should carry neutral visualization descriptors such as `{kind, evidence_ids, title}`. The initial renderer maps them to an allowlisted React component. A later A2UI adapter can emit approved components from the same descriptors. Never accept arbitrary JSX, HTML, scripts, CSS, or network destinations from the model.
 
-Rive can later map validated interaction states and numeric display values to Pip animations. Keep the semantic content in accessible HTML and supply a static reduced-motion alternative. Remotion recaps are a later export feature, not part of the calculation/review path.
+Rive can later map validated interaction states and numeric display values to Pulp animations. Keep the semantic content in accessible HTML and supply a static reduced-motion alternative. Remotion recaps are a later export feature, not part of the calculation/review path.
 
 ## Accessibility and resilient interaction
 
