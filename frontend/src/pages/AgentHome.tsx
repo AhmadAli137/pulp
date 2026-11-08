@@ -94,7 +94,7 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
       setMessages((m) => [...m, { role: 'assistant', text: r.reply }])
       setContext(r.context)
       setProposal(r.proposal ?? r.context.pending_proposals?.at(-1) ?? null)
-      if (r.mode !== 'gemini' && r.mode !== 'vultr') setNotice('Using the local companion while the AI service is unavailable.')
+      if (!['gemini', 'vultr', 'vehicle_planner'].includes(r.mode)) setNotice('Using the local companion while the AI service is unavailable.')
       void refreshContext()
     } catch { if (alive.current) { setNotice('The reply didn’t come through. Please try again.'); setDraft(text) } }
     finally { if (alive.current) setBusy(false) }

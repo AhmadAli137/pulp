@@ -447,6 +447,15 @@ def chat(account_id: int, text: str, prefer_offline: bool = False) -> dict:
     previous = (ctx.get("conversation") or [{}])[-1]
     pending_card = previous.get("council_review") if previous.get("role") == "assistant" else None
     explicit = text.lower().lstrip().startswith("council:")
+    from . import vehicle_planner
+    vehicle_state = previous.get("vehicle_plan") if previous.get("role") == "assistant" else None
+    if not explicit and (vehicle_state or vehicle_planner.starts(text)):
+        reply, state = vehicle_planner.run(text, vehicle_state, get_metrics(account_id))
+        cm.record_turn(account_id, "user", text)
+        cm.record_turn(account_id, "assistant", reply, {"vehicle_plan": state, "mode": "vehicle_planner"})
+        return {"account_id": account_id, "mode": "vehicle_planner", "reply": reply,
+                "proposal": None, "tool_results": [], "next_question": None, "notice": None,
+                "extraction": AgentExtraction().model_dump(), "context": cm.summarize(cm.load_context(account_id))}
     scenario_turn = bool(re.search(r"(?:\b(?:car|repair|furnace)\b.*\$|\$[\d,]+.*\b(?:car|repair|furnace)\b|\bretain \d+% income|\b(?:layoff|laid off)\b.*\d+%)", text, re.I))
     followup = pending_card and (pending_card.get("clarifying") or text.strip().lower() in ("confirm", "yes", "confirm scenario"))
     if explicit or scenario_turn or followup:
