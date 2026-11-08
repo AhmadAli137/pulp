@@ -224,6 +224,12 @@ def personal_deck(account_id: int, rebuild: bool = False) -> dict:
     deck = {"cards": cards, "version": DECK_VERSION, "source": "shock_generator (rules from Stage 1 signals and the persona)", "trace": trace,
             "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "persona_built_at": (persona or {}).get("built_at")}
     cm.set_doc(account_id, "deck", deck)
+    try:
+        from .agent_runs import record
+        record(account_id, stage=3, title=f"Personal deck built: {len(cards)} shocks", trigger="Shocks or Profile opened", events=trace,
+               source="code rules")
+    except Exception:
+        pass
     return deck
 
 

@@ -1130,11 +1130,45 @@ def _last_turn_updated(ctx: dict) -> bool:
     return bool(last and "Say no if I got it wrong" in last.get("text", ""))
 
 
+def _turn_title(message: str) -> str:
+    if message == "__intro__":
+        return "Opening: what should I know about my money?"
+    if message.startswith("twist:"):
+        key = message[6:].split("@")[0]
+        return "Shuffle a twist" if key in ("random", "personal", "dealer") else f"Twist card: {key.removeprefix('p_').replace('_', ' ')}"
+    if message.startswith("decision:"):
+        return "A decision to weigh up"
+    return message[:120]
+
+
 async def stage_stream(account_id: int, message: str, *, use_ai: bool = True):
-    """The shared conversation boundary for typed and spoken turns."""
+    """The shared conversation boundary for typed and spoken turns. Every turn is recorded as a replayable agent run."""
+    from .agent_runs import normalize, record
     cm.record_turn(account_id, "user", message)
-    async for event, data in _stage_stream(account_id, message, use_ai=use_ai):
-        if event == "storyboard":
-            cm.record_turn(account_id, "assistant", " ".join(b["caption"] for b in data.get("beats", [])),
-                           {"stage": [b["visual"] for b in data.get("beats", [])]})
-        yield event, data
+    t0 = time.perf_counter()
+    events: list[dict] = [{"t": 0, "stage": 2, "agent": "you", "kind": "handoff", "to": "director", "title": _turn_title(message)}]
+    reply = ""
+    try:
+        async for event, data in _stage_stream(account_id, message, use_ai=use_ai):
+            if event == "storyboard":
+                cm.record_turn(account_id, "assistant", " ".join(b["caption"] for b in data.get("beats", [])),
+                               {"stage": [b["visual"] for b in data.get("beats", [])]})
+                reply = data.get("reply") or " ".join(b.get("caption", "") for b in data.get("beats", []))
+            elif event in ("agent", "handoff", "trace", "profile", "lifeplans"):
+                try:
+                    e = normalize(event, data if isinstance(data, dict) else {}, t0)
+                    if e:
+                        events.append(e)
+                except Exception:
+                    pass
+            yield event, data
+    finally:
+        if reply:
+            events.append({"t": round(time.perf_counter() - t0, 2), "stage": 2, "agent": "director", "kind": "output", "title": "Pulp's reply",
+                           "items": [reply[:400]]})
+        try:
+            stage = 3 if any(e.get("stage") == 3 for e in events) else 2
+            record(account_id, stage=stage, title=_turn_title(message), trigger="Conversation turn", events=events,
+                   source="google-adk" if use_ai and adk_available() else "offline", duration_s=time.perf_counter() - t0)
+        except Exception:
+            pass

@@ -358,3 +358,27 @@ def test_world_events_are_in_the_personal_deck_and_ranked_for_the_life():
 def test_world_events_are_recognised_in_conversation(text, key):
     from app.services.stage3 import detect
     assert detect(text)["key"] == key
+
+
+# ----------------------------------------------------------------------------- replayable runs
+def test_every_agent_run_is_recorded_and_replayable():
+    from app.services import director as D
+    client.get(f"/api/profile/{ACC}")                      # persona build
+    client.get(f"/api/agent/deck?account_id={ACC}")        # personal deck
+    client.post("/api/agent/life-plans", json={"account_id": ACC, "mode": "long_term"})
+
+    async def turn():
+        return [k async for k, _ in D.stage_stream(ACC, "I might lose my job", use_ai=False)]
+    asyncio.run(turn())
+    runs = client.get(f"/api/agents/runs/{ACC}").json()["runs"]
+    titles = [r["title"] for r in runs]
+    assert any(t.startswith("Persona built") for t in titles)
+    assert any(t.startswith("Personal deck built") for t in titles)
+    assert any(t.startswith("Plan search") for t in titles)
+    assert "I might lose my job" in titles and runs[-1]["id"] == "stage1"
+    turn_run = client.get(f"/api/agents/runs/{ACC}/{next(r['id'] for r in runs if r['title'] == 'I might lose my job')}").json()
+    assert turn_run["stage"] == 3 and turn_run["events"][0]["agent"] == "you"
+    assert any(e["agent"] == "life_fit" for e in turn_run["events"]) and turn_run["events"][-1]["title"] == "Pulp's reply"
+    s1 = client.get(f"/api/agents/runs/{ACC}/stage1").json()
+    assert s1["stage"] == 1 and len(s1["events"]) > 10
+    assert client.get(f"/api/agents/runs/{ACC}/nope").status_code == 404

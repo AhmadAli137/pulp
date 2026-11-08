@@ -563,9 +563,38 @@ def post_life_plans(req: LifePlansRequest):
         shock = {"income_fraction": 0.55 if req.income_fraction is None else req.income_fraction,
                  "bills_increase": req.bills_increase or 0.0, "one_off_cost": req.one_off_cost or 0.0,
                  "shock_duration": req.shock_duration or 6}
-    return run(req.account_id, shock, mode=req.mode, horizon=req.horizon_months, shock_starts_in=req.shock_starts_in,
-               trigger=req.trigger or ("Long-term plan requested" if req.mode == "long_term" else "Shock plans requested"),
-               use_ai=req.use_ai)
+    result = run(req.account_id, shock, mode=req.mode, horizon=req.horizon_months, shock_starts_in=req.shock_starts_in,
+                 trigger=req.trigger or ("Long-term plan requested" if req.mode == "long_term" else "Shock plans requested"),
+                 use_ai=req.use_ai)
+    try:
+        from ..services.agent_runs import record
+        s = result.get("search") or {}
+        record(req.account_id, stage=3, title=(f"Plan search: {result['shock']['label']}" if req.mode == "shock" else "Plan search: the next five years"),
+               trigger=result.get("trigger") or "", events=result.get("trace") or [], source=result.get("mode", "offline"),
+               duration_s=(result.get("elapsed_ms") or 0) / 1000)
+    except Exception:
+        pass
+    return result
+
+
+@router.get("/agents/runs/{account_id}")
+def list_agent_runs(account_id: int):
+    """Every recorded agent run for this account, newest first (conversation turns, persona builds, decks, plan searches),
+    plus the Stage 1 distillation of the records. Without the events; fetch one run to replay it."""
+    _known(account_id)
+    from ..services.agent_runs import list_runs
+    return {"account_id": account_id, "runs": list_runs(account_id)}
+
+
+@router.get("/agents/runs/{account_id}/{run_id}")
+def get_agent_run(account_id: int, run_id: str):
+    """One run with every event in order, for step-by-step replay and the raw log."""
+    _known(account_id)
+    from ..services.agent_runs import get_run
+    r = get_run(account_id, run_id)
+    if r is None:
+        raise HTTPException(status_code=404, detail=f"No run {run_id}")
+    return r
 
 
 @router.get("/plans/history/{account_id}")

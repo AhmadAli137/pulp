@@ -443,6 +443,14 @@ def _refine_later(account_id: int, persona: dict) -> None:
             fresh["persona"] = new
             fresh["persona_trace"] = cur["persona_trace"]
             cm.save_context(fresh)
+        try:
+            from .agent_runs import record
+            record(account_id, stage=1, title="Persona refined by Gemini", trigger="Background refinement after the first build",
+                   events=trace + [{"t": trace[-1]["t"] if trace else 0, "stage": 1, "agent": "persona_builder", "kind": "output",
+                                    "title": "Rewrote the story and goals in plain words", "items": [new.get("story", "")[:300]]}],
+                   source="google-adk")
+        except Exception:
+            pass
     except Exception as e:  # pragma: no cover - network
         logging.getLogger("pulp.persona").warning("persona refinement failed: %s", e)
     finally:
@@ -496,6 +504,12 @@ def get_persona(account_id: int, build: bool = True, refine: bool = True) -> dic
         fresh["persona"] = persona
         fresh["persona_trace"] = trace
         cm.save_context(fresh)
+    try:
+        from .agent_runs import record
+        record(account_id, stage=1, title=f"Persona built: {persona['display_name']} (fictional)", trigger="First look at this account",
+               events=trace, source="code template")
+    except Exception:
+        pass
     seed(account_id, persona)
     if refine:
         with _LOCK:

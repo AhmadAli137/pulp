@@ -73,7 +73,7 @@ export default function PictureVisual({ p }: { p: PictureParams }) {
       </g>
       {/* the stream: thickness follows money in */}
       <motion.line x1={500} x2={500} y1={134} y2={ly} stroke="url(#pic-juice)" strokeWidth={wIn} strokeLinecap="round"
-        animate={{ opacity: squeezing ? 1 : 0 }} transition={{ duration: 0.3 }} />
+        initial={{ opacity: 0 }} animate={{ opacity: squeezing ? 1 : 0 }} transition={{ duration: 0.3 }} />
       {squeezing && motionOn && <motion.circle cx={500} r={wIn / 2.4} fill="#F28C28" initial={{ cy: 140 }} animate={{ cy: [140, ly] }} transition={{ duration: 0.5, repeat: 3, ease: 'easeIn' }} />}
 
       {/* the glass and the juice */}
@@ -107,7 +107,7 @@ export default function PictureVisual({ p }: { p: PictureParams }) {
       {/* the straw: spending is drunk out */}
       <path d={`M 560 ${bot - 24} L 588 ${top - 30} L 660 ${top - 70}`} fill="none" stroke="#D9DED3" strokeWidth={14} strokeLinecap="round" strokeLinejoin="round" />
       <motion.path d={`M 560 ${bot - 24} L 588 ${top - 30} L 660 ${top - 70}`} fill="none" stroke="#F28C28" strokeWidth={Math.min(12, wOut / 2.2)} strokeLinecap="round" strokeLinejoin="round"
-        strokeDasharray="14 12" animate={{ opacity: drinking ? 1 : 0, strokeDashoffset: drinking && motionOn ? [0, -52] : 0 }} transition={{ opacity: { duration: 0.25 }, strokeDashoffset: { duration: 0.6, repeat: drinking ? Infinity : 0, ease: 'linear' } }} />
+        strokeDasharray="14 12" initial={{ opacity: 0, strokeDashoffset: 0 }} animate={{ opacity: drinking ? 1 : 0, strokeDashoffset: drinking && motionOn ? [0, -52] : 0 }} transition={{ opacity: { duration: 0.25 }, strokeDashoffset: { duration: 0.6, repeat: drinking ? Infinity : 0, ease: 'linear' } }} />
 
       {/* labels */}
       <g opacity={squeezing || !motionOn ? 1 : 0.55}>
@@ -120,7 +120,7 @@ export default function PictureVisual({ p }: { p: PictureParams }) {
       </g>
       <Label x={gx1 + 18} y={levelY(B) + 5} size={14} color={INK} weight={700}>buffer {money(p.buffer)} · {p.months_of_spending.toFixed(1)} months</Label>
 
-      <motion.g animate={{ opacity: settled || !motionOn ? 1 : 0 }} transition={{ duration: 0.4 }}>
+      <motion.g initial={{ opacity: motionOn ? 0 : 1 }} animate={{ opacity: settled || !motionOn ? 1 : 0 }} transition={{ duration: 0.4 }}>
         <foreignObject x={300} y={488} width={46} height={46}><div style={{ width: 46, height: 46 }}><Tangerine mood={ok ? 'celebrate' : 'concerned'} label="" key={`${ok}-${settled}`} /></div></foreignObject>
         <Big x={356} y={522} size={26} color={ok ? MINT : ROSE}>{ok ? `+${money(net)} left over` : `−${money(-net)} short`}<tspan fontSize={15} fill={MUTED} fontWeight={500}> this month</tspan></Big>
       </motion.g>
