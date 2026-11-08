@@ -137,4 +137,4 @@
 .pf-said{display:block;margin:4px 0 2px;border-left:3px solid #F2B98A;padding-left:10px}
 .pf-said .pf-quote{display:inline;margin:0;padding:0;border:0}
 .pf-said cite{margin-left:6px;font-style:normal;font-size:12px;color:#7a6a5c}
-.pf-said cite::before{content:"4 A0"}
+.pf-said cite::before{content:"\2014\00A0"}
