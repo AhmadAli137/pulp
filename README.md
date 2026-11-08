@@ -1,4 +1,6 @@
-# PULP — Planning Under Life's Pressures. Prepare for what comes next.
+# PULP
+
+**Live: https://askpulp.com** (Vultr, HTTPS, Gemini voice and the ADK council). Static mirror without voice: https://pulp-mu-six.vercel.app. — Planning Under Life's Pressures. Prepare for what comes next.
 
 Financial resilience engine for the **Tangerine track, Resilience Rewired** at Sheridan Datathon 2026.
 A judge picks any `account_id`, reads a twist, and PULP shows the official runway, a verdict for the

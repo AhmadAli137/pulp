@@ -23,7 +23,7 @@ Project settings to make in the Vercel dashboard (Project -> Settings):
 Redeploy after changing environment variables. The summary CSVs are committed, so git-triggered deploys carry the data. Vercel cannot host the voice websocket or
 long jobs; use it as a static mirror and demo from Vultr (Option B).
 
-## Option B: Vultr, one instance for frontend, API, voice relay and the ADK council (recommended for the demo)
+## Option B: Vultr at https://askpulp.com, one instance for frontend, API, voice relay and the ADK council (the demo host)
 
 One Docker image serves the API and the built frontend; Caddy in front terminates HTTPS. This is the deployment
 that supports everything: the Gemini Live voice relay is a websocket (Vercel's Python functions cannot hold one),
@@ -53,7 +53,14 @@ The script installs Docker, opens 22/80/443, clones the repo (the summary CSVs a
 writes `/opt/pulp/.env`, builds the image, starts Caddy + app, waits for `/api/health`, and prints the URL.
 Add `DOMAIN=yourdomain.tld` in front of `bash` once an A record points at the server.
 
-### 3. Keys and models
+### 3. Domain
+
+askpulp.com and askpulp.ca are registered at GoDaddy. DNS on both: `A @ -> 137.220.54.238`, `CNAME www -> @`. The server uses
+`deploy/Caddyfile.askpulp` (selected with `CADDYFILE=./deploy/Caddyfile.askpulp` in `/opt/pulp/.env`, `DOMAIN=askpulp.com`):
+askpulp.com and the sslip alias serve the app; www.askpulp.com, askpulp.ca and www.askpulp.ca redirect to askpulp.com. Caddy
+issued all four certificates automatically. Without a domain the single-host `deploy/Caddyfile` with an sslip.io name works.
+
+### 4. Keys and models
 
 Edit `/opt/pulp/.env` and rebuild (`cd /opt/pulp && docker compose up -d --build`). Relevant variables:
 
@@ -64,17 +71,17 @@ Edit `/opt/pulp/.env` and rebuild (`cd /opt/pulp && docker compose up -d --build
 | `VULTR_INFERENCE_API_KEY` | optional fallback provider when Gemini is down or unkeyed |
 | `AI_PROVIDER` | `auto` (Gemini, else Vultr, else offline) |
 
-### 4. Deploy on every push
+### 5. Deploy on every push
 
 Repository settings: secrets `VULTR_HOST` (the IP), `VULTR_USER` (`root`), `VULTR_SSH_KEY` (private key), and the
 variable `DEPLOY_ENABLED=true`. `.github/workflows/deploy.yml` then runs the tests, builds the frontend and redeploys
 over SSH on each push to `master`, waiting for the health check before it reports success.
 
-### 5. Verify
+### 6. Verify
 
 ```bash
-curl https://<ip>.sslip.io/api/health          # accounts: 4500, ai_provider: gemini
-curl -X POST https://<ip>.sslip.io/api/agent/plan -H 'content-type: application/json'      -d '{"account_id": 47788, "income_fraction": 0.55, "use_ai": true}'   # mode: adk, two agents, ~12 s
+curl https://askpulp.com/api/health             # accounts: 4500, ai_provider: gemini, council: true
+curl -X POST https://askpulp.com/api/agent/plan -H 'content-type: application/json'      -d '{"account_id": 47788, "income_fraction": 0.55, "use_ai": true}'   # mode: adk, two agents, ~12 s
 ```
 
 Open the site, load an account, and test the microphone from the home screen: the websocket upgrades through Caddy.
