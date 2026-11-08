@@ -461,6 +461,16 @@ def get_discovery(account_id: int):
     return discovery(account_id)
 
 
+@router.get("/customers/{account_id}/benefits")
+def get_benefits(account_id: int):
+    """The bottom line for this account: time saved (stated by-hand assumptions against Pulp's measured seconds), money
+    saved (costs visible in the records, annualised, and the layoff shortfall a plan avoids), new perspectives, and
+    control. Every item says what it rests on."""
+    _known(account_id)
+    from ..services.benefits import benefits
+    return benefits(account_id)
+
+
 @router.get("/profile/{account_id}")
 def get_profile_doc(account_id: int):
     """The person behind the account: the fictional persona (built and seeded on first call), weighted goals, and the log
