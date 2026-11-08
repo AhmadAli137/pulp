@@ -29,9 +29,10 @@ const absolute = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en
 const dur = (s: number) => (s >= 10 ? `${Math.round(s)} s` : `${s.toFixed(1)} s`)
 /** Commands sent by page buttons read as plain titles ("explain:plan_search" becomes "Explain: plan search"). */
 export function niceTitle(t: string) {
-  const m = t.match(/^(explain|ask|show):([^?]*)/i)
-  if (!m) return t
-  return `${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()}: ${m[2].replace(/[_-]+/g, ' ').trim()}`
+  const words = (cmd: string, rest: string) => `${cmd[0].toUpperCase()}${cmd.slice(1).toLowerCase()}: ${rest.split('?')[0].replace(/[_-]+/g, ' ').trim()}`
+  const whole = t.match(/^(explain|ask|show):(\S*)$/i)
+  if (whole) return words(whole[1], whole[2])
+  return t.replace(/\b(explain|ask|show):(\S+)/gi, (_, _c: string, r: string) => r.split('?')[0].replace(/[_-]+/g, ' ')).trim()
 }
 
 export default function RunReplay({ accountId, personas, filter, onFilter, narrow }: {

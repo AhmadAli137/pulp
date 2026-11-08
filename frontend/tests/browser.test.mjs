@@ -333,6 +333,19 @@ test('the Agents page plays all three stages and the panel shows the live workfl
   await panel.getByRole('button', { name: 'Start voice conversation' }).click()
   await panel.getByRole('button', { name: 'Stop voice conversation' }).or(panel.locator('.thread-notice')).first().waitFor({ timeout: 15000 })
   if (await panel.getByRole('button', { name: 'Stop voice conversation' }).isVisible()) await panel.getByRole('button', { name: 'Stop voice conversation' }).click()
+
+  // Every turn above was recorded: replay one step by step with its log, and the deep link survives a reload.
+  await p.goto(base + '/agents')
+  await p.getByRole('heading', { name: 'Replay a run', level: 2 }).waitFor()
+  await p.getByRole('button', { name: 'Replay run: Shuffle a twist' }).first().click()
+  const replay = p.getByRole('region', { name: 'Replay: Shuffle a twist' })
+  await replay.waitFor({ timeout: 20000 })
+  assert.ok(await replay.getByRole('list', { name: 'Run log' }).getByRole('listitem').count() >= 4)
+  await replay.locator('.run-log-line').nth(2).click()
+  await replay.getByText('Step 3 of').waitFor()
+  assert.match(p.url(), /[?&]run=/)
+  await p.reload()
+  await p.getByRole('region', { name: 'Replay: Shuffle a twist' }).waitFor({ timeout: 20000 })
 })
 
 test('confirmed loan purpose can be corrected and survives a reload', async t => {

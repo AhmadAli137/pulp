@@ -1150,6 +1150,9 @@ def _turn_title(message: str) -> str:
         return "Shuffle a twist" if key in ("random", "personal", "dealer") else f"Twist card: {key.removeprefix('p_').replace('_', ' ')}"
     if message.startswith("decision:"):
         return "A decision to weigh up"
+    if "explain:" in message:
+        key = message[message.index("explain:") + 8:].split("?")[0].split()[0]
+        return f"Explain: {key.replace('_', ' ')}"
     return message[:120]
 
 
