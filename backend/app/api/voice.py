@@ -6,7 +6,7 @@ import logging
 import anyio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from .decision import ScenarioProposal, profile
-from ..config import GEMINI_API_KEY, GEMINI_LIVE_MODEL, GEMINI_LIVE_API_VERSION
+from ..config import GEMINI_API_KEY, GEMINI_LIVE_MODEL, GEMINI_LIVE_API_VERSION, GEMINI_LIVE_VOICE
 from ..schemas import ShockRequest
 from ..services.tangerine_metrics import full_shock_report
 
@@ -44,6 +44,7 @@ async def voice(ws: WebSocket, account_id: int):
                     'one_off_cost':{'type':'NUMBER'},'horizon_months':{'type':'INTEGER'},
                     'goal':{'type':'STRING'},'explanation':{'type':'STRING'}}})]
         config=types.LiveConnectConfig(response_modalities=['AUDIO'],input_audio_transcription={},output_audio_transcription={},
+            speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=GEMINI_LIVE_VOICE))),
             system_instruction=('You are PULP: Planning Under Life’s Pressures. Be concise, calm and practical. '
                 'Ask one relevant question at a time. Learn goals, deadlines, concerns and explicit financial assumptions. '
                 'All banking data belongs to an anonymized demonstration account, not a verified identity. '
@@ -53,7 +54,7 @@ async def voice(ws: WebSocket, account_id: int):
                 'Rates are fractions, .55 income retained and .15 bill increase. Never claim a proposal has been applied.'),
             tools=[types.Tool(function_declarations=declarations)])
         async with client.aio.live.connect(model=GEMINI_LIVE_MODEL, config=config) as session:
-            await ws.send_json(dict(type='ready',model=GEMINI_LIVE_MODEL))
+            await ws.send_json(dict(type='ready',model=GEMINI_LIVE_MODEL,voice=GEMINI_LIVE_VOICE))
             async def receive_browser():
                 while True:
                     message=await ws.receive_json()

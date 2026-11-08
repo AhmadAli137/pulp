@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { styleUtterance } from '../services/ttsVoice'
 
 /* Browser speech recognition + synthesis. Text chat never depends on this. */
 type SR = { start: () => void; stop: () => void; abort: () => void; lang: string; interimResults: boolean; continuous: boolean
@@ -53,7 +54,7 @@ export function useSpeech() {
     if (!ttsSupported) return
     try {
       window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(text)
+      const u = styleUtterance(new SpeechSynthesisUtterance(text))
       u.lang = 'en-CA'; u.rate = 1.0
       u.onstart = () => setSpeaking(true); u.onend = () => setSpeaking(false); u.onerror = () => setSpeaking(false)
       window.speechSynthesis.speak(u)

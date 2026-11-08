@@ -68,3 +68,5 @@ RUNWAY_CAP_MONTHS = 120.0
 EI_REPLACEMENT_RATE = 0.55  # Challenge assumption, not a determination of EI eligibility.
 GEMINI_LIVE_MODEL = os.environ.get("GEMINI_LIVE_MODEL", "gemini-3.8-live")
 GEMINI_LIVE_API_VERSION = os.environ.get("GEMINI_LIVE_API_VERSION", "v1alpha")
+# Prebuilt Live voice; Aoede, Kore, Leda and Zephyr are the female presets, Puck, Charon, Fenrir and Orus the male ones.
+GEMINI_LIVE_VOICE = os.environ.get("GEMINI_LIVE_VOICE", "Aoede").strip() or "Aoede"

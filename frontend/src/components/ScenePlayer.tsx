@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { styleUtterance } from '../services/ttsVoice'
 import { ChevronLeft, ChevronRight, RotateCcw, Volume2, VolumeX } from 'lucide-react'
 import type { Scene } from '../services/api'
 import RunwayScene from './scenes/RunwayScene'
@@ -35,8 +36,7 @@ export default function ScenePlayer({ scenes, autoplay = true, sceneMs = 7000, s
     const next = () => { if (advanced) return; advanced = true; if (playing && i < scenes.length - 1) setI(i + 1); else if (playing) setPlaying(false) }
     if (!muted && tts()) {
       window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(scene.narration)
-      u.lang = 'en-CA'; u.rate = 1.0
+      const u = styleUtterance(new SpeechSynthesisUtterance(scene.narration))
       u.onend = () => { timer.current = window.setTimeout(next, 900) }
       u.onerror = () => { timer.current = window.setTimeout(next, sceneMs) }
       window.speechSynthesis.speak(u)
