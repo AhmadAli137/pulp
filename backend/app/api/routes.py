@@ -209,6 +209,8 @@ def post_confirm(req: schemas.ConfirmRequest):
         res = cm.confirm(req.account_id, req.proposal_id, accept=req.accept)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Proposal {req.proposal_id} not found for account {req.account_id}.")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     out = {"proposal": res["proposal"], "applied": res["applied"], "summary": cm.summarize(res["context"]), "replan": None}
     if req.accept and req.replan and res['applied']:
         out["replan"] = _clean(replan(req.account_id, reason=f"confirmed proposal {req.proposal_id}"))

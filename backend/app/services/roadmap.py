@@ -14,10 +14,12 @@ def build_roadmap(m: OfficialMetrics, context: dict, comparison: dict | None = N
     rec = next(s for s in comparison["strategies"] if s["key"] == comparison["recommended"])
     goal = comparison["goal"]
     I, S, H, B = m.typical_inflow, m.typical_spending, m.household_bills, m.buffer
-    layoff = compute_shock(I, S, H, B, r=0.55)
-    verdict = horizon_verdict(layoff, 6)
-    gp = goal_plan(layoff, 6)
-    bp = backup_plan(layoff, 6)
+    stress = comparison["stress_scenario"]
+    duration = stress["shock_duration"]
+    layoff = compute_shock(I, S, H, B, r=stress["income_fraction"], h=stress["bills_increase"], one_off=stress["one_off_cost"])
+    verdict = horizon_verdict(layoff, duration)
+    gp = goal_plan(layoff, duration)
+    bp = backup_plan(layoff, duration)
     contrib = rec["monthly_contribution"]
     capacity = comparison["capacity_per_month"]
     ef_target = comparison["emergency_target"]
@@ -49,9 +51,9 @@ def build_roadmap(m: OfficialMetrics, context: dict, comparison: dict | None = N
                                  "The data does not label discretionary spending; the amount must come from you.", "Review next month."))
     next_3 = [
         action("Hold an emergency floor before funding the goal" if comparison["recommended"] == "buffer_first" else "Track buffer against the stress target",
-               ef_target, f"A ${ef_target:,.0f} buffer covers six months of a 55% income shock (gap ${max(0.0, layoff['monthly_gap']):,.0f}/month). Current buffer ${B:,.0f}; gap to target ${ef_gap:,.0f}.",
+               ef_target, f"A ${ef_target:,.0f} buffer covers {duration} months of the selected stress scenario (gap ${max(0.0, layoff['monthly_gap']):,.0f}/month). Current buffer ${B:,.0f}; gap to target ${ef_gap:,.0f}.",
                "Resilience", "Goal progress is slower while the floor is being built." if comparison["recommended"] == "buffer_first" else "A lower floor means faster goal progress but more shortfall risk.",
-               "Shock lasts six months at 55% retained income with spending unchanged.", "If the buffer drops below two months of spending."),
+               comparison["stress_label"], "If the buffer drops below two months of spending."),
         action("Backup plan if the shock hits", bp["monthly_improvement_needed"],
                bp["note"], "Resilience", "Freeing cash in a shock usually means pausing goal contributions.",
                "Sponsor runway formula; cash flows continue through the period.", "The day income changes."),
@@ -62,6 +64,8 @@ def build_roadmap(m: OfficialMetrics, context: dict, comparison: dict | None = N
                 f"On the recommended plan the goal reaches {rec['goal_progress_at_deadline']:.0%} by month {min(goal['target_months'], comparison['horizon_months'])}") + ".",
                goal["label"], comparison["why"], goal["assumption"], "If income or spending moves by more than 10% for two months."),
     ]
+    if not goal["target_amount"]:
+        next_year = [action("Confirm your goal budget", None, "Completion cannot be assessed until an amount is confirmed.", goal["label"], "None.", goal["assumption"], "When you know the target cost.")]
     long_term = [
         action("Revisit the plan when life changes", None,
                "New goals, a move, a new job or a family change re-run the simulator and strategy comparison automatically after you confirm them.",

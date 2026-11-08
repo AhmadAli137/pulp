@@ -122,11 +122,15 @@ def simulate(m: OfficialMetrics, spec: ScenarioSpec, deterministic: bool = False
     buffer = np.empty((n_paths, T + 1))
     goal = np.zeros((n_paths, T + 1))
     buffer[:, 0] = B
+    immediate_shortfall = np.zeros((n_paths, T + 1), dtype=bool)
+    immediate_shortfall[:, 0] = B < 0
     contrib_log = np.zeros((n_paths, T))
     for t in range(T):
-        b = buffer[:, t] + income[:, t] - spend[:, t]
+        opening = buffer[:, t].copy()
         if t == spec.shock_start and spec.one_off_cost:
-            b = b - spec.one_off_cost
+            opening -= spec.one_off_cost
+        immediate_shortfall[:, t + 1] = opening < 0
+        b = opening + income[:, t] - spend[:, t]
         c = np.zeros(n_paths)
         if st.goal_contribution_per_month > 0 and t >= st.goal_contribution_start:
             remaining = np.maximum(st.goal_target - goal[:, t], 0.0) if st.goal_target > 0 else np.full(n_paths, np.inf)
@@ -139,9 +143,10 @@ def simulate(m: OfficialMetrics, spec: ScenarioSpec, deterministic: bool = False
 
     pct = {f"p{p}": np.percentile(buffer, p, axis=0).tolist() for p in (10, 25, 50, 75, 90)}
     min_buffer = buffer.min(axis=1)
-    below_any = (buffer < 0).any(axis=1)
-    below_by_month = (np.minimum.accumulate(buffer, axis=1) < 0).mean(axis=0).tolist()
-    first_neg = np.where((buffer < 0).any(axis=1), (buffer < 0).argmax(axis=1), -1)
+    shortfall = (buffer < 0) | immediate_shortfall
+    below_any = shortfall.any(axis=1)
+    below_by_month = np.maximum.accumulate(shortfall, axis=1).mean(axis=0).tolist()
+    first_neg = np.where(below_any, shortfall.argmax(axis=1), -1)
     goal_reached_month = None
     goal_reached_share = None
     if st.goal_target > 0 and st.goal_contribution_per_month > 0:
@@ -162,7 +167,7 @@ def simulate(m: OfficialMetrics, spec: ScenarioSpec, deterministic: bool = False
         "income_median": np.percentile(income, 50, axis=0).tolist(),
         "spending_median": np.percentile(spend, 50, axis=0).tolist(),
         "prob_below_zero_any": float(below_any.mean()),
-        "prob_below_zero_by_month": [0.0] + below_by_month[1:],
+        "prob_below_zero_by_month": below_by_month,
         "median_min_buffer": float(np.median(min_buffer)),
         "p10_min_buffer": float(np.percentile(min_buffer, 10)),
         "median_end_buffer": float(np.median(buffer[:, -1])),
@@ -173,7 +178,7 @@ def simulate(m: OfficialMetrics, spec: ScenarioSpec, deterministic: bool = False
         "goal_target": st.goal_target,
         "median_total_contributed": float(np.median(contrib_log.sum(axis=1))),
         "n_paths": n_paths,
-        "disclaimer": "Model output for a chosen scenario on anonymized data; not a forecast and not a real-world probability of the event.",
+        "disclaimer": "Model output for a chosen scenario on anonymized data; not a forecast and not a real-world probability of the event. Historical cash flow resumes after the shock by assumption, not as a reemployment forecast. Monthly totals omit most within-month timing; upfront expenses are checked before that month's income.",
     }
 
 

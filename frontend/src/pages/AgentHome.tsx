@@ -64,17 +64,19 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     alive.current = true
+    let cancelled = false
     setContextReady(false)
+    setMessages([]); setProposal(null); setPlan(null); setVoiceProposal(null); setNotice(''); setBusy(false); setConfirming(false)
     if (id) {
       api.context(id).then((r) => {
-        if (!alive.current) return
+        if (cancelled || !alive.current) return
         setContext(r.summary)
         setMessages((r.context.conversation || []).map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', text: m.text })))
         setProposal(r.summary.pending_proposals?.at(-1) ?? null)
-      }).catch(() => { if (alive.current) setNotice('Your financial snapshot is ready. Saved context could not be loaded.') })
-        .finally(() => { if (alive.current) setContextReady(true) })
+      }).catch(() => { if (!cancelled && alive.current) setNotice('Your financial snapshot is ready. Saved context could not be loaded.') })
+        .finally(() => { if (!cancelled && alive.current) setContextReady(true) })
     } else { setMessages([]); setContext(null); setProposal(null); setContextReady(true) }
-    return () => { alive.current = false; voiceRequest.current++; voiceStop.current?.() }
+    return () => { cancelled = true; alive.current = false; voiceRequest.current++; voiceStop.current?.() }
   }, [id])
   useEffect(() => { if (messages.length) messagesEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [messages, busy])
   useEffect(() => { if (accountId) setInputId(String(accountId)) }, [accountId])
@@ -90,14 +92,14 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
     setMessages((m) => [...m, { role: 'user', text }])
     try {
       const r = await api.chat(id, text)
-      if (!alive.current) return
+      if (!alive.current || useApp.getState().accountId !== id) return
       setMessages((m) => [...m, { role: 'assistant', text: r.reply }])
       setContext(r.context)
       setProposal(r.proposal ?? r.context.pending_proposals?.at(-1) ?? null)
       if (r.mode !== 'gemini' && r.mode !== 'vultr') setNotice('Using the local companion while the AI service is unavailable.')
       void refreshContext()
-    } catch { if (alive.current) { setNotice('The reply didn’t come through. Please try again.'); setDraft(text) } }
-    finally { if (alive.current) setBusy(false) }
+    } catch { if (alive.current && useApp.getState().accountId === id) { setNotice('The reply didn’t come through. Please try again.'); setDraft(text) } }
+    finally { if (alive.current && useApp.getState().accountId === id) setBusy(false) }
   }
 
   async function confirm(accept: boolean) {
@@ -105,13 +107,13 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
     setConfirming(true); setNotice('')
     try {
       const r = await api.confirm(id, proposal.id, accept)
-      if (!alive.current) return
+      if (!alive.current || useApp.getState().accountId !== id) return
       setContext(r.summary); setPlan(r.replan); setProposal(null)
       if (r.replan) setLastReplan(r.replan)
       void refreshContext()
       setNotice(accept ? (r.replan ? 'Saved to your context. Your plan has been updated.' : 'Saved to your context.') : 'Proposal dismissed. Your context is unchanged.')
     } catch (e) { if (alive.current) setNotice((e as Error).message) }
-    finally { if (alive.current) setConfirming(false) }
+    finally { if (alive.current && useApp.getState().accountId === id) setConfirming(false) }
   }
 
   async function toggleVoice() {
@@ -141,8 +143,10 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
   const applyVoiceProposal = () => {
     if (!voiceProposal) return
     setInputs({
-      income_fraction: voiceProposal.income_fraction ?? 1, bills_increase: voiceProposal.bills_increase ?? 0,
-      one_off_cost: voiceProposal.one_off_cost ?? 0, horizon_months: voiceProposal.horizon_months ?? 6,
+      ...(voiceProposal.income_fraction != null ? { income_fraction: voiceProposal.income_fraction } : {}),
+      ...(voiceProposal.bills_increase != null ? { bills_increase: voiceProposal.bills_increase } : {}),
+      ...(voiceProposal.one_off_cost != null ? { one_off_cost: voiceProposal.one_off_cost } : {}),
+      ...(voiceProposal.horizon_months != null ? { horizon_months: voiceProposal.horizon_months } : {}),
     })
     void runShock()
     nav('/shock')
@@ -219,8 +223,8 @@ export default function AgentHome({ onReplayIntro }: { onReplayIntro: () => void
           <div className="agent-proposal">
             <span className="agent-small-label">YOUR SPOKEN SCENARIO · NOT YET APPLIED</span>
             <p>{voiceProposal.explanation || 'Review these assumptions before using them.'}</p>
-            <p>{voiceProposal.income_fraction != null && `Income retained: ${Math.round(voiceProposal.income_fraction * 100)}%. `}{voiceProposal.bills_increase != null && `Bills change: ${Math.round(voiceProposal.bills_increase * 100)}%. `}{voiceProposal.one_off_cost != null && `One-time expense: ${money(voiceProposal.one_off_cost)}. `}</p>
-            <button onClick={applyVoiceProposal}>Review in Shock Lab <ArrowRight size={15} /></button>
+            <p>{voiceProposal.income_fraction != null && `Income retained: ${Math.round(voiceProposal.income_fraction * 100)}%. `}{voiceProposal.bills_increase != null && `Bills change: ${Math.round(voiceProposal.bills_increase * 100)}%. `}{voiceProposal.one_off_cost != null && `One-time expense: ${money(voiceProposal.one_off_cost)}. `}{voiceProposal.horizon_months != null && `Horizon: ${voiceProposal.horizon_months} months. `}</p>
+            <button onClick={applyVoiceProposal}>Confirm & apply stated values <ArrowRight size={15} /></button>
           </div>
         )}
         {proposal && (

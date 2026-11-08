@@ -12,6 +12,12 @@ tells it what they are living for.
 > us almost everything (rank correlation −0.75, survival 99% / 82% / 52% / 25%). Details and sensitivity
 > checks: [docs/findings.md](docs/findings.md).
 
+## Canonical repository
+
+Work only in this checkout and [AhmadAli137/pulp](https://github.com/AhmadAli137/pulp). The comparison checkout is retired and must not receive edits or pushes. GitHub is the source of truth; the Entire remote is historical.
+
+The TypeScript frontend, native Gemini voice relay, Vultr provider, Redis/file context storage, and deployment configuration remain in place. The separate intake plus three-role ADK workflow is **a blueprint, not implemented orchestration**. Start with the [colleague handbook](docs/agents/README.md) and [post-intake implementation prompt](docs/agents/IMPLEMENTATION_PROMPT.md).
+
 ## What it does
 
 | Step | Screen | What you see |
@@ -58,11 +64,22 @@ GitHub Actions workflow that redeploys on every push to `master`. See [docs/depl
 
 ## Tests and reproducibility
 
-```bash
-cd backend
-python -m pytest -q                               # 47 tests: formula checks, dataset checks, API, simulation, loop, AI failure
-python scripts/analyze_population.py             # regenerates docs/findings.json and docs/findings_chart.png
+Run from the repository root:
+
+```powershell
+python -m pytest backend/tests -q                 # 84 backend regressions; AI providers mocked/disabled
+python docs/agents/validate_examples.py           # handbook links and synthetic contract fixtures
+python backend/scripts/analyze_population.py     # original research and denominator definitions
+python backend/scripts/pulp_research.py          # supplementary research; distinct populations
+python backend/scripts/validate_pulp_data.py --data-dir data-20261107T180312Z-1-001/data
+cd frontend
+npm ci
+npm run build
+npm run test:e2e                                  # 11 browser journeys; isolated API on port 8002; installed Chrome required
 ```
+
+Use `--data-dir` to point the audit at the full organizer export containing `transactions.csv`; the deployment `data/` subset omits that large file. Browser tests use temporary context, no live AI keys, and no Redis. They refuse to reuse an occupied port. See [migration and verification notes](docs/consolidation.md).
+
 
 The synthetic check from the brief (I = $4,000, S = $3,600, H = $1,000, B = $6,200 with the combined twist →
 $2,200 inflow, $3,750 spending, $1,550 gap, **4.0 months**, six-month shortfall **$3,100**) is a unit test
@@ -100,8 +117,8 @@ Runway is displayed to one decimal; verdicts use unrounded values. Fixed costs a
 whole historical months of the account (money in and money out together) scaled so the typical month equals I
 and S, applies the shock over a window, charges the one-off cost, and applies explicit strategy rules (free up
 $X, contribute $Y to a goal fund, pause below an emergency floor). Seeds make results reproducible. The
-deterministic path reproduces the official runway (tested). Outputs are model probabilities for a chosen
-scenario, not real-world probabilities.
+deterministic path agrees with official calculations in aligned constant-flow cases; discrete month boundaries differ from fractional runway. Outputs are model probabilities for a chosen
+scenario, not real-world probabilities. Upfront expenses are checked before later income; the starting negative balance is included. Historical cash flow resumes after the shock as an assumption. Strategy capacity first covers any existing deficit, unknown goal budgets remain unknown, and projections extended to a goal deadline are disclosed.
 
 ## How AI is integrated
 

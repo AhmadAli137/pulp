@@ -20,7 +20,7 @@ TEST_ACCOUNT = SAMPLE[0]
 
 
 @pytest.fixture(autouse=True)
-def _clean_context():
+def _clean_context(isolate_context_storage):
     cm.reset_context(TEST_ACCOUNT)
     yield
     cm.reset_context(TEST_ACCOUNT)

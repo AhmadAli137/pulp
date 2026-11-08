@@ -35,10 +35,9 @@ def _primary_goal(context: dict, m: OfficialMetrics, stress_need: float) -> dict
         amount = v.get("target_amount")
         months = v.get("target_months") or DEFAULT_GOAL_MONTHS.get(gtype, 24)
         if not amount:
-            # No amount stated: use a transparent default and label it as an assumption.
-            amount = stress_need if gtype == "emergency_fund" else max(3.0 * m.typical_spending, 1000.0)
-            assumption = (f"No target amount stated; assumed {GOAL_LABELS.get(gtype, 'goal')} target = "
-                          f"{'the stress-scenario need' if gtype == 'emergency_fund' else '3 months of typical spending'} (${amount:,.0f}).")
+            amount = stress_need if gtype == "emergency_fund" else 0.0
+            assumption = (f"No target amount stated; emergency target uses the stress-scenario need (${amount:,.0f})."
+                          if gtype == "emergency_fund" else "Goal budget is missing. Goal completion cannot be assessed until you confirm an amount.")
         else:
             assumption = "Target amount confirmed by the user."
         return {"type": gtype, "label": v.get("label") or GOAL_LABELS.get(gtype, "Goal"), "target_amount": float(amount),
@@ -83,28 +82,32 @@ def _weights(context: dict) -> dict:
 
 def compare_strategies(m: OfficialMetrics, context: dict, *, horizon: int = 24, n_paths: int = 400, seed: int = 42) -> dict:
     I, S, B = m.typical_inflow, m.typical_spending, m.buffer
-    surplus = max(0.0, I - S)
+    surplus = I - S
     constraints = {c.get("value", {}).get("type"): c.get("value", {}) for c in context.get("constraints", []) if c.get("confirmed", True)}
     can_free = float(constraints.get("can_free_up_per_month", {}).get("amount", 0.0) or 0.0)
-    capacity = surplus + can_free
+    can_free = min(max(0.0, can_free), max(0.0, S))
+    capacity = max(0.0, surplus + can_free)
 
-    layoff = compute_shock(I, S, m.household_bills, B, r=0.55)
-    stress_need = 6 * max(0.0, layoff["monthly_gap"])
-    goal = _primary_goal(context, m, stress_need)
     spec = _stress_spec(context, m, horizon, n_paths, seed)
+    layoff = compute_shock(I, S, m.household_bills, B, r=spec.income_fraction, h=spec.bills_increase)
+    stress_need = spec.one_off_cost + spec.shock_duration * max(0.0, layoff["monthly_gap"])
+    goal = _primary_goal(context, m, stress_need)
+    requested_horizon = horizon
+    horizon = max(horizon, goal["target_months"])
+    spec = replace(spec, horizon_months=horizon)
     weights = _weights(context)
     emergency_target = max(stress_need, 0.0)
 
     defs = [
         ("stay", "Stay the course", StrategyAdjust(label="Stay the course")),
         ("buffer_first", "Buffer first, then goal",
-         StrategyAdjust(label="Buffer first", freed_up_per_month=can_free, goal_contribution_per_month=capacity,
+         StrategyAdjust(label="Buffer first", freed_up_per_month=can_free, goal_contribution_per_month=capacity if goal["target_amount"] > 0 else 0.0,
                         goal_target=goal["target_amount"], emergency_floor=emergency_target)),
         ("goal_first", "Goal first",
-         StrategyAdjust(label="Goal first", freed_up_per_month=can_free, goal_contribution_per_month=capacity,
+         StrategyAdjust(label="Goal first", freed_up_per_month=can_free, goal_contribution_per_month=capacity if goal["target_amount"] > 0 else 0.0,
                         goal_target=goal["target_amount"], emergency_floor=0.0)),
         ("balanced", "Balanced split",
-         StrategyAdjust(label="Balanced", freed_up_per_month=can_free, goal_contribution_per_month=0.5 * capacity,
+         StrategyAdjust(label="Balanced", freed_up_per_month=can_free, goal_contribution_per_month=0.5 * capacity if goal["target_amount"] > 0 else 0.0,
                         goal_target=goal["target_amount"], emergency_floor=0.5 * emergency_target)),
     ]
     results = []
@@ -141,6 +144,10 @@ def compare_strategies(m: OfficialMetrics, context: dict, *, horizon: int = 24, 
     runner = sorted(feasible, key=lambda r: -r["score"])[1] if len(feasible) > 1 else None
     why = (f"'{best['label']}' scores {best['score']:.2f} = {weights['resilience']:.0%} x (1 - {best['prob_shortfall_under_stress']:.0%} shortfall risk) "
            f"+ {weights['goal']:.0%} x {best['goal_progress_at_deadline']:.0%} goal progress by month {min(goal['target_months'], horizon)}.")
+    if horizon > requested_horizon:
+        why += f" Projection extended from {requested_horizon} to {horizon} months to include the goal deadline; stress duration is unchanged."
+    if not goal["target_amount"]:
+        why += " Goal budget is missing; completion cannot be assessed."
     if runner:
         why += f" Runner-up '{runner['label']}' scores {runner['score']:.2f}."
     return {
@@ -157,4 +164,6 @@ def compare_strategies(m: OfficialMetrics, context: dict, *, horizon: int = 24, 
         "recommended": best["key"],
         "why": why,
         "horizon_months": horizon,
+        "requested_horizon_months": requested_horizon,
+        "projection_note": (f"Projection extended from {requested_horizon} to {horizon} months to include the goal deadline. This does not change the six-month stress duration." if horizon > requested_horizon else "Projection includes the goal deadline."),
     }

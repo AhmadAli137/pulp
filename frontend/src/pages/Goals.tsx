@@ -71,9 +71,9 @@ export default function Goals() {
           {cmp && rec ? (<>
             <div className="row between" style={{ marginBottom: 6 }}>
               <div><div className="strong">{cmp.goal.label}</div><div className="small muted">{fmt.money(cmp.goal.target_amount)} in {cmp.goal.target_months} months · {cmp.goal.assumption}</div></div>
-              <Chip>{fmt.pct(rec.goal_progress_at_deadline)} by deadline on recommended plan</Chip>
+              <Chip>{cmp.goal.target_amount > 0 ? `${fmt.pct(rec.goal_progress_at_deadline)} by deadline on recommended plan` : "Budget needed"}</Chip>
             </div>
-            <GoalProgressChart path={rec.goal_median_path} target={cmp.goal.target_amount} deadline={Math.min(cmp.goal.target_months, cmp.horizon_months)} />
+            {cmp.goal.target_amount > 0 && <GoalProgressChart path={rec.goal_median_path} target={cmp.goal.target_amount} deadline={Math.min(cmp.goal.target_months, cmp.horizon_months)} />}
           </>) : <Empty>{busy ? <Spinner /> : 'No comparison yet.'}</Empty>}
         </Card>
       </div>
@@ -91,7 +91,7 @@ export default function Goals() {
           </div>
           <StrategyChart strategies={cmp.strategies} recommended={cmp.recommended} />
           <p className="callout green" style={{ marginTop: 10 }}><strong>Why:</strong> {cmp.why} {cmp.weights.reasons.join(' ')}</p>
-          <p className="tiny muted" style={{ marginTop: 6 }}>{cmp.capacity_assumption} Emergency target {fmt.money(cmp.emergency_target)} = six months of the layoff gap. Scores: {fmt.pct(cmp.weights.resilience)} resilience + {fmt.pct(cmp.weights.goal)} goal progress.</p>
+          <p className="tiny muted" style={{ marginTop: 6 }}>{cmp.capacity_assumption} Emergency target {fmt.money(cmp.emergency_target)} = six months of the selected stress gap. Scores: {fmt.pct(cmp.weights.resilience)} resilience + {fmt.pct(cmp.weights.goal)} goal progress.</p>
           {accessible && <DataTable headers={['Strategy', 'Feasible', 'Shortfall share', 'Goal by deadline', 'Months to goal', 'Contribution', 'Score']} rows={cmp.strategies.map((s) => [s.label, s.feasible ? 'yes' : 'no', fmt.pct(s.prob_shortfall_under_stress), fmt.pct(s.goal_progress_at_deadline), s.months_to_goal_deterministic ?? '—', fmt.money(s.monthly_contribution), s.score.toFixed(2)])} />}
         </>) : <Empty>{busy ? <Spinner /> : 'No comparison yet.'}</Empty>}
       </Card>

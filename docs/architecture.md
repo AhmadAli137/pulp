@@ -2,12 +2,13 @@
 
 ```
 frontend (React 19 + Vite + TypeScript, Recharts, zustand)
-  pages/      Overview · Twin · Explore (fan chart + branches + official calculator) · Goals (strategies, before/after)
+  pages/      AgentHome (conversation and Pip) / ShockLab · Twin · Explore (fan chart + branches + official calculator) · Goals (strategies, before/after)
               Roadmap · Insights (discovery + cohort) · Companion (chat, voice, proposals) · Settings
   components/ Layout (nav + account box), ShockPanel (twist controls, verdict, plans, show-the-math), ui
   charts/     cash flow, liquidity, fan, branches, vulnerability, strategy, replanning, quartile, pairs, cohort, goal
   stores/     useApp (account, shock inputs/results, context summary, last replan, accessibility)
   services/   api.ts (typed client, /api proxied to the backend)
+  services/   voice.ts (Gemini native PCM audio over backend WebSocket)
   hooks/      useSpeech (browser SpeechRecognition + speechSynthesis)
 
 backend (FastAPI + pandas + numpy + Pydantic)
@@ -17,9 +18,9 @@ backend (FastAPI + pandas + numpy + Pydantic)
   services/cohort_analysis.py     similar-customer comparison; findings.json loader + headline
   services/scenario_engine.py     deterministic + Monte Carlo projection, presets, branches
   services/strategy_optimizer.py  four explicit strategies under a context-shaped stress; weighted score
-  services/context_manager.py     structured memory (JSON per account), proposals, confirmation, versions
+  services/context_manager.py     structured memory (Redis/Upstash or local JSON per account), proposals, confirmation, versions
   services/feedback_loop.py       replan, snapshot, diff with materiality rules
-  services/gemini_agent.py        Gemini tools + validated extraction; offline engine; question heuristic
+  services/gemini_agent.py        Gemini/Vultr tools + validated extraction; offline engine; question heuristic
   services/roadmap.py             actions by timeframe
   api/routes.py                   REST endpoints; schemas/ Pydantic models
   scripts/analyze_population.py   reproducible discovery → docs/findings.json, docs/findings_chart.png
@@ -66,3 +67,10 @@ Everything authoritative is deterministic Python; the model only converses, inte
 | POST | /api/replan · GET /api/replan/{id}/diff | replan on demand; last diff |
 
 OpenAPI docs are served at `/docs`.
+
+
+## Reviewed agent workflow (proposed)
+
+The separate intake agent and Consultant/Advocate/Challenger planning workflow are specified in the [canonical handbook](agents/README.md), with a [copyable implementation prompt](agents/IMPLEMENTATION_PROMPT.md). They are not implemented ADK orchestration yet. Existing routes remain compatible; proposed `/api/agent/plan` contracts require a coordinated implementation.
+
+See [consolidation notes](consolidation.md) for financial edge cases, browser isolation, and data verification. Local context files are a single-worker prototype; Redis persistence alone does not provide atomic version-checked updates across workers.

@@ -1,0 +1,21 @@
+{
+  "accounts": 4500,
+  "monthly_rows": 185326,
+  "loans": 682,
+  "transactions": 1056320,
+  "other_files": {
+    "cards": 892,
+    "clients": 5369,
+    "dispositions": 5369,
+    "districts": 77,
+    "standing_orders": 6471
+  },
+  "first_transaction": "2020-01-01",
+  "last_transaction": "2025-12-31",
+  "duplicate_monthly_keys": 0,
+  "unknown_accounts": 0,
+  "transaction_inflow_max_error_cents": 0,
+  "transaction_outflow_max_error_cents": 0,
+  "currency": "CAD as supplied by organizer",
+  "status": "passed"
+}

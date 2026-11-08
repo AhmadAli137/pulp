@@ -36,6 +36,9 @@ interface AppState {
 
 const DEFAULT_INPUTS: ShockInputs = { income_fraction: 0.55, bills_increase: 0, one_off_cost: 0, horizon_months: 6 }
 
+let accountRequest = 0
+let shockRequest = 0
+
 export const useApp = create<AppState>((set, get) => ({
   accountId: null,
   profile: null,
@@ -53,19 +56,23 @@ export const useApp = create<AppState>((set, get) => ({
   aiLabel: 'offline companion',
 
   loadAccount: async (id) => {
-    set({ loadingProfile: true, profileError: null, shock: null, lastReplan: null })
+    const request = ++accountRequest
+    ++shockRequest
+    set({ loadingProfile: true, profileError: null, accountId: null, profile: null, context: null, shock: null, lastReplan: null })
     try {
       const profile = await api.profile(id)
+      if (request !== accountRequest) return
       set({ accountId: id, profile, loadingProfile: false })
       try { localStorage.setItem('pulp.account', String(id)) } catch { /* ignore */ }
       await get().runShock()
       await get().refreshContext()
     } catch (e) {
+      if (request !== accountRequest) return
       const msg = e instanceof ApiError ? e.message : 'Unexpected error'
       set({ loadingProfile: false, profileError: msg, accountId: null, profile: null })
     }
   },
-  clearAccount: () => set({ accountId: null, profile: null, shock: null, context: null, lastReplan: null, profileError: null }),
+  clearAccount: () => { ++accountRequest; ++shockRequest; set({ accountId: null, profile: null, shock: null, context: null, lastReplan: null, profileError: null }) },
   setInputs: (p, preset = null) => set((s) => ({ shockInputs: { ...s.shockInputs, ...p }, activePreset: preset })),
   applyPreset: (key) => {
     const p = PRESETS[key]
@@ -77,11 +84,14 @@ export const useApp = create<AppState>((set, get) => ({
   runShock: async () => {
     const { accountId, shockInputs } = get()
     if (!accountId) return
+    const request = ++shockRequest
     set({ shockLoading: true, shockError: null })
     try {
       const shock = await api.shock({ account_id: accountId, ...shockInputs })
+      if (request !== shockRequest || get().accountId !== accountId) return
       set({ shock, shockLoading: false })
     } catch (e) {
+      if (request !== shockRequest || get().accountId !== accountId) return
       set({ shockLoading: false, shockError: e instanceof ApiError ? e.message : 'Calculation failed' })
     }
   },
@@ -90,7 +100,7 @@ export const useApp = create<AppState>((set, get) => ({
     if (!accountId) return
     try {
       const r = await api.context(accountId)
-      set({ context: r.summary })
+      if (get().accountId === accountId) set({ context: r.summary })
     } catch { /* context is optional */ }
   },
   setLastReplan: (r) => set({ lastReplan: r }),

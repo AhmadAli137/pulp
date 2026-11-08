@@ -1,0 +1,1052 @@
+{
+  "accounts": 4500,
+  "eligible_accounts": 3660,
+  "excluded_accounts": 840,
+  "volatility": [
+    {
+      "quartile": 1,
+      "label": "Lowest",
+      "accounts": 915,
+      "events": 6,
+      "rate": 0.6557377049180327,
+      "interval": [
+        0.3008627065519795,
+        1.4232211834242687
+      ],
+      "median_inflow": 4379.97,
+      "median_spending": 3235.27,
+      "median_balance": 15833.969166666668,
+      "prior_rate": 0.1092896174863388
+    },
+    {
+      "quartile": 2,
+      "label": "Lower middle",
+      "accounts": 915,
+      "events": 20,
+      "rate": 2.185792349726776,
+      "interval": [
+        1.4193407719326723,
+        3.352058346261367
+      ],
+      "median_inflow": 7581.285,
+      "median_spending": 6378.035,
+      "median_balance": 16900.219166666666,
+      "prior_rate": 0.9836065573770493
+    },
+    {
+      "quartile": 3,
+      "label": "Upper middle",
+      "accounts": 915,
+      "events": 19,
+      "rate": 2.0765027322404372,
+      "interval": [
+        1.3333168211613071,
+        3.220416923588604
+      ],
+      "median_inflow": 8245.07,
+      "median_spending": 7255.99,
+      "median_balance": 18982.109166666665,
+      "prior_rate": 1.530054644808743
+    },
+    {
+      "quartile": 4,
+      "label": "Highest",
+      "accounts": 915,
+      "events": 99,
+      "rate": 10.819672131147541,
+      "interval": [
+        8.968287548362856,
+        12.99867607191729
+      ],
+      "median_inflow": 5079.3099999999995,
+      "median_spending": 6365.0650000000005,
+      "median_balance": 20618.616666666665,
+      "prior_rate": 6.666666666666667
+    }
+  ],
+  "relative_rate": 16.500000000000004,
+  "no_prior_negative": [
+    {
+      "quartile": 1,
+      "label": "Lowest",
+      "accounts": 914,
+      "events": 6,
+      "rate": 0.6564551422319475,
+      "interval": [
+        0.3011922473264975,
+        1.42477005379387
+      ],
+      "median_inflow": 4378.005,
+      "median_spending": 3218.375,
+      "median_balance": 15831.440833333334,
+      "prior_rate": 0.0
+    },
+    {
+      "quartile": 2,
+      "label": "Lower middle",
+      "accounts": 906,
+      "events": 13,
+      "rate": 1.434878587196468,
+      "interval": [
+        0.8404342927868812,
+        2.4394333237301042
+      ],
+      "median_inflow": 7428.2325,
+      "median_spending": 6273.165,
+      "median_balance": 16880.005416666667,
+      "prior_rate": 0.0
+    },
+    {
+      "quartile": 3,
+      "label": "Upper middle",
+      "accounts": 901,
+      "events": 15,
+      "rate": 1.664816870144284,
+      "interval": [
+        1.0114485666050814,
+        2.728609361766028
+      ],
+      "median_inflow": 8189.6,
+      "median_spending": 7222.005,
+      "median_balance": 18918.17583333333,
+      "prior_rate": 0.0
+    },
+    {
+      "quartile": 4,
+      "label": "Highest",
+      "accounts": 854,
+      "events": 74,
+      "rate": 8.665105386416862,
+      "interval": [
+        6.9585346158966495,
+        10.741889331834493
+      ],
+      "median_inflow": 3569.455,
+      "median_spending": 5518.6675,
+      "median_balance": 20627.721666666665,
+      "prior_rate": 0.0
+    }
+  ],
+  "confounder_strata": {
+    "inflow": [
+      {
+        "stratum": 1,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 305,
+            "events": 1,
+            "rate": 0.32786885245901637,
+            "interval": [
+              0.05789887839208578,
+              1.833556158753169
+            ],
+            "median_inflow": 2197.1949999999997,
+            "median_spending": 1372.19,
+            "median_balance": 8626.762499999999,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 137,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              0.0,
+              2.727603208143049
+            ],
+            "median_inflow": 2666.4049999999997,
+            "median_spending": 1352.68,
+            "median_balance": 8267.934166666668,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 55,
+            "events": 1,
+            "rate": 1.8181818181818181,
+            "interval": [
+              0.32166975922527863,
+              9.606000460483225
+            ],
+            "median_inflow": 2841.13,
+            "median_spending": 1774.92,
+            "median_balance": 13595.428333333331,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 418,
+            "events": 25,
+            "rate": 5.980861244019139,
+            "interval": [
+              4.08356845142487,
+              8.679895370066419
+            ],
+            "median_inflow": 1331.8674999999998,
+            "median_spending": 1406.17,
+            "median_balance": 15035.9225,
+            "prior_rate": 0.7177033492822966
+          }
+        ]
+      },
+      {
+        "stratum": 2,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 208,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              0.0,
+              1.8134304121570082
+            ],
+            "median_inflow": 4001.685,
+            "median_spending": 2382.7975,
+            "median_balance": 14029.17625,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 304,
+            "events": 2,
+            "rate": 0.6578947368421053,
+            "interval": [
+              0.18060048117778826,
+              2.366683576597379
+            ],
+            "median_inflow": 4017.62,
+            "median_spending": 2211.54,
+            "median_balance": 12385.049166666664,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 323,
+            "events": 9,
+            "rate": 2.7863777089783284,
+            "interval": [
+              1.4726970288679937,
+              5.209928438636754
+            ],
+            "median_inflow": 5017.55,
+            "median_spending": 4015.755,
+            "median_balance": 14982.160000000002,
+            "prior_rate": 0.6191950464396285
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 80,
+            "events": 13,
+            "rate": 16.25,
+            "interval": [
+              9.749727334375493,
+              25.84310486348333
+            ],
+            "median_inflow": 5094.8525,
+            "median_spending": 5967.950000000001,
+            "median_balance": 19490.334583333333,
+            "prior_rate": 18.75
+          }
+        ]
+      },
+      {
+        "stratum": 3,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 238,
+            "events": 5,
+            "rate": 2.100840336134454,
+            "interval": [
+              0.9005985705189141,
+              4.822817086671577
+            ],
+            "median_inflow": 10117.305,
+            "median_spending": 9400.1025,
+            "median_balance": 24037.305,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 306,
+            "events": 14,
+            "rate": 4.57516339869281,
+            "interval": [
+              2.7445777951219568,
+              7.532157155898177
+            ],
+            "median_inflow": 10607.56,
+            "median_spending": 9290.89,
+            "median_balance": 20274.81166666667,
+            "prior_rate": 2.287581699346405
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 280,
+            "events": 7,
+            "rate": 2.5,
+            "interval": [
+              1.2161513281489333,
+              5.0696080531397865
+            ],
+            "median_inflow": 9562.025,
+            "median_spending": 8558.4525,
+            "median_balance": 20167.939583333333,
+            "prior_rate": 1.4285714285714286
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 91,
+            "events": 17,
+            "rate": 18.681318681318682,
+            "interval": [
+              12.003656211187943,
+              27.896134597908485
+            ],
+            "median_inflow": 10001.465,
+            "median_spending": 9583.785,
+            "median_balance": 23219.014166666664,
+            "prior_rate": 17.582417582417584
+          }
+        ]
+      },
+      {
+        "stratum": 4,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 164,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              0.0,
+              2.2888247013851153
+            ],
+            "median_inflow": 15414.125,
+            "median_spending": 14424.3525,
+            "median_balance": 33407.122083333335,
+            "prior_rate": 0.6097560975609756
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 168,
+            "events": 4,
+            "rate": 2.380952380952381,
+            "interval": [
+              0.9296969097757676,
+              5.961300380752253
+            ],
+            "median_inflow": 14808.2025,
+            "median_spending": 13391.84,
+            "median_balance": 25304.161249999997,
+            "prior_rate": 1.1904761904761905
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 257,
+            "events": 2,
+            "rate": 0.7782101167315175,
+            "interval": [
+              0.21366887793855555,
+              2.7926000607583394
+            ],
+            "median_inflow": 17112.75,
+            "median_spending": 16340.01,
+            "median_balance": 26960.33,
+            "prior_rate": 3.11284046692607
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 326,
+            "events": 44,
+            "rate": 13.496932515337424,
+            "interval": [
+              10.210110342479759,
+              17.63404272978281
+            ],
+            "median_inflow": 24013.370000000003,
+            "median_spending": 19251.135,
+            "median_balance": 29157.597499999996,
+            "prior_rate": 8.282208588957054
+          }
+        ]
+      }
+    ],
+    "spending": [
+      {
+        "stratum": 1,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 332,
+            "events": 1,
+            "rate": 0.30120481927710846,
+            "interval": [
+              0.05318848031911176,
+              1.6862029470680853
+            ],
+            "median_inflow": 2221.8875,
+            "median_spending": 1364.3249999999998,
+            "median_balance": 8910.80875,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 227,
+            "events": 1,
+            "rate": 0.44052863436123346,
+            "interval": [
+              0.0778044920221474,
+              2.452761922350305
+            ],
+            "median_inflow": 3162.015,
+            "median_spending": 1376.59,
+            "median_balance": 10452.386666666667,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 51,
+            "events": 1,
+            "rate": 1.9607843137254901,
+            "interval": [
+              0.3469603253442241,
+              10.304807675589373
+            ],
+            "median_inflow": 3115.205,
+            "median_spending": 1664.1750000000002,
+            "median_balance": 14538.053333333335,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 305,
+            "events": 13,
+            "rate": 4.262295081967213,
+            "interval": [
+              2.507542735757946,
+              7.154886159831247
+            ],
+            "median_inflow": 1324.33,
+            "median_spending": 402.485,
+            "median_balance": 14317.5375,
+            "prior_rate": 0.9836065573770493
+          }
+        ]
+      },
+      {
+        "stratum": 2,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 190,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              0.0,
+              1.9818243349208835
+            ],
+            "median_inflow": 4089.2974999999997,
+            "median_spending": 2595.1775,
+            "median_balance": 14192.307916666667,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 229,
+            "events": 3,
+            "rate": 1.3100436681222707,
+            "interval": [
+              0.44650706710715576,
+              3.780229048775917
+            ],
+            "median_inflow": 4192.514999999999,
+            "median_spending": 2631.3599999999997,
+            "median_balance": 12654.463333333333,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 344,
+            "events": 11,
+            "rate": 3.197674418604651,
+            "interval": [
+              1.7947221963115343,
+              5.634406464550192
+            ],
+            "median_inflow": 5078.112499999999,
+            "median_spending": 4021.225,
+            "median_balance": 15126.742083333334,
+            "prior_rate": 1.1627906976744187
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 152,
+            "events": 13,
+            "rate": 8.552631578947368,
+            "interval": [
+              5.066171366254057,
+              14.08250267200017
+            ],
+            "median_inflow": 2147.6675,
+            "median_spending": 3271.7675,
+            "median_balance": 18070.604583333334,
+            "prior_rate": 5.263157894736842
+          }
+        ]
+      },
+      {
+        "stratum": 3,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 211,
+            "events": 5,
+            "rate": 2.3696682464454977,
+            "interval": [
+              1.0163156550114585,
+              5.42638445520928
+            ],
+            "median_inflow": 9992.525000000001,
+            "median_spending": 9223.400000000001,
+            "median_balance": 23926.75333333333,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 295,
+            "events": 13,
+            "rate": 4.406779661016949,
+            "interval": [
+              2.5931343517053267,
+              7.3926239898374835
+            ],
+            "median_inflow": 10732.3,
+            "median_spending": 9423.19,
+            "median_balance": 20468.255833333336,
+            "prior_rate": 2.3728813559322033
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 268,
+            "events": 5,
+            "rate": 1.8656716417910448,
+            "interval": [
+              0.7994590515313791,
+              4.29232969603338
+            ],
+            "median_inflow": 9758.279999999999,
+            "median_spending": 8742.26,
+            "median_balance": 20353.345833333333,
+            "prior_rate": 0.7462686567164178
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 141,
+            "events": 31,
+            "rate": 21.98581560283688,
+            "interval": [
+              15.943251615033457,
+              29.51440695819413
+            ],
+            "median_inflow": 8759.595,
+            "median_spending": 9187.34,
+            "median_balance": 22267.227499999997,
+            "prior_rate": 17.73049645390071
+          }
+        ]
+      },
+      {
+        "stratum": 4,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 182,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              0.0,
+              2.0671367444102935
+            ],
+            "median_inflow": 14943.1,
+            "median_spending": 14155.869999999999,
+            "median_balance": 32617.616250000003,
+            "prior_rate": 0.5494505494505495
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 164,
+            "events": 3,
+            "rate": 1.829268292682927,
+            "interval": [
+              0.6240234140782165,
+              5.239600383597686
+            ],
+            "median_inflow": 14724.825,
+            "median_spending": 13450.62,
+            "median_balance": 24962.402083333334,
+            "prior_rate": 1.2195121951219512
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 252,
+            "events": 2,
+            "rate": 0.7936507936507936,
+            "interval": [
+              0.2179136157687991,
+              2.8471078662732143
+            ],
+            "median_inflow": 18390.5125,
+            "median_spending": 16502.07,
+            "median_balance": 26984.525,
+            "prior_rate": 3.1746031746031744
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 317,
+            "events": 42,
+            "rate": 13.249211356466876,
+            "interval": [
+              9.953509256319954,
+              17.42498530298906
+            ],
+            "median_inflow": 24071.495000000003,
+            "median_spending": 19373.345,
+            "median_balance": 29471.424999999992,
+            "prior_rate": 7.886435331230284
+          }
+        ]
+      }
+    ],
+    "balance": [
+      {
+        "stratum": 1,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 384,
+            "events": 1,
+            "rate": 0.2604166666666667,
+            "interval": [
+              0.04598355377351485,
+              1.4601983514166452
+            ],
+            "median_inflow": 2648.4399999999996,
+            "median_spending": 1432.2849999999999,
+            "median_balance": 9135.95375,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 332,
+            "events": 4,
+            "rate": 1.2048192771084338,
+            "interval": [
+              0.46949336871311975,
+              3.0564545781761288
+            ],
+            "median_inflow": 3395.695,
+            "median_spending": 1769.4125000000001,
+            "median_balance": 10744.9175,
+            "prior_rate": 0.9036144578313252
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 77,
+            "events": 3,
+            "rate": 3.896103896103896,
+            "interval": [
+              1.3337708283515264,
+              10.840159425379229
+            ],
+            "median_inflow": 4056.06,
+            "median_spending": 2886.6549999999997,
+            "median_balance": 12240.598333333335,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 122,
+            "events": 8,
+            "rate": 6.557377049180328,
+            "interval": [
+              3.359846614270725,
+              12.407276499230694
+            ],
+            "median_inflow": 1379.33,
+            "median_spending": 383.005,
+            "median_balance": 11942.712916666665,
+            "prior_rate": 5.737704918032787
+          }
+        ]
+      },
+      {
+        "stratum": 2,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 125,
+            "events": 1,
+            "rate": 0.8,
+            "interval": [
+              0.1413558719898667,
+              4.392583476791893
+            ],
+            "median_inflow": 4220.455,
+            "median_spending": 2584.785,
+            "median_balance": 15283.394999999999,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 177,
+            "events": 5,
+            "rate": 2.824858757062147,
+            "interval": [
+              1.212500832291968,
+              6.441490284796135
+            ],
+            "median_inflow": 6177.17,
+            "median_spending": 5443.5650000000005,
+            "median_balance": 15811.219166666664,
+            "prior_rate": 1.1299435028248588
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 355,
+            "events": 12,
+            "rate": 3.380281690140845,
+            "interval": [
+              1.9440303800202758,
+              5.814713310789263
+            ],
+            "median_inflow": 5397.85,
+            "median_spending": 4400.99,
+            "median_balance": 15593.179999999998,
+            "prior_rate": 0.8450704225352111
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 258,
+            "events": 21,
+            "rate": 8.13953488372093,
+            "interval": [
+              5.385149248302709,
+              12.122229258397526
+            ],
+            "median_inflow": 1918.2175,
+            "median_spending": 1432.5974999999999,
+            "median_balance": 15425.500833333334,
+            "prior_rate": 5.426356589147287
+          }
+        ]
+      },
+      {
+        "stratum": 3,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 144,
+            "events": 2,
+            "rate": 1.3888888888888888,
+            "interval": [
+              0.3817054691554883,
+              4.922349681762791
+            ],
+            "median_inflow": 8909.5975,
+            "median_spending": 8062.59,
+            "median_balance": 22026.687083333334,
+            "prior_rate": 0.0
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 288,
+            "events": 10,
+            "rate": 3.4722222222222223,
+            "interval": [
+              1.8967607724656184,
+              6.272602334096298
+            ],
+            "median_inflow": 11347.5,
+            "median_spending": 10230.4275,
+            "median_balance": 21096.168333333335,
+            "prior_rate": 1.0416666666666665
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 266,
+            "events": 3,
+            "rate": 1.1278195488721805,
+            "interval": [
+              0.38428086347855156,
+              3.262895850564057
+            ],
+            "median_inflow": 10804.0275,
+            "median_spending": 9509.09,
+            "median_balance": 21250.336666666666,
+            "prior_rate": 3.007518796992481
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 217,
+            "events": 39,
+            "rate": 17.972350230414747,
+            "interval": [
+              13.434872874903641,
+              23.624087031201007
+            ],
+            "median_inflow": 6324.165,
+            "median_spending": 8054.655,
+            "median_balance": 21466.77916666667,
+            "prior_rate": 12.442396313364055
+          }
+        ]
+      },
+      {
+        "stratum": 4,
+        "groups": [
+          {
+            "quartile": 1,
+            "label": "Lowest",
+            "accounts": 262,
+            "events": 2,
+            "rate": 0.7633587786259542,
+            "interval": [
+              0.20958634717221838,
+              2.7401401064753674
+            ],
+            "median_inflow": 13826.6525,
+            "median_spending": 12972.1525,
+            "median_balance": 31370.25125,
+            "prior_rate": 0.38167938931297707
+          },
+          {
+            "quartile": 2,
+            "label": "Lower middle",
+            "accounts": 118,
+            "events": 1,
+            "rate": 0.847457627118644,
+            "interval": [
+              0.14975019757751395,
+              4.644671412119009
+            ],
+            "median_inflow": 14836.3975,
+            "median_spending": 13030.6425,
+            "median_balance": 27518.600416666668,
+            "prior_rate": 0.847457627118644
+          },
+          {
+            "quartile": 3,
+            "label": "Upper middle",
+            "accounts": 217,
+            "events": 1,
+            "rate": 0.4608294930875576,
+            "interval": [
+              0.08139199742202269,
+              2.56376181417869
+            ],
+            "median_inflow": 19089.535,
+            "median_spending": 16340.01,
+            "median_balance": 28626.986666666668,
+            "prior_rate": 1.3824884792626728
+          },
+          {
+            "quartile": 4,
+            "label": "Highest",
+            "accounts": 318,
+            "events": 31,
+            "rate": 9.748427672955975,
+            "interval": [
+              6.952828747109928,
+              13.50493681209684
+            ],
+            "median_inflow": 23635.57,
+            "median_spending": 19212.78,
+            "median_balance": 29786.06208333333,
+            "prior_rate": 4.088050314465408
+          }
+        ]
+      }
+    ]
+  },
+  "deciles": [
+    {
+      "decile": 1,
+      "accounts": 450,
+      "median_runway": 32.437415034392366,
+      "median_inflow": 1579.53
+    },
+    {
+      "decile": 2,
+      "accounts": 450,
+      "median_runway": 25.184085316286616,
+      "median_inflow": 2450.44
+    },
+    {
+      "decile": 3,
+      "accounts": 450,
+      "median_runway": 18.795511486653965,
+      "median_inflow": 3378.8050000000003
+    },
+    {
+      "decile": 4,
+      "accounts": 450,
+      "median_runway": 14.50709714215117,
+      "median_inflow": 4223.7225
+    },
+    {
+      "decile": 5,
+      "accounts": 450,
+      "median_runway": 6.9289258570350345,
+      "median_inflow": 6421.245
+    },
+    {
+      "decile": 6,
+      "accounts": 450,
+      "median_runway": 5.90570468555862,
+      "median_inflow": 8804.349999999999
+    },
+    {
+      "decile": 7,
+      "accounts": 450,
+      "median_runway": 5.715145143502896,
+      "median_inflow": 11101.407500000001
+    },
+    {
+      "decile": 8,
+      "accounts": 450,
+      "median_runway": 5.033638216389706,
+      "median_inflow": 13281.095000000001
+    },
+    {
+      "decile": 9,
+      "accounts": 450,
+      "median_runway": 4.569692436722988,
+      "median_inflow": 15641.794999999998
+    },
+    {
+      "decile": 10,
+      "accounts": 450,
+      "median_runway": 3.9117109968043806,
+      "median_inflow": 25473.5375
+    }
+  ],
+  "deciles_active_history": [
+    {
+      "decile": 1,
+      "accounts": 294,
+      "median_runway": 27.077363012323953,
+      "median_inflow": 1868.9475
+    },
+    {
+      "decile": 2,
+      "accounts": 369,
+      "median_runway": 24.97448236921004,
+      "median_inflow": 2448.62
+    },
+    {
+      "decile": 3,
+      "accounts": 361,
+      "median_runway": 18.153200862347312,
+      "median_inflow": 3386.35
+    },
+    {
+      "decile": 4,
+      "accounts": 367,
+      "median_runway": 13.841522978890515,
+      "median_inflow": 4221.02
+    },
+    {
+      "decile": 5,
+      "accounts": 370,
+      "median_runway": 6.899339499147233,
+      "median_inflow": 6409.05
+    },
+    {
+      "decile": 6,
+      "accounts": 366,
+      "median_runway": 5.993130473798308,
+      "median_inflow": 8772.0075
+    },
+    {
+      "decile": 7,
+      "accounts": 362,
+      "median_runway": 5.625729247990166,
+      "median_inflow": 11130.307499999999
+    },
+    {
+      "decile": 8,
+      "accounts": 370,
+      "median_runway": 5.0234533404513275,
+      "median_inflow": 13259.855
+    },
+    {
+      "decile": 9,
+      "accounts": 375,
+      "median_runway": 4.583335675618208,
+      "median_inflow": 15621.125
+    },
+    {
+      "decile": 10,
+      "accounts": 370,
+      "median_runway": 3.8560253567510063,
+      "median_inflow": 25283.88
+    }
+  ],
+  "method": "First 12 chronological months: sample standard deviation / mean incoming funds. Quartiles use these values only. Outcome: any negative-balance days in months 13\u201324. One observation per account.",
+  "shock": "55% of typical inflow retained, household bills +15%, no upfront expense. Official runway capped at 120; no-shortfall accounts coded as 120 for quantiles.",
+  "limitations": [
+    "Association, not causation; incoming funds are not verified wages.",
+    "Only 6 events in the lowest-volatility group; uncertainty intervals matter.",
+    "Prior negative balances, initial funding, spending, account age and calendar periods may confound the association.",
+    "Stratified sensitivity checks are descriptive, not a causal or fully adjusted model.",
+    "Historical Czech banking records adapted by the organizers to CAD; no military, veteran or athlete labels."
+  ],
+  "source": "Tangerine-provided PKDD'99 Financial dataset; all supplied money values are CAD."
+}

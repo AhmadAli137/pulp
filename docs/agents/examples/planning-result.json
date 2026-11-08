@@ -1,0 +1,85 @@
+{
+  "schema_version": "pulp.planning.v1",
+  "run_id": "synthetic-run-001",
+  "request_id": "synthetic-request-001",
+  "input_fingerprint": "synthetic-fingerprint-not-a-production-hash",
+  "status": "complete",
+  "review_status": {"advocate": "complete", "challenger": "complete"},
+  "baseline_scenario_id": "baseline",
+  "evidence": [
+    {
+      "evidence_id": "ev-official",
+      "scenario_id": "baseline",
+      "kind": "official_shock",
+      "tool_name": "calculate_official_shock",
+      "input_fingerprint": "synthetic-fingerprint-not-a-production-hash",
+      "engine_version": "synthetic-contract-fixture-v1",
+      "units": {"income_after_cad": "CAD/month", "spending_after_cad": "CAD/month", "monthly_gap_cad": "CAD/month", "buffer_after_expense_cad": "CAD", "runway_months": "months"},
+      "values": {"income_after_cad": "3500.00", "spending_after_cad": "3500.00", "monthly_gap_cad": "0.00", "buffer_after_expense_cad": "9100.00", "runway_months": null, "no_shortfall": true, "runway_capped": false, "survives_shock_duration": true},
+      "limitations": ["Synthetic arithmetic fixture: I=5000, S=3500, B=10000, retained fraction=0.7, bills change=0, one-off=900, shock duration=3. Not a dataset account result.", "Constant-flow official calculation; distinct from the six-month recovery projection."]
+    },
+    {
+      "evidence_id": "ev-projection",
+      "scenario_id": "baseline",
+      "kind": "deterministic_projection",
+      "tool_name": "project_approved_scenario",
+      "input_fingerprint": "synthetic-fingerprint-not-a-production-hash",
+      "engine_version": "synthetic-contract-fixture-v1",
+      "units": {"balances_cad": "CAD", "projection_horizon_months": "months"},
+      "values": {"projection_horizon_months": 6, "shock_start_month": 0, "shock_duration_months": 3, "balances_cad": ["10000.00", "9100.00", "9100.00", "9100.00", "10600.00", "12100.00", "13600.00"], "initial_funding_gap_cad": "0.00"},
+      "limitations": ["Synthetic fixed-flow projection, not Monte Carlo and not a forecast. Cost occurs before first interval cash flow."]
+    },
+    {
+      "evidence_id": "ev-context",
+      "scenario_id": "baseline",
+      "kind": "confirmed_context",
+      "tool_name": "read_snapshot",
+      "input_fingerprint": "synthetic-fingerprint-not-a-production-hash",
+      "engine_version": "synthetic-contract-fixture-v1",
+      "units": {"flexible_spending_cad": "CAD/month"},
+      "values": {"context_version": 4, "item_id": "synthetic-constraint-1", "flexible_spending_cad": "100.00", "essential_expenses_protected": true},
+      "limitations": ["Synthetic confirmed constraint used only to test a reviewer-induced revision."]
+    },
+    {
+      "evidence_id": "ev-alternative",
+      "scenario_id": "alternative-large-expense",
+      "kind": "official_shock",
+      "tool_name": "evaluate_alternative",
+      "input_fingerprint": "synthetic-fingerprint-not-a-production-hash",
+      "engine_version": "synthetic-contract-fixture-v1",
+      "units": {"one_off_cost_cad": "CAD", "buffer_after_expense_cad": "CAD", "immediate_funding_gap_cad": "CAD", "runway_months": "months"},
+      "values": {"one_off_cost_cad": "12000.00", "buffer_after_expense_cad": "-2000.00", "immediate_funding_gap_cad": "2000.00", "runway_months": 0.0},
+      "limitations": ["Synthetic counterfactual only: expense changed to 12000, all other inputs held constant. Does not replace the approved 900 expense."]
+    }
+  ],
+  "metrics": [
+    {"label": "Monthly gap during the approved shock", "evidence_id": "ev-official", "value_pointer": "/values/monthly_gap_cad", "unit": "CAD/month", "display_value": "$0/month"},
+    {"label": "Buffer after the approved expense", "evidence_id": "ev-official", "value_pointer": "/values/buffer_after_expense_cad", "unit": "CAD", "display_value": "$9,100"}
+  ],
+  "actions": [
+    {"action_id": "a1", "kind": "review_expenses", "label": "Review optional spending within the confirmed limit; protect essential expenses.", "feasibility": "conditional", "evidence_refs": ["ev-context", "ev-official"]},
+    {"action_id": "a2", "kind": "monitor_trigger", "label": "Recalculate before accepting a larger repair quote; a large upfront expense can create an immediate funding gap.", "feasibility": "informational", "evidence_refs": ["ev-alternative"]}
+  ],
+  "findings": [
+    {"finding_id": "f1", "severity": "blocking", "issue_code": "essential_expense_conflict", "action_id": "a1", "description": "The draft assumed a spending reduction above the confirmed flexible amount.", "evidence_refs": ["ev-context"], "requested_change": "Remove the unsupported reduction and preserve essential expenses.", "question": null},
+    {"finding_id": "f2", "severity": "material", "issue_code": "insufficient_buffer", "action_id": null, "description": "The larger-expense counterfactual creates an immediate funding gap.", "evidence_refs": ["ev-alternative"], "requested_change": "Add a repair-cost-change trigger and keep this alternative separate from the approved scenario.", "question": null}
+  ],
+  "resolutions": [
+    {"finding_id": "f1", "status": "addressed", "action_ids": ["a1"], "evidence_refs": ["ev-context", "ev-official"], "explanation": "Removed the unsupported spending commitment; the baseline does not require that assumed cut."},
+    {"finding_id": "f2", "status": "addressed", "action_ids": ["a2"], "evidence_refs": ["ev-alternative"], "explanation": "Added a contingency trigger without changing the approved baseline."}
+  ],
+  "changes": [
+    {"action_id": "a1", "operation": "replace", "before": "Commit to the draft's unverified spending cut.", "after": "Review optional spending within the confirmed limit; protect essential expenses.", "finding_ids": ["f1"]},
+    {"action_id": "a2", "operation": "add", "before": null, "after": "Recalculate if the repair quote changes.", "finding_ids": ["f2"]}
+  ],
+  "questions": [],
+  "assumptions": ["Income returns to the synthetic typical value after the three affected intervals.", "The approved bill change is zero. No goal contribution or extra income is assumed."],
+  "limitations": ["EXAMPLE ONLY: fabricated account identifier and arithmetic fixture. Never submit these receipts or fingerprints to production.", "This is not live account evidence or a measured agent run."],
+  "context_proposals": [],
+  "visuals": [
+    {"kind": "balance_timeline", "title": "Approved six-month scenario", "evidence_ids": ["ev-projection"]},
+    {"kind": "review_changes", "title": "What changed after review", "evidence_ids": ["ev-context", "ev-alternative"]}
+  ],
+  "spoken_summary": "In this synthetic example, the approved scenario has no monthly shortfall. The review removed an unsupported spending commitment and added a repair-cost contingency. Nothing has been saved or applied.",
+  "acceptance": {"eligible": false, "reasons": ["synthetic_fixture_not_a_live_run"]}
+}

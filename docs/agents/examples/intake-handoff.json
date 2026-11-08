@@ -1,0 +1,19 @@
+{
+  "schema_version": "pulp.planning.v1",
+  "handoff_id": "synthetic-handoff-001",
+  "session_id": "synthetic-session-001",
+  "account_id": 900000001,
+  "channel": "voice",
+  "utterance_summary": "SYNTHETIC FIXTURE ONLY. Model 70% retained income for three months starting now, unchanged bills, a CAD 900 repair, and a six-month projection.",
+  "scenario_candidates": {
+    "income_fraction": {"value": 0.7, "source": "user_stated", "source_ref": "fixture-turn-1"},
+    "bills_increase": {"value": 0.0, "source": "user_stated", "source_ref": "fixture-turn-2"},
+    "one_off_cost_cad": {"value": "900.00", "source": "user_stated", "source_ref": "fixture-turn-1"},
+    "shock_start_month": {"value": 0, "source": "user_stated", "source_ref": "fixture-turn-2"},
+    "shock_duration_months": {"value": 3, "source": "user_stated", "source_ref": "fixture-turn-1"},
+    "projection_horizon_months": {"value": 6, "source": "user_stated", "source_ref": "fixture-turn-2"}
+  },
+  "context_proposals": [],
+  "clarifications": [],
+  "scenario_approval_receipt_id": "synthetic-receipt-not-valid-in-production"
+}
