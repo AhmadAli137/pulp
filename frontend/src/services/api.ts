@@ -292,6 +292,18 @@ export interface PersonaGoal {
   id: string; label: string; type: string; size: GoalSize; horizon: GoalHorizon
   target_amount: number; target_months: number; importance: number; weight: number
   why: string; evidence: string; source: 'persona' | 'conversation' | 'user'
+  /** Tied to a specific signal in this account's records (a loan's end date, a lease, overdraft interest), not a general goal. */
+  personal?: boolean
+}
+export type GoalLens = 'balanced' | 'safety' | 'ambitious' | 'life' | 'habits'
+/** A personal goal idea from the records, ranked through a lens. Amounts are code-set from the account's own figures. */
+export interface GoalIdea extends Omit<PersonaGoal, 'weight'> {
+  key: string; family: 'safety' | 'growth' | 'life' | 'habit'; relevance: number; signal: string; lens_score: number; in_profile: boolean; picked_by?: 'model'
+}
+export interface GoalIdeasResult {
+  account_id: number; lens: GoalLens; lenses: Record<GoalLens, string>; ideas: GoalIdea[]
+  /** With use_ai: the Persona Builder model's 3-5 picks (reworded; amounts unchanged) and a note on how it personalised. */
+  model: { picks: GoalIdea[]; note: string; model: string } | null
 }
 /** Stage 1 Persona Builder: a realistic but fictional life for an anonymized account, consistent with its records. */
 export interface LifePersona {
@@ -454,6 +466,8 @@ export const api = {
   shockDealer: (body: { account_id?: number | null; slot: number; scenario?: string; exclude_character?: string | null; exclude_scenario?: string | null; use_ai?: boolean; pool?: 'personal' | 'deck' }) => post<ShockDeal>('/api/agent/shock-dealer', body),
   characters: () => get<{ characters: (DealCharacter & { fits: string[] })[] }>('/api/agent/characters'),
   discovery: (accountId: number) => get<DiscoveryResult>(`/api/customers/${accountId}/discovery`),
+  goalIdeas: (accountId: number, lens: GoalLens = 'balanced', useAi = false) => get<GoalIdeasResult>(`/api/profile/${accountId}/goal-ideas?lens=${lens}&use_ai=${useAi}`),
+  addGoalIdea: (accountId: number, ideaId: string, lens: GoalLens = 'balanced') => post<ProfileDoc>(`/api/profile/${accountId}/goals`, { idea_id: ideaId, lens }),
   demographics: (accountId: number) => get<Demographics>(`/api/insights/demographics/${accountId}`),
   lifePlans: (body: { account_id: number; income_fraction?: number; bills_increase?: number; one_off_cost?: number; shock_duration?: number; use_ai?: boolean; mode?: 'shock' | 'long_term'; shock_starts_in?: number; horizon_months?: number; trigger?: string }) => post<LifePlanResult>('/api/agent/life-plans', body),
   agentTrace: (id: number) => get<AgentTrace>(`/api/agents/trace/${id}`),

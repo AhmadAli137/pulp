@@ -43,6 +43,35 @@ const turnLabel = (m: string) => m === 'decision:small' ? 'An everyday decision'
 const userText = (m: string) => m === 'decision:small' ? 'Help me with an everyday decision.' : m === 'decision:big' ? 'Help me with a bigger life decision.' : m === '__intro__' ? 'What should I know about my money?' : m === 'twist:cards' ? 'Show me the twist cards.' : m === 'twist:random' ? 'Shuffle a twist' : twistKey(m) ? 'Tell me about this card' : m
 let seq = 0
 const nid = (p: string) => `${p}-${++seq}`
+
+/* The whole thread, visuals included, is kept per account in this browser so scrolling back (or reloading) still shows
+   every figure. Plan results are trimmed (no candidate list or trace) to stay small. Cleared on sign-out. */
+const THREAD_KEY = (id: number) => `pulp.thread.${id}`
+const THREAD_MAX = 60
+function slimMsg(m: Msg): Msg {
+  if (m.kind !== 'plans') return m
+  const r = m.result
+  return { ...m, result: { ...r, trace: [], search: r.search ? { ...r.search, candidates: [] } : r.search } }
+}
+function saveThread(id: number, thread: Msg[]) {
+  try {
+    let items = thread.slice(-THREAD_MAX).map(slimMsg)
+    let json = JSON.stringify(items)
+    while (json.length > 1_500_000 && items.length > 10) { items = items.slice(Math.ceil(items.length / 4)); json = JSON.stringify(items) }
+    localStorage.setItem(THREAD_KEY(id), json)
+  } catch { /* storage full or blocked: the live thread still works */ }
+}
+function loadThread(id: number): Msg[] | null {
+  try {
+    const raw = localStorage.getItem(THREAD_KEY(id))
+    const items = raw ? (JSON.parse(raw) as Msg[]) : null
+    if (!items?.length) return null
+    return items.map((m) => ({ ...m, id: nid('s'), ...(m.kind === 'walkthrough' ? { autoplay: false } : {}) }))
+  } catch { return null }
+}
+export function clearSavedThreads() {
+  try { Object.keys(localStorage).filter((k) => k.startsWith('pulp.thread.')).forEach((k) => localStorage.removeItem(k)) } catch { /* ignore */ }
+}
 const feed = () => useAgentFeed.getState()
 
 export default function PulpPanel() {
@@ -262,15 +291,23 @@ export default function PulpPanel() {
     interacted.current = false
     setBusy(false); setStatus(null); setNotice(null); setPopout(null); setUndone(new Set())
     feed().reset()
-    setThread(id ? [{ id: nid('g'), kind: 'pulp', text: GREETING }] : [])
+    const saved = id ? loadThread(id) : null
+    setThread(saved ?? (id ? [{ id: nid('g'), kind: 'pulp', text: GREETING }] : []))
     let cancelled = false
-    if (id) api.context(id).then(({ context }) => {
+    if (id && !saved) api.context(id).then(({ context }) => {
       if (cancelled || interacted.current) return
       const history = context.conversation.slice(-16).map((m) => ({ id: nid('h'), kind: m.role === 'user' ? 'user' as const : 'pulp' as const, text: m.role === 'user' ? userText(m.text) : m.text }))
       if (history.length) setThread(history)
     }).catch(() => undefined)
     return () => { cancelled = true; endVoice(); source.current?.close(); source.current = null }
   }, [id, endVoice])
+
+  /* ---- keep the thread, visuals included, so history survives scrolling, closing and reloading */
+  useEffect(() => {
+    if (!id || !thread.length) return
+    const t = window.setTimeout(() => saveThread(id, thread), 400)
+    return () => window.clearTimeout(t)
+  }, [id, thread])
 
   /* ---- opening: focus the input, run a seeded message from a page, Escape closes (a pop-out first) */
   useEffect(() => {

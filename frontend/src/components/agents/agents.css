@@ -162,3 +162,7 @@
 .relay-packet.technical.still rect{fill:#54645a}
 .agents-press{margin:-4px 0 0;font-size:13.5px;color:#9c4f30;font-weight:650;display:flex;align-items:center;gap:8px}
 .agents-press svg{flex:none}
+
+/* The left column is narrower than the shared expanded-visual minimum (650px): fit the figure to the column instead of cropping it. */
+.visual-pane .visual-pane-canvas.expanded-visual>.stage-svg{min-width:0;width:100%;height:auto;aspect-ratio:1000/560}
+.visual-pane .visual-pane-canvas.expanded-visual{overflow-x:hidden}

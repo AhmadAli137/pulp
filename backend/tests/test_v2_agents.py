@@ -259,3 +259,62 @@ def test_intro_leads_with_the_discovery():
     board = [d for k, d in ev if k == "storyboard"][-1]
     assert board["beats"][0]["caption"].startswith("The biggest thing I found")
     assert any(k == "trace" and d.get("title", "").startswith("Biggest discovery") for k, d in ev)
+
+
+# ----------------------------------------------------------------------------- personal goals
+def test_persona_goals_are_personal_and_tied_to_records():
+    from app.services.persona import get_persona
+    p = get_persona(BORROWER, refine=False)
+    labels = " | ".join(g["label"] for g in p["goals"])
+    assert "loan-free" in labels and sum(1 for g in p["goals"] if g.get("personal")) >= 3
+    assert all(g["evidence"] for g in p["goals"])
+
+
+def test_goal_ideas_change_with_the_lens_and_can_be_added():
+    bal = client.get(f"/api/profile/{BORROWER}/goal-ideas?lens=balanced").json()["ideas"]
+    hab = client.get(f"/api/profile/{BORROWER}/goal-ideas?lens=habits").json()["ideas"]
+    assert bal and hab and bal[0]["id"] != hab[0]["id"]
+    assert hab[0]["family"] == "habit"
+    client.get(f"/api/profile/{BORROWER}")
+    idea = next(i for i in client.get(f"/api/profile/{BORROWER}/goal-ideas").json()["ideas"] if not i["in_profile"])
+    doc = client.post(f"/api/profile/{BORROWER}/goals", json={"idea_id": idea["id"]}).json()
+    assert doc["log"][0]["agent"] == "you" and any(g["label"] == idea["label"] for g in doc["goals"])
+    assert client.post(f"/api/profile/{BORROWER}/goals", json={"idea_id": "nope"}).status_code == 404
+
+
+def test_older_personas_get_personal_goals_once():
+    from app.services.persona import get_persona
+    get_persona(20133, refine=False)
+    ctx = cm.load_context(20133)
+    ctx["persona"]["goals_version"] = 1
+    ctx["goals"] = [x for x in ctx["goals"] if not x["value"].get("personal")]
+    cm.save_context(ctx)
+    p = get_persona(20133, refine=False)
+    assert p["goals_version"] == 2
+    assert any(x["value"].get("personal") for x in cm.load_context(20133)["goals"])
+    n = len(cm.load_context(20133)["profile_log"])
+    get_persona(20133, refine=False)
+    assert len(cm.load_context(20133)["profile_log"]) == n
+
+
+# ----------------------------------------------------------------------------- life fit
+def test_life_fit_rules_out_demanding_plans_for_an_older_shared_rural_household():
+    from app.services.life_planner import run
+    r = run(74916, {"income_fraction": 0.55, "shock_duration": 6}, store=False)
+    fit_events = [e for e in r["trace"] if e["agent"] == "life_fit"]
+    assert fit_events and "Age 58" in fit_events[0]["items"][0]
+    fits = fit_events[1]["data"]["fit"]
+    assert fits["consulting"] > fits["gig_during_6"] and fits["roommate"] < 0.7
+    assert any(s["rule"].startswith("Does not fit this stage of life") and s["removed"] > 0 for s in r["search"]["screens"])
+    for p in r["plans"]:
+        assert all("Fit for you" in x["evidence"] for x in p["reasoning"])
+        assert not any(st["decision"].startswith("gig") for st in p["steps"])
+
+
+def test_life_fit_adds_stage_of_life_options():
+    from app.services.life_planner import run
+    young = {s["decision"] for p in run(47788, mode="long_term", store=False)["plans"] for s in p["steps"]}
+    older = run(20111, {"income_fraction": 0.55, "shock_duration": 6}, store=False)
+    titles = {s["decision"] for p in older["plans"] for s in p["steps"]}
+    assert "cpp_at_60" in titles or "consulting" in titles
+    assert "cpp_at_60" not in young

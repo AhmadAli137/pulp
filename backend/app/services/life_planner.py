@@ -116,11 +116,13 @@ class Step:
     evidence: str = ""
     cut_share: float = 0.0  # share of S cut, for the 25% screen
     needs_job: bool = False  # cannot happen while laid off
+    fit: float = 1.0  # Life Fit Assessor: how well this suits the person's age, body, time and household
+    fit_note: str = ""
 
     def as_dict(self) -> dict:
         return {"month_start": self.month_start, "month_end": self.month_end, "decision": self.decision, "title": self.title,
                 "detail": self.detail, "monthly_effect": round(self.monthly_effect, 2), "one_off": round(self.one_off, 2),
-                "category": self.category}
+                "category": self.category, "fit": self.fit, "fit_note": self.fit_note}
 
 
 @dataclass
@@ -347,6 +349,11 @@ def simulate(a: Account, shock: Shock, goals: list[Goal], steps: list[Step], hor
                     income += s.monthly_effect
                 else:
                     spend -= s.monthly_effect
+            if s.effect == "holiday":
+                if s.month_start <= m <= s.month_end:
+                    spend -= s.monthly_effect
+                elif s.month_end < m <= s.month_end + 12:
+                    spend += s.monthly_effect * (s.month_end - s.month_start + 1) / 12
             if s.month_start == m and s.one_off:
                 spend -= s.one_off
         net = income - spend
@@ -410,11 +417,16 @@ def components(a: Account, shock: Shock, out: dict, steps: list[Step], need: flo
     shortfall = 1.0 - min(1.0, out["shortfall_total"] / max(1.0, need))
     goals = sum(g["weight"] * g["progress"] for g in out["goals"])
     disruption = min(1.0, sum(s.disruption for s in steps))
-    return {"shortfall": round(shortfall, 4), "resilience": round(resilience, 4), "goals": round(goals, 4), "disruption": round(disruption, 4)}
+    fit = (sum(s.fit for s in steps) / len(steps)) if steps else 1.0
+    return {"shortfall": round(shortfall, 4), "resilience": round(resilience, 4), "goals": round(goals, 4), "disruption": round(disruption, 4), "fit": round(fit, 4)}
+
+
+FIT_WEIGHT = 0.15  # how much a poor life fit costs in the objective
 
 
 def weighted(comp: dict, w: dict) -> float:
     return round(w["shortfall"] * comp["shortfall"] + w["resilience"] * comp["resilience"] + w["goals"] * comp["goals"]
+                 - FIT_WEIGHT * (1 - comp.get("fit", 1.0))
                  - w["disruption"] * comp["disruption"], 4)
 
 
@@ -527,6 +539,27 @@ def run(account_id: int, shock_in: dict | None = None, mode: str = "shock", hori
        data={"I": round(a.I), "S": round(a.S), "H": round(a.H), "B": round(a.B), "P": round(a.P), "horizon_months": horizon,
              "weights": w})
     cat = catalog(a, shock, goals, horizon)
+    from .life_fit import assess, capacity, extra_decisions
+    cat += extra_decisions(a, shock, goals, horizon, Step, _m)
+    ev("life_planner", "handoff", f"{len(cat)} decisions to fit-check", to="life_fit", items=sorted({s.title for s in cat})[:14],
+       data={"decisions": len(cat)})
+    try:
+        from .data_store import get_store
+        urban = float(get_store().districts.set_index("district_id").loc[int(a.row.get("district_id")), "urban_ratio_pct"])
+    except Exception:
+        urban = 100.0
+    cap = capacity(a.row, ctx.get("persona"), ctx_text, urban)
+    for st in cat:
+        st.fit, st.fit_note = assess(st, cap)
+        st.disruption = round(st.disruption + (1 - st.fit) * 0.25, 4)
+    poor = sorted([st for st in cat if st.fit < 0.3], key=lambda x: x.fit)
+    weak = sorted([st for st in cat if 0.3 <= st.fit < 0.7], key=lambda x: x.fit)
+    ev("life_fit", "start", "Reading who this plan is for", items=[cap["summary"]],
+       data={k: cap[k] for k in ("age", "physical", "time", "joint", "rural", "pension")})
+    ev("life_fit", "output", f"{len(cat) - len(poor) - len(weak)} decisions fit well, {len(weak)} are harder, {len(poor)} do not fit",
+       items=list(dict.fromkeys(f"{st.title}: {st.fit_note}" for st in poor + weak))[:10],
+       data={"fit": {st.decision: st.fit for st in cat}})
+    ev("life_fit", "handoff", f"{len(poor)} ruled out for this life", to="life_planner", data={"poor": len(poor), "weak": len(weak)})
     combos = generate(cat, seed=account_id)
     ev("life_planner", "tool_call", f"Built {len(cat)} decisions into {len(combos)} candidate plans",
        items=sorted({s.title for s in cat})[:12], data={"decisions": len(cat), "generated": len(combos)})
@@ -539,6 +572,7 @@ def run(account_id: int, shock_in: dict | None = None, mode: str = "shock", hori
         c = Candidate(id=f"c{i:03d}", steps=steps, round=len(steps))
         cands.append(c)
     rules = screens(a, shock, ctx_text)
+    rules.insert(0, ("Does not fit this stage of life (Life Fit Assessor)", lambda st: any(x.fit < 0.3 for x in st)))
     screened: dict[str, int] = {name: 0 for name, _ in rules}
     for c in cands:
         for name, bad in rules:
@@ -654,7 +688,7 @@ def run(account_id: int, shock_in: dict | None = None, mode: str = "shock", hori
         "account_id": account_id,
         "shock": {"label": shock.label, "r": shock.r, "h": shock.h, "one_off": shock.one_off, "duration": shock.duration},
         "horizon_months": horizon, "plan_mode": mode, "shock_starts_in": shock.start, "trigger": trigger,
-        "objective": {"formula": ("score = w_short x gap covered + w_res x cushion + w_goal x sum(goal weight x progress) - w_dis x disruption"),
+        "objective": {"formula": ("score = w_short x gap covered + w_res x cushion + w_goal x sum(goal weight x progress) - w_dis x disruption - 0.15 x (1 - life fit)"),
                       "weights": w, "goal_weights": [{"goal_id": g.id, "label": g.label, "weight": round(g.weight, 4), "horizon": g.horizon,
                                                       "importance": g.importance} for g in goals]},
         "baseline": base_plan, "plans": plans, "cautionary": cautionary, "recommended": tradeoff["id"] if tradeoff else "baseline",
@@ -720,7 +754,8 @@ def _plan_doc(role: str, c: Candidate, runners: list[Candidate], a: Account, sho
         dcash = c.outcome["end_cash"] - out["end_cash"]
         if abs(dcash) >= 1:
             moves.append(f"end cash {'+' if dcash >= 0 else '-'}{_m(abs(dcash))}")
-        reasoning.append({"step": i + 1, "because": s.because, "evidence": s.evidence, "moves": ", ".join(moves) or "small effect on its own"})
+        reasoning.append({"step": i + 1, "because": s.because, "evidence": s.evidence + (f". Fit for you: {s.fit_note}" if s.fit_note else ""),
+                          "moves": ", ".join(moves) or "small effect on its own", "fit": s.fit})
     role_key = {"best_shortfall": "shortfall", "best_resilience": "resilience", "best_goals": "goals",
                 "least_disruption": "disruption"}.get(role)
     if runners:

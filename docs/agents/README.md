@@ -16,6 +16,8 @@
 | 2 | Director | `director.py` | Shared turn orchestration, tools, response/visual selection and grounding checks; detects a current or future shock or a big decision in what you say and starts Stage 3 (`stage3.py`) |
 | 3 | Shock Dealer | `shock_dealer.py` | Optional ADK step that picks a card character and, for the open slot, a scenario from allowed IDs, with a one-line reason; local draw when the model is unavailable, slow or off-list |
 | 3 | Shock Generator | `shocks.py` | Code picks shocks that fit the account and persona, with likelihood and why |
+| 3 | Life Fit Assessor | `life_fit.py` | Code builds a capacity profile (age and physical capacity, time in a shared household, rural or urban, work type) and scores every decision 0-1 with a reason; fits below 0.3 are screened out, the rest cost points in the objective; adds stage-of-life decisions (paid advice, work from home, a partner's hours, CPP at 60, downsizing if owned, a loan payment pause, raising rates) |
+| 1 | Goal ideas | `goal_ideas.py` | Personal goals tied to one signal each (a loan's end date, a lease, overdraft interest, uneven income, a rent-sized standing order), re-ranked by lens; the Persona Builder model may pick and reword them |
 | 3 | Life Planner | `life_planner.py` | Code generates about 300 multi-step plans from a decision catalog, simulates each month by month, screens per rule, keeps the Pareto set and four distinct finalists, plus up to three plans that fall short; optional model phrasing of the "why" |
 | 3 | Strategist | `council.py` | Optional ADK proposals over the frozen scenario and confirmed context |
 | 3 | Challenger | `council.py`, `life_planner.py` | Optional ADK review of validated, scored candidates; code realism checks on Life Planner finalists |

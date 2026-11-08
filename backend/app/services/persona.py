@@ -138,8 +138,52 @@ def _goals(row: Any, age: float | None, pension: bool, joint: bool) -> list[dict
     if _f(row, "lifestyle_creep") >= 0.005:
         goals.append(_goal("spending_reset", "Bring spending back to last year's level", "spending", "small", "short", 1 * S, 6, 3,
                            "Spending has been creeping up faster than income.", "Spending drift above income drift over 24 months"))
-    goals = goals[:5]
-    return with_weights(goals)
+    return with_weights(_personalize(goals, row))
+
+
+GENERAL_LONG = ("home", "retirement", "education", "care")
+
+
+def _personalize(general: list[dict], row: Any) -> list[dict]:
+    """Mix general goals with goals tied to this account's own records (goal_ideas): a personal cushion goal replaces the
+    generic emergency fund, up to three personal ideas follow, and one general long-term goal is kept if there is room."""
+    try:
+        from .goal_ideas import ranked
+        personal = ranked(int(row.name), "balanced")
+    except Exception:
+        personal = []
+    for g in general:
+        g["personal"] = False
+    cushion = next((p for p in personal if p["type"] == "emergency_fund"), None)
+    out = [cushion] if cushion else [g for g in general if g["type"] == "emergency_fund"][:1]
+    taken = {g["type"] for g in out}
+    for p in personal:
+        if len(out) >= 4:
+            break
+        if p["type"] not in taken:
+            out.append(p)
+            taken.add(p["type"])
+    # the fifth slot: a personal long-range goal (life or growth) if there is one, else a general long-term goal
+    extra = next((p for p in personal if p["type"] not in taken and p.get("family") in ("life", "growth")), None)
+    if extra and len(out) < 5:
+        out.append(extra)
+        taken.add(extra["type"])
+    for g in general:
+        if len(out) >= 5:
+            break
+        if g["type"] in GENERAL_LONG and g["type"] not in taken:
+            out.append(g)
+            taken.add(g["type"])
+    for g in general:
+        if len(out) >= 4:
+            break
+        if g["type"] not in taken:
+            out.append(g)
+            taken.add(g["type"])
+    for g in out:
+        for k in ("family", "relevance", "signal", "lens_score", "in_profile", "key"):
+            g.pop(k, None)
+    return out[:5]
 
 
 def with_weights(goals: list[dict]) -> list[dict]:
@@ -280,7 +324,7 @@ def build_template(account_id: int) -> tuple[dict, list[dict]]:
         "account_id": int(account_id), "fictional": True, "source": "template", "built_at": _now(),
         "display_name": name, "age": round(age) if age else None, "life_stage": stage, "occupation": occ,
         "household": household, "home": home, "story": story, "goals": goals, "worries": worries, "questions": questions,
-        "traits": traits, "like_others": like,
+        "traits": traits, "like_others": like, "goals_version": GOALS_VERSION,
     }
     ev("output", f"Built a fictional profile: {name}, {stage.lower()}", items=[story])
     ev("handoff", f"{len(goals)} goals, {len(worries)} worries", to="shock_generator",
@@ -351,7 +395,7 @@ def refine_with_model(account_id: int, persona: dict) -> tuple[dict, list[dict]]
 
 # ----------------------------------------------------------------------------- seeding the profile
 def _goal_change(g: dict, op: str = "add") -> dict:
-    value = {k: g[k] for k in ("type", "label", "size", "horizon", "target_amount", "target_months", "importance", "why", "evidence", "source") if k in g}
+    value = {k: g[k] for k in ("type", "label", "size", "horizon", "target_amount", "target_months", "importance", "why", "evidence", "source", "personal") if k in g}
     value["id"] = g["id"]
     return {"field": "goals", "operation": op, "value": value, "reason": g.get("why", "")}
 
@@ -406,9 +450,42 @@ def _refine_later(account_id: int, persona: dict) -> None:
             _BUILDING.discard(account_id)
 
 
+GOALS_VERSION = 2
+
+
+def _upgrade_goals(account_id: int, persona: dict) -> dict:
+    """Personas built before personal goals existed get up to three, once, logged as Persona Builder additions."""
+    from .goal_ideas import ranked
+    ctx = cm.load_context(account_id)
+    have = {x.get("value", {}).get("type") for x in ctx.get("goals", [])}
+    adds = [g for g in ranked(account_id, "balanced") if g["type"] not in have][:3]
+    changes = []
+    for g in adds:
+        ch = _goal_change(g)
+        ch["value"]["personal"] = True
+        ch["reason"] = f"Personal goal from your records: {g['evidence']}"
+        changes.append(ch)
+    if changes:
+        cm.apply_now(account_id, changes, agent="persona_builder", reason="Personal goals from your records")
+    with cm._LOCK:
+        fresh = cm.load_context(account_id)
+        p = fresh.get("persona") or persona
+        p["goals_version"] = GOALS_VERSION
+        p["goals"] = (p.get("goals") or []) + [{k: v for k, v in g.items() if k not in ("family", "relevance", "signal", "lens_score", "in_profile", "key")} for g in adds]
+        with_weights(p["goals"])
+        fresh["persona"] = p
+        cm.save_context(fresh)
+    return p
+
+
 def get_persona(account_id: int, build: bool = True, refine: bool = True) -> dict | None:
     """The stored persona; on first call build it from code, seed the profile, and refine it in the background."""
     ctx = cm.load_context(account_id)
+    if ctx.get("persona") and ctx["persona"].get("goals_version", 1) < GOALS_VERSION and build:
+        try:
+            return _upgrade_goals(account_id, ctx["persona"])
+        except Exception:
+            return ctx["persona"]
     if ctx.get("persona") or not build:
         return ctx.get("persona")
     persona, trace = build_template(account_id)
@@ -456,7 +533,7 @@ def profile_goals(ctx: dict, S: float) -> list[dict]:
         out.append({"id": x["id"], "label": str(v.get("label") or v.get("type") or "Goal"), "type": str(v.get("type") or "goal"),
                     "size": v.get("size") or ("large" if target >= 6 * S else "small"), "horizon": horizon,
                     "target_amount": round(target, 2), "target_months": months, "importance": int(v.get("importance") or 3),
-                    "why": str(v.get("why") or ""), "evidence": str(v.get("evidence") or ""),
+                    "why": str(v.get("why") or ""), "evidence": str(v.get("evidence") or ""), "personal": bool(v.get("personal")),
                     "source": v.get("source") if v.get("source") in ("persona", "conversation", "user") else
                     ("user" if x.get("proposed_by") in ("user_direct", "you") else "conversation")})
     return with_weights(out)

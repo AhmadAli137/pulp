@@ -3,7 +3,7 @@ import { ChevronDown, LogOut, MessageCircle } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { readSavedAccount, useApp } from '../stores/useApp'
 import { PulpMark } from './PulpMascot'
-import PulpPanel from './pulp/PulpPanel'
+import PulpPanel, { clearSavedThreads } from './pulp/PulpPanel'
 import { SUPPORTING_WORKSPACE, WORKSPACE, WorkspaceNav } from './workspace'
 import './banking.css'
 import '../brand.css'
@@ -48,6 +48,7 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
   const signOut = () => {
     signOutDialog.current?.close()
     closePulp()
+    clearSavedThreads()
     clearAccount()
     setDraft('')
     setInputError('')

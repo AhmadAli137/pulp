@@ -21,7 +21,7 @@ The track asks for three things. All three run on the judges’ exact definition
 | Page | What you can do |
 |---|---|
 | **Overview** | Pulp’s biggest discovery about you first: the one finding most worth knowing, ranked by how serious it is, how rare it is across all 4,500 accounts and how unlikely you are to notice it yourself, with the evidence and one thing to do. Then the typical month, the cash buffer, fixed costs and baseline runway; a picture of the month with what-if sliders; how you differ from other accounts and who you are like. |
-| **Profile** | The person behind the account: a fictional persona built from the records, goals weighted by importance and time horizon, worries, the first questions Pulp asks, and a timeline of every change the agents or you made, each one undoable. |
+| **Profile** | The person behind the account: a fictional persona built from the records, goals weighted by importance and time horizon (most tied to something specific in the records, like a loan’s end date or a car lease), goal ideas you can re-rank by angle (safety, ambition, life events, money habits) or let Pulp choose, worries, the first questions Pulp asks, and a timeline of every change the agents or you made, each one undoable. |
 | **Shocks** | Flip a card to reveal who brings the shock and what it is, or enter your own. Each reveal shows a different character, and the Shock Dealer says in one line why it picked them. See the verdict, the cushion month by month, both official plans, and the plans the agents chose for this shock, or ask Pulp about the same card. |
 | **My Plan** | Both official plans, a long-term plan with no shock, the four finalists for the current shock, plans that fall short for contrast, and how your plans changed over time. |
 | **Insights** | The account’s patterns, what your age, household and district say about you, the dataset-wide findings and the check against real loan outcomes. Each chart has a simple juice-cup view with the same numbers, tagged **Recorded** (what actually happened) or **Simulated** (the engine’s test). |
@@ -79,6 +79,7 @@ The objective is printed with every result:
 ```
 score = w_short x gap covered + w_res x cushion + w_goal x sum(goal weight x progress) - w_dis x disruption
 goal weight = importance x urgency (short 1.0, medium 0.75, long 0.5), normalised
+life fit = the Life Fit Assessor's average fit of the plan's steps (0 to 1); a poor fit costs up to 0.15
 ```
 
 Each step comes with the Stage 1 insight it rests on and what it moves, measured by rerunning the plan without it. Every run is kept, so you can see how your plans changed as your profile changed.
@@ -99,6 +100,7 @@ No model ever produces a number. The engine is deterministic Python, tested agai
 | 2 | **Director** | Decides what to show each turn, writes what Pulp says, and starts Stage 3 when you mention a shock or a decision. |
 | 3 | **Shock Dealer** | Picks who reveals each twist card and, for the open card, which shock, from a fixed list, with a one-line reason. Never sets an amount. |
 | 3 | **Shock Generator** (code) | Picks shocks that fit this life: a lost client for a cash earner, a payment reset for a borrower, parental leave for a young family. |
+| 3 | **Life Fit Assessor** (code) | Checks every decision against the person: age and physical capacity, the time a shared household leaves, whether a lodger or a move is realistic, whether gig work exists where they live. Rules out poor fits with the reason and adds options for their stage of life, such as paid advice in their field, work from home, or starting CPP at 60. |
 | 3 | **Life Planner** (code) | Generates and simulates hundreds of multi-step plans. |
 | 3 | **Strategist** and **Challenger** | Propose options from your life, and flag the ones you are unlikely to follow. |
 | 3 | **Validator and Ranker** (code) | Screen, rank and keep the four finalists by one stated objective. |

@@ -123,3 +123,17 @@ A card resolved on the Shocks page is carried into the conversation as `twist:<k
 same card. Twist storyboards carry `reply` (one or two sentences, from the model when available and grounded against the
 engine's numbers, else a template), `reply_source` and `council_mode`. Offline council runs no longer emit an engine to
 Strategist handoff: they emit `engine -> ranker` titled "Offline run: engine grid only" with `mode: "offline"`.
+
+## Life Fit Assessor and personal goals
+
+Before the search, `life_fit.py` builds a capacity profile (age band and physical capacity, time left by a shared
+household or care, rural or urban district, pension, self-employment) and scores each decision 0-1 with a plain reason
+(physical demand at this age, hours a week in a busy household, a lodger in a home shared with a partner, a move at 58,
+gig work in a rural district). Fits below 0.3 are screened ("Does not fit this stage of life"); every step adds
+(1 - fit) x 0.25 to disruption and the objective subtracts 0.15 x (1 - average fit). It also adds stage-of-life decisions.
+Steps carry `fit` and `fit_note`; reasoning evidence ends with "Fit for you: ...". Trace agent key: `life_fit`.
+
+`goal_ideas.py` produces personal goals tied to one signal each; `GET /api/profile/{id}/goal-ideas?lens=&use_ai=` ranks
+them through a lens (balanced, safety, ambitious, life, habits) and optionally lets the Persona Builder model pick 3-5 and
+reword them; `POST /api/profile/{id}/goals {idea_id}` adds one (logged as your change). New personas mix personal and
+general goals; older personas receive up to three personal goals once (`goals_version` 2).

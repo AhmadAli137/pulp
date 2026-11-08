@@ -110,6 +110,9 @@ PERSONAS += [
     {"key": "shock_generator", "name": "Shock Generator", "kind": "code", "runs_on": "Python rules from Stage 1 signals", "stage": 3, "symbol": "storm", "analogy": "a risk officer",
      "role": "Chooses the shocks that fit this life: a lost client for a cash earner, a payment reset for a borrower, parental leave for a young family.",
      "reads": ["signals", "the persona", "district unemployment"], "writes": ["a personal deck with likelihood and why"], "guardrail": "numbers set by code from the account"},
+    {"key": "life_fit", "name": "Life Fit Assessor", "kind": "code", "runs_on": "Python rules over the persona and records", "stage": 3, "symbol": "heart", "analogy": "a life coach",
+     "role": "Checks every decision against the person: age and physical capacity, time a shared household leaves, whether a lodger or a move is realistic, whether gig work exists where they live. Adds options that suit their stage of life.",
+     "reads": ["the persona", "age, household and district", "what you told Pulp about health and time"], "writes": ["a fit score and reason per decision"], "guardrail": "poor fits are screened out with the reason shown; fit is part of the stated objective"},
     {"key": "life_planner", "name": "Life Planner", "kind": "code", "runs_on": "Python search, phrased by Gemini when available", "stage": 3, "symbol": "route", "analogy": "a route planner",
      "role": "Builds hundreds of multi-step plans from real decisions (a second job, a move, delaying a goal, refinancing, investing), simulates each month by month and keeps four distinct finalists.",
      "reads": ["the shock", "goals with weights", "signals"], "writes": ["finalists with step-by-step reasons", "plans that fall short"], "guardrail": "one stated objective; every step's effect is measured by rerunning without it"},
@@ -296,7 +299,11 @@ def twist_storyboard(account_id: int, m, card: dict, plan: dict, *, dealt_random
         beats.append(_beat("card", "cards", f"{card['title']}. {card['text']}", {"cards": [{"key": card["key"], "title": card["title"], "text": card["text"]}]}, 5))
     off = tl["official"]
     short_months = tl["runs_out_month"]
-    if short_months is not None:
+    if short_months is not None and off["monthly_gap"] <= 0:
+        # The one-off cost alone is bigger than the cushion; month to month, money in still covers spending.
+        cap = (f"Here is the hard part. The {_m(shock['one_off'])} cost is more than your cushion, so it would leave you short straight away, "
+               f"even though what comes in still covers what goes out each month.")
+    elif short_months is not None:
         cap = (f"Here is the hard part. You would be about {_m(off['monthly_gap'])} short every month, and your savings would run out "
                f"after roughly {short_months:g} months. The shock lasts {shock['duration']}.")
     elif off["monthly_gap"] <= 0:
@@ -682,7 +689,9 @@ async def _short_reply(account_id: int, m, card: dict, shock: dict, plan: dict, 
     action = best.get("action") or plan.get("recommended") or ""
     who = f"{card['character']['name']} brings it: " if card.get("character") else ""
     gap = tl["monthly_gap"]
-    if tl["runs_out_month"] is not None:
+    if tl["runs_out_month"] is not None and gap <= 0:
+        base = f"{who}{card['title']}. The {_m(shock['one_off'])} cost is more than your cushion, so it leaves you short straight away, even though money in still covers spending each month."
+    elif tl["runs_out_month"] is not None:
         base = f"{who}{card['title']}. Money in falls to {_m(tl['income_after'])} against {_m(tl['spending_after'])} out, so the cushion runs out after {tl['runs_out_month']} months."
     elif gap > 0:
         base = f"{who}{card['title']}. You would be {_m(gap)} short each month, but the cushion lasts the {shock['duration']} months (runway {tl['runway_label']})."

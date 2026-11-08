@@ -470,6 +470,50 @@ def get_profile_doc(account_id: int):
     return profile_doc(account_id)
 
 
+@router.get("/profile/{account_id}/goal-ideas")
+def get_goal_ideas(account_id: int, lens: str = Query("balanced", pattern="^(balanced|safety|ambitious|life|habits)$"), use_ai: bool = False):
+    """Goals tied to specific signals in this account's records, ranked through a lens. With use_ai, the Persona Builder
+    model picks and rewords 3 to 5 of them (amounts and eligibility stay set by code)."""
+    _known(account_id)
+    from ..services import context_manager as cm
+    from ..services.goal_ideas import LENSES, model_pick, ranked
+    ctx = cm.load_context(account_id)
+    have = {x.get("value", {}).get("type") for x in ctx.get("goals", [])}
+    items = ranked(account_id, lens, have)
+    picked = None
+    if use_ai:
+        from ..services.features import get_features
+        row = get_features().loc[account_id]
+        facts = {k: row.get(k) for k in ("owner_age", "n_authorized_users", "spending_ratio", "income_cv", "district_name") if k in row.index}
+        try:
+            picked = model_pick(account_id, lens, items, {k: (float(v) if isinstance(v, (int, float)) else str(v)) for k, v in facts.items()})
+        except Exception:
+            picked = None
+    return {"account_id": account_id, "lens": lens, "lenses": LENSES, "ideas": items, "model": picked}
+
+
+class AddGoalRequest(BaseModel):
+    idea_id: str = Field(..., max_length=40)
+    lens: str = Field("balanced", max_length=20)
+
+
+@router.post("/profile/{account_id}/goals")
+def add_goal_idea(account_id: int, req: AddGoalRequest):
+    """Add one goal idea to the profile (logged as your change, undoable)."""
+    _known(account_id)
+    from ..services import context_manager as cm
+    from ..services.goal_ideas import ranked
+    from ..services.persona import _goal_change, profile_doc
+    idea = next((g for g in ranked(account_id, req.lens) if g["id"] == req.idea_id), None)
+    if idea is None:
+        raise HTTPException(status_code=404, detail=f"No goal idea {req.idea_id} for this account")
+    ch = _goal_change(idea)
+    ch["value"]["personal"] = True
+    ch["reason"] = f"You added it from goal ideas: {idea['evidence']}"
+    cm.apply_now(account_id, [ch], agent="you", reason="Added from goal ideas")
+    return profile_doc(account_id, build=False)
+
+
 @router.post("/profile/{account_id}/undo/{change_id}")
 def undo_profile_change(account_id: int, change_id: str):
     _known(account_id)

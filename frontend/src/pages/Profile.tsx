@@ -3,6 +3,7 @@
 import { Link } from 'react-router-dom'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import { ChangeTimeline, GoalsTable, LikeOthers, PersonaHeader, TraitTrack } from '../components/profile/ProfileParts'
+import GoalIdeas from '../components/profile/GoalIdeas'
 import { useProfileDoc } from '../components/profile/useProfileDoc'
 import { JuiceDrop, SqueezeLoader } from '../components/PulpMascot'
 import { Card } from '../components/ui'
@@ -11,7 +12,7 @@ import { useApp } from '../stores/useApp'
 export default function Profile() {
   const accountId = useApp((s) => s.accountId)
   const openPulp = useApp((s) => s.openPulp)
-  const { doc, live, error, undo } = useProfileDoc(accountId, { poll: true })
+  const { doc, live, error, undo, refresh } = useProfileDoc(accountId, { poll: true })
   if (!accountId) return <DemoAccountPicker />
   if (!doc) return <Card title="Your profile"><SqueezeLoader label="Squeezing a life story out of your records…" /></Card>
   const p = doc.persona
@@ -30,6 +31,8 @@ export default function Profile() {
       <Card title="Goals and how much each one counts" right={<button type="button" className="bank-button" onClick={() => openPulp('I want to change one of my goals')}>Change a goal with Pulp</button>}>
         <GoalsTable goals={doc.goals.length ? doc.goals : p?.goals ?? []} />
       </Card>
+
+      {live && <GoalIdeas accountId={accountId} onAdded={() => void refresh()} />}
 
       {p && (
         <div className="pf-two">

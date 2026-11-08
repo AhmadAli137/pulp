@@ -25,6 +25,7 @@ export const AGENTS: Record<string, AgentMeta> = {
   shock_dealer: { key: 'shock_dealer', name: 'Shock Dealer', stage: 3, symbol: 'cards', analogy: 'the dealer', kind: 'ai' },
   strategist: { key: 'strategist', name: 'Strategist', stage: 3, symbol: 'knight', analogy: 'the chess player', kind: 'ai' },
   challenger: { key: 'challenger', name: 'Challenger', stage: 3, symbol: 'shield', analogy: 'the sceptic', kind: 'ai' },
+  life_fit: { key: 'life_fit', name: 'Life Fit Assessor', stage: 3, symbol: 'heart', analogy: 'the life coach', kind: 'code' },
   life_planner: { key: 'life_planner', name: 'Life Planner', stage: 3, symbol: 'route', analogy: 'the route planner', kind: 'code' },
   validator: { key: 'validator', name: 'Validator and Ranker', stage: 3, symbol: 'scales', analogy: 'the referee', kind: 'code' },
   you: { key: 'you', name: 'You', stage: 2, symbol: 'you', analogy: 'you', kind: 'place' },
@@ -56,6 +57,7 @@ export function metaFor(key: string, personas?: Persona[]): AgentMeta {
 }
 
 const PATHS: Record<string, string> = {
+  heart: 'M12 20.5s-7.5-4.6-7.5-10.4A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.5 2.5c0 5.8-7.5 10.4-7.5 10.4Z M8.5 12h2l1.2-2 1.6 4 1.2-2h1.5',
   map: 'M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20Z M9 4v13.5 M15 6.5V20',
   anvil: 'M3 7h12.5a4.5 4.5 0 0 0 4.5-4 M3 7v1.5A4.5 4.5 0 0 0 7.5 13H12 M9 13l-1.5 4.5h9L15 13 M5.5 20.5h13',
   magnifier: 'M10.5 3.5a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z M15.6 15.6 21 21 M7 12l2-2.2 2 1.6 2.7-3.4',

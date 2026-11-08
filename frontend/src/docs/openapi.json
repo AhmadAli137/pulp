@@ -1203,6 +1203,113 @@
     }
    }
   },
+  "/api/profile/{account_id}/goal-ideas": {
+   "get": {
+    "summary": "Get Goal Ideas",
+    "description": "Goals tied to specific signals in this account's records, ranked through a lens. With use_ai, the Persona Builder\nmodel picks and rewords 3 to 5 of them (amounts and eligibility stay set by code).",
+    "operationId": "get_goal_ideas_api_profile__account_id__goal_ideas_get",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     },
+     {
+      "name": "lens",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "pattern": "^(balanced|safety|ambitious|life|habits)$",
+       "default": "balanced",
+       "title": "Lens"
+      }
+     },
+     {
+      "name": "use_ai",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Use Ai"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/profile/{account_id}/goals": {
+   "post": {
+    "summary": "Add Goal Idea",
+    "description": "Add one goal idea to the profile (logged as your change, undoable).",
+    "operationId": "add_goal_idea_api_profile__account_id__goals_post",
+    "parameters": [
+     {
+      "name": "account_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Account Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AddGoalRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/profile/{account_id}/undo/{change_id}": {
    "post": {
     "summary": "Undo Profile Change",
@@ -1857,6 +1964,26 @@
  },
  "components": {
   "schemas": {
+   "AddGoalRequest": {
+    "properties": {
+     "idea_id": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "Idea Id"
+     },
+     "lens": {
+      "type": "string",
+      "maxLength": 20,
+      "title": "Lens",
+      "default": "balanced"
+     }
+    },
+    "type": "object",
+    "required": [
+     "idea_id"
+    ],
+    "title": "AddGoalRequest"
+   },
    "ChatRequest": {
     "properties": {
      "account_id": {
