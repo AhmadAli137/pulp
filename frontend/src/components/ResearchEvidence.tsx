@@ -10,7 +10,11 @@ const FLAG_LABELS: Record<string, string> = {
   cash_economy: 'Uneven cash income', thin_margin: 'Spending close to income', fee_bleed: 'Fees well above typical',
   savings_elsewhere: 'Regular transfer to another account', rent_pressure: 'Bills taking a growing share', penalty_interest: 'Penalty interest',
   fragile_but_clean: 'Never negative, yet fails a layoff', deep_buffer: 'Deep buffer', pension_dependent: 'Pension is the main income',
+  cuts_when_hit: 'Cut spending fast in past income drops', no_adjustment_when_hit: 'Spending did not move in past income drops',
+  weathered_before: 'Came through a past income drop', slow_recovery: 'Slow recovery after a past drop', lifestyle_creep: 'Spending growing faster than income',
+  loan_stress: 'Loan payment is heavy', below_district_pay: 'Inflow below the local average salary',
 }
+const label = (key: string) => FLAG_LABELS[key] ?? key.charAt(0).toUpperCase() + key.slice(1).replaceAll('_', ' ')
 
 export default function ResearchEvidence() {
   const [research, setResearch] = useState<Research | null>(null)
@@ -39,7 +43,7 @@ export default function ResearchEvidence() {
         <Card title="Checked against what really happened" className="research-evidence">
           <p>Not a simulation: among the {v.loans} accounts that took a loan, those our engine says would not last a six-month layoff later had the loan go bad <strong>{bs.fails_layoff_bad_rate_pct.toFixed(1)}%</strong> of the time, versus <strong>{bs.survives_layoff_bad_rate_pct.toFixed(1)}%</strong> for those it says would.</p>
           <DataTable caption="Loans that went bad (status B or D), by account pattern" headers={['Pattern in the account', 'Accounts', 'Loan went bad', 'Without the pattern']}
-            rows={(v.by_flag ?? []).filter((f) => f.n_with >= 30 && f.flag !== 'fragile_but_clean').slice(0, 5).map((f) => [FLAG_LABELS[f.flag] ?? f.flag.replaceAll('_', ' '), f.n_with, `${f.bad_rate_with_pct.toFixed(1)}%`, `${f.bad_rate_without_pct.toFixed(1)}%`])} />
+            rows={(v.by_flag ?? []).filter((f) => f.n_with >= 30 && f.flag !== 'fragile_but_clean').slice(0, 5).map((f) => [label(f.flag), f.n_with, `${f.bad_rate_with_pct.toFixed(1)}%`, `${f.bad_rate_without_pct.toFixed(1)}%`])} />
           <p className="small muted">Loan status is a snapshot at the end of 2025, and the patterns use each account's full history, so some of the signal can come from the trouble itself. Groups under 30 accounts are left out.</p>
         </Card>
       )}

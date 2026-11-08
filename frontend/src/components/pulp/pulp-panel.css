@@ -28,10 +28,13 @@
 .pulp-panel .msg.user p{max-width:85%}
 .pulp-panel .thread-status,.pulp-panel .thread-notice{margin-left:0}
 .pulp-panel .thread-figure{max-width:none}
-.pulp-panel .thread-figure-canvas{height:min(240px,48vw)}
 .pulp-panel .animated-walkthrough{margin:4px 0}
 .pulp-panel-empty{font-size:14px;line-height:1.6;color:#54645a;padding:12px 4px}
 .pulp-live p{font-size:14px;color:#54645a}
+/* The closing question, sized for a side panel rather than the old full-page home. */
+.pulp-panel .pulp-question{gap:12px;padding:12px 14px;margin:4px 0}
+.pulp-panel .pulp-question-mark{font-size:40px}
+.pulp-panel .pulp-question p,.pulp-panel .msg-body .pulp-question p{font-size:18px;line-height:1.35;letter-spacing:-.2px;max-width:none}
 .pulp-official{align-self:flex-start;border:1px solid #cbd6c9;border-radius:7px;background:#fff;color:#1c4639;font-size:13px;font-weight:700;padding:8px 12px}
 .pulp-official:hover{background:#eef3ec}
 
@@ -39,7 +42,7 @@
 .pulp-panel-dock .stage-suggest{justify-content:flex-start}
 .pulp-panel-dock .stage-input{width:100%;padding:5px 5px 5px 14px;gap:6px;box-shadow:none;border-color:#dde4d9}
 .pulp-panel-dock .stage-input input{font-size:14px}
-.pulp-panel-dock .stage-chip{padding:7px 9px}
+.pulp-panel-dock .stage-chip{display:flex;padding:7px 9px}
 .pulp-panel-dock .stage-mic{padding:0 10px}
 .pulp-panel-dock .stage-send{background:#1c4639}
 .pulp-panel-dock .stage-send:disabled{background:#e6ebe3;color:#9aa69c}
