@@ -1,4 +1,29 @@
-# Deployment: Vultr + GoDaddy domain + deploy on every push
+# Deployment
+
+## Option A: Vercel (what is live now)
+
+Live at **https://pulp-mu-six.vercel.app** (project `pulp`). One Vercel project serves the built frontend as static files and the FastAPI backend as a Python
+serverless function (`api/index.py`). `vercel.json` rewrites `/api/*`, `/docs` and `/openapi.json` to the function
+and every other path to the SPA. The summary CSVs are uploaded with the deployment from `./data` (not from git), and
+`docs/findings.json` ships with it for the Insights screen.
+
+```bash
+npx vercel link --yes --project pulp     # once
+npx vercel deploy --prod --yes           # every release (uploads ./data and builds frontend/ on Vercel)
+```
+
+Project settings to make in the Vercel dashboard (Project -> Settings):
+
+| Setting | Value |
+|---|---|
+| Deployment Protection -> Vercel Authentication | **Disabled** (otherwise judges get a 401 login wall) |
+| Environment Variables | `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.5-flash` (or `VULTR_INFERENCE_API_KEY` + `AI_PROVIDER=vultr`) |
+| Storage (optional) | add Upstash Redis from the Marketplace; its `KV_REST_API_URL`/`KV_REST_API_TOKEN` make confirmed context durable. Without it, context lives in the function's `/tmp` and can reset between cold starts. |
+
+Redeploy after changing environment variables. Git-based deploys would lack the CSVs (they are git-ignored), so
+deploy from a machine that has `./data`, or add a build step that downloads them from private storage.
+
+## Option B: Vultr + GoDaddy domain + deploy on every push
 
 One Docker image serves the API and the built frontend; Caddy in front terminates HTTPS for your domain.
 Every push to `master` runs the tests, builds the frontend, and redeploys the server over SSH.
