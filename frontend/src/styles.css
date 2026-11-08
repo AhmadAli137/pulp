@@ -1,13 +1,15 @@
 :root {
-  --orange: #F97316;
+  --primary: #EC8844;
+  --secondary: #2457E6;
+  --orange: var(--primary);
   --orange-deep: #EA6510;
   --orange-soft: #FFF1E6;
   --orange-text: #C75610;
-  --forest: #183B2D;
-  --emerald: #2F7A5B;
-  --mint: #E8EDDE;
-  --offwhite: #F8F9F6;
-  --gold: #F97316;
+  --forest: #17233D;
+  --emerald: var(--secondary);
+  --mint: #E8EEFF;
+  --offwhite: #FFF8EF;
+  --gold: var(--primary);
   --charcoal: #252920;
   --gray: #7C8177;
   --gray-2: #A0A598;
