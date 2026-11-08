@@ -60,7 +60,8 @@ DOMAIN="${DOMAIN}" docker compose up -d --build --remove-orphans
 
 echo "==> Waiting for the app to report healthy"
 for i in $(seq 1 40); do
-  if docker compose exec -T app python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3)" 2>/dev/null; then
+  # </dev/null: when this script is piped into bash, docker would otherwise swallow the rest of the script from stdin
+  if docker compose exec -T app python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3)" </dev/null 2>/dev/null; then
     echo "healthy"; break
   fi
   sleep 5
