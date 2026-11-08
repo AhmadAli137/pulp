@@ -1,24 +1,26 @@
 # Judging map
 
-The [organizer brief](event-brief.md) supplies the event criteria. This page maps them to current screens; it does not assert updated prize eligibility.
+The [organizer brief](event-brief.md) supplies the criteria. This page maps them to the current screens. The pitch,
+live-twist steps and video shot list are in the [demo script](../demo/demo-script.md); the Devpost text is in
+[submissions/devpost-writeup.md](../submissions/devpost-writeup.md).
 
-| Criterion | Brief weight | Demonstration |
+| Criterion | Weight | Where to show it |
 |---|---|---|
-| Discovery | 35% | Insights & evidence, preserved matched-pair findings, stated populations and sensitivity checks |
-| Data use | 25% | Your financial picture, official setback arithmetic, source periods, evidence-linked questions and confirmed personal context |
-| Communication | 25% | Planning room with one voice, concise explanations, optional visuals, readable evidence and responsive comparison pages |
-| Impact | 15% | Concrete small/big decisions, conditional goal choices, explicit gaps and next steps |
+| Discovery | 35% | Insights: spending versus savings (simulated, all 4,500 accounts), the check against recorded loan outcomes, the matched pairs, demographics; Overview: the account's biggest discovery |
+| Data use | 25% | Overview and Shocks: the judges' exact formulas; Profile: a persona and personal goals built from about 78 signals per account; the personal deck; the Stage 1 report |
+| Communication | 25% | One opening sentence per page, Explain this buttons, Pulp by text and voice, the month-by-month cushion chart, the Agents page with replayable runs, the developer docs at /developers |
+| Impact | 15% | My Plan: four distinct plans with dated steps and reasons, plans that fall short, the long-term plan; "What PULP gives you" on Overview |
 
 ## Live-twist sequence
 
-1. Select the judge's anonymized account.
-2. Open Prepare for a setback and enter the exact given inputs; do not silently substitute a generic preset.
-3. Read the official runway and horizon verdict, with the relevant driver and assumptions.
-4. Review the before-shock reserve need and after-shock improvement needed. Separate a modeled candidate from confirmed feasibility.
-5. If useful, open Compare possibilities for uncertainty paths, or Goals & choices and Your next steps for continuity.
+1. Load the judge's account in the header.
+2. Shocks: flip the matching official card, or enter the judge's exact inputs and press Run shock. Never substitute a
+   generic preset for the judge's numbers.
+3. Read the verdict, the cushion chart and both official plans (Prepare now, If it happens).
+4. Show the best-balance plan's steps; the four finalists are in My Plan.
 
-## Evidence and boundaries
+## Boundaries
 
-The synthetic arithmetic fixture (4.0 months and a $3,100 six-month shortfall) is a unit test, not a dataset finding. [Testing](testing.md) states current suite coverage and the smaller CI subset. [Findings](findings.md) preserves original research numbers. [Agent inventory](agents/README.md) distinguishes implemented roles from the historical proposed protocol.
-
-Use the [demo script](../demo/demo-script.md) for the current conversation-first walkthrough. No demonstration should imply live-account access, current benefit eligibility, authenticated customer banking or autonomous money movement.
+All results are computed from historical, anonymized records. Survival results are simulations under the official
+formula; the loan check uses recorded outcomes. Personas and their quotes are fictional. PULP has no live bank access,
+no benefit-eligibility determination and never moves money.
