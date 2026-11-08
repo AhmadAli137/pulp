@@ -10,42 +10,35 @@ Flow (see docs/agents/README.md):
 
 Agents interpret, code calculates: no model output is ever used as a dollar figure or a probability. If the ADK
 or the Gemini key is unavailable the fan-out still runs and the result says so (mode = "offline").
+
+Two entry points share the same pieces: `run_council` (synchronous, one result) and `run_council_stream` (async
+generator that yields stage and agent events while it works, for the live trace in the UI).
 """
 from __future__ import annotations
 
-import asyncio
 import itertools
 import json
-import os
-import re
 import time
 from dataclasses import replace
-from typing import Any
+from typing import Any, AsyncIterator
 
 from .. import config
 from . import context_manager as cm
+from .adk_runtime import ADK_AVAILABLE, LlmAgent, ParallelAgent, adk_available, json_block, run_agent, run_agent_events_async
 from .scenario_engine import ScenarioSpec, StrategyAdjust, simulate
 from .strategy_optimizer import _primary_goal, _weights
 from .tangerine_metrics import OfficialMetrics, compute_shock, horizon_verdict
-
-try:  # ADK is optional at import time so the slim Vercel function still boots
-    from google.adk.agents import LlmAgent, ParallelAgent
-    from google.adk.runners import InMemoryRunner
-    from google.genai import types as gtypes
-
-    ADK_AVAILABLE = True
-except Exception:  # pragma: no cover - depends on the environment
-    ADK_AVAILABLE = False
 
 DISRUPTION_WEIGHT = 0.25     # penalty per 100% of typical spending cut; documented in the result
 MAX_STRATEGIST_LEVERS = 3
 GRID_FREED_SHARES = (0.0, 0.025, 0.05, 0.10)      # share of S freed up per month
 GRID_CONTRIB_SHARES = (0.0, 0.5, 1.0)             # share of capacity moved into the goal fund
 GRID_FLOOR_SHARES = (0.0, 0.5, 1.0)               # share of the stress need kept as an emergency floor
+FLAG_PENALTY = {"high": 0.05, "medium": 0.02, "low": 0.0}
 
 
 def council_available() -> bool:
-    return ADK_AVAILABLE and bool(config.GEMINI_API_KEY)
+    return adk_available()
 
 
 # ----------------------------------------------------------------------------- request
@@ -68,7 +61,7 @@ def freeze_request(m: OfficialMetrics, ctx: dict, *, r: float, h: float, one_off
         "metrics": {"I": I, "S": S, "H": H, "B": B, "F": m.typical_fixed_costs, "P": m.active_loan_payment,
                     "surplus": I - S, "months_available": m.months_available},
         "shock": {"r": r, "h": h, "one_off": one_off, "duration_months": duration, "label": label,
-                  "official": {k: shock[k] for k in ("income_after", "spending_after", "buffer_left", "monthly_gap", "runway_label", "runway_status")},
+                  "official": {k: shock[k] for k in ("income_after", "spending_after", "buffer_left", "monthly_gap", "runway", "runway_label", "runway_status")},
                   "verdict": verdict},
         "stress_need": stress_need,
         "goal": goal,
@@ -129,8 +122,7 @@ def fan_out(m: OfficialMetrics, req: dict) -> list[dict]:
         if key in seen:
             continue
         seen.add(key)
-        parts = []
-        parts.append("stay the course" if freed == 0 and contrib == 0 else "")
+        parts = ["stay the course" if freed == 0 and contrib == 0 else ""]
         if freed:
             parts.append(f"trim spending {fs:.1%}")
         if contrib:
@@ -174,21 +166,7 @@ def _clamp_lever(m: OfficialMetrics, req: dict, lever: dict) -> tuple[StrategyAd
                           emergency_floor=floor, extra_income_per_month=extra), notes
 
 
-def _json_block(text: str) -> dict | None:
-    """Pull the first JSON object out of a model reply (fenced or bare)."""
-    if not text:
-        return None
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.S)
-    raw = fenced.group(1) if fenced else None
-    if raw is None:
-        start, end = text.find("{"), text.rfind("}")
-        raw = text[start:end + 1] if start >= 0 and end > start else None
-    if raw is None:
-        return None
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return None
+_json_block = json_block   # kept for callers and tests
 
 
 def _attach_flags(candidates: list[dict], flags: list[dict]) -> list[dict]:
@@ -238,64 +216,35 @@ Flag at most one risk per candidate and leave unflagged candidates out. Question
 should ask next because they would change the plan. Do not compute or restate any dollar figure or probability."""
 
 
-def _build_root(score_tool) -> Any:
-    strategist = LlmAgent(
-        name="strategist", model=config.GEMINI_MODEL, description="Proposes person-specific levers and has the engine score them.",
-        instruction=STRATEGIST_INSTRUCTION.format(max_levers=MAX_STRATEGIST_LEVERS), tools=[score_tool], output_key="strategist",
-    )
-    challenger = LlmAgent(
-        name="challenger", model=config.GEMINI_MODEL, description="Checks each candidate against the confirmed context for feasibility.",
-        instruction=CHALLENGER_INSTRUCTION, output_key="challenger",
-    )
-    return ParallelAgent(name="pulp_council", description="Strategist and Challenger review the same frozen request in parallel.",
-                         sub_agents=[strategist, challenger])
+class _Run:
+    """Everything one council run carries between its stages."""
 
+    def __init__(self, account_id: int, m: OfficialMetrics, *, r: float, h: float, one_off: float, duration: int, horizon: int,
+                 n_paths: int, use_ai: bool, top_n: int):
+        self.t0 = time.perf_counter()
+        self.account_id, self.m, self.top_n = account_id, m, top_n
+        self.ctx = cm.load_context(account_id)
+        self.req = freeze_request(m, self.ctx, r=r, h=h, one_off=one_off, duration=duration, horizon=horizon, n_paths=n_paths)
+        self.candidates: list[dict] = []
+        self.t_grid = 0.0
+        self.use_ai = use_ai and council_available()
+        self.scored_by_tool: list[dict] = []
+        self.strategist_out: dict | None = None
+        self.challenger_out: dict | None = None
+        self.validation_notes: list[str] = []
+        self.tool_calls: list[dict] = []
+        self.unmatched_flags: list[dict] = []
+        self.mode = "offline"
+        self.error: str | None = None
 
-async def _run_adk(root: Any, payload: str, account_id: int) -> dict:
-    os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "FALSE")
-    runner = InMemoryRunner(agent=root, app_name="pulp")
-    session = await runner.session_service.create_session(app_name="pulp", user_id=f"acct-{account_id}")
-    msg = gtypes.Content(role="user", parts=[gtypes.Part(text=payload)])
-    texts: dict[str, list[str]] = {}
-    tool_calls: list[dict] = []
-    try:
-        async for ev in runner.run_async(user_id=session.user_id, session_id=session.id, new_message=msg):
-            for call in ev.get_function_calls() or []:
-                tool_calls.append({"agent": ev.author, "tool": call.name, "args": dict(call.args or {})})
-            if ev.content and ev.content.parts:
-                for p in ev.content.parts:
-                    if getattr(p, "text", None):
-                        texts.setdefault(ev.author or "?", []).append(p.text)
-        final = await runner.session_service.get_session(app_name="pulp", user_id=session.user_id, session_id=session.id)
-        state = dict(final.state) if final else {}
-    finally:
-        try:
-            await runner.close()
-        except Exception:
-            pass
-    return {"state": state, "texts": texts, "tool_calls": tool_calls}
+    def fan_out(self) -> None:
+        t = time.perf_counter()
+        self.candidates = fan_out(self.m, self.req)
+        self.candidates.sort(key=lambda c: -c["score"])
+        self.t_grid = time.perf_counter() - t
 
-
-# ----------------------------------------------------------------------------- entry point
-def run_council(account_id: int, m: OfficialMetrics, *, r: float, h: float, one_off: float, duration: int = 6,
-                horizon: int = 24, n_paths: int = 200, use_ai: bool = True, top_n: int = 8) -> dict:
-    t0 = time.perf_counter()
-    ctx = cm.load_context(account_id)
-    req = freeze_request(m, ctx, r=r, h=h, one_off=one_off, duration=duration, horizon=horizon, n_paths=n_paths)
-    candidates = fan_out(m, req)
-    candidates.sort(key=lambda c: -c["score"])
-    t_grid = time.perf_counter() - t0
-
-    strategist_out: dict | None = None
-    challenger_out: dict | None = None
-    validation_notes: list[str] = []
-    tool_calls: list[dict] = []
-    unmatched_flags: list[dict] = []
-    mode = "offline"
-    error: str | None = None
-
-    if use_ai and council_available():
-        scored_by_tool: list[dict] = []
+    def _score_tool(self):
+        m, req, scored = self.m, self.req, self.scored_by_tool
 
         def score_strategy(label: str, freed_up_per_month: float, goal_contribution_per_month: float,
                            emergency_floor: float, extra_income_per_month: float = 0.0) -> dict:
@@ -315,83 +264,158 @@ def run_council(account_id: int, m: OfficialMetrics, *, r: float, h: float, one_
             if strat is None:
                 return {"error": "lever has no effect", "notes": notes}
             c = score_candidate(m, req, strat, source="strategist")
-            scored_by_tool.append(c)
+            scored.append(c)
             return {"label": c["label"], "prob_shortfall_under_stress": round(c["prob_shortfall_under_stress"], 3),
                     "goal_progress_at_deadline": round(c["goal_progress_at_deadline"], 3), "disruption": round(c["disruption"], 3),
                     "score": round(c["score"], 3), "clamped": notes}
 
-        brief = dict(req)
-        brief["grid_top"] = [{"label": c["label"], "levers": c["levers"], "prob_shortfall_under_stress": round(c["prob_shortfall_under_stress"], 3),
-                              "goal_progress_at_deadline": round(c["goal_progress_at_deadline"], 3), "score": round(c["score"], 3)} for c in candidates[:5]]
-        brief.pop("spec", None)
-        payload = json.dumps(brief, default=float)
-        try:
-            res = asyncio.run(_run_adk(_build_root(score_strategy), payload, account_id))
-            mode = "adk"
-            tool_calls = res["tool_calls"]
-            state = res["state"]
-            s_text = state.get("strategist") or "\n".join(res["texts"].get("strategist", []))
-            c_text = state.get("challenger") or "\n".join(res["texts"].get("challenger", []))
-            strategist_out = _json_block(s_text) or {"levers": [], "raw": s_text[:2000]}
-            challenger_out = _json_block(c_text) or {"flags": [], "questions": [], "raw": c_text[:2000]}
-        except Exception as exc:  # the council never breaks the deterministic answer
-            error = f"{type(exc).__name__}: {exc}"[:500]
-            mode = "offline"
+        return score_strategy
 
-        # Validation: re-score every proposed lever ourselves; ignore the model's own numbers entirely.
-        if strategist_out:
-            for lever in (strategist_out.get("levers") or [])[:MAX_STRATEGIST_LEVERS]:
+    def build_root(self) -> Any:
+        strategist = LlmAgent(
+            name="strategist", model=config.GEMINI_MODEL, description="Proposes person-specific levers and has the engine score them.",
+            instruction=STRATEGIST_INSTRUCTION.format(max_levers=MAX_STRATEGIST_LEVERS), tools=[self._score_tool()], output_key="strategist",
+        )
+        challenger = LlmAgent(
+            name="challenger", model=config.GEMINI_MODEL, description="Checks each candidate against the confirmed context for feasibility.",
+            instruction=CHALLENGER_INSTRUCTION, output_key="challenger",
+        )
+        return ParallelAgent(name="pulp_council", description="Strategist and Challenger review the same frozen request in parallel.",
+                             sub_agents=[strategist, challenger])
+
+    def payload(self) -> str:
+        brief = dict(self.req)
+        brief["grid_top"] = [{"label": c["label"], "levers": c["levers"], "prob_shortfall_under_stress": round(c["prob_shortfall_under_stress"], 3),
+                              "goal_progress_at_deadline": round(c["goal_progress_at_deadline"], 3), "score": round(c["score"], 3)} for c in self.candidates[:5]]
+        brief.pop("spec", None)
+        return json.dumps(brief, default=float)
+
+    def absorb(self, res: dict) -> None:
+        self.mode = "adk"
+        self.tool_calls = res["tool_calls"]
+        state = res["state"]
+        s_text = state.get("strategist") or "\n".join(res["texts"].get("strategist", []))
+        c_text = state.get("challenger") or "\n".join(res["texts"].get("challenger", []))
+        self.strategist_out = json_block(s_text) or {"levers": [], "raw": (s_text or "")[:2000]}
+        self.challenger_out = json_block(c_text) or {"flags": [], "questions": [], "raw": (c_text or "")[:2000]}
+
+    def validate(self) -> None:
+        """Re-score every proposed lever ourselves and attach flags; the model's own numbers are ignored."""
+        if self.strategist_out:
+            for lever in (self.strategist_out.get("levers") or [])[:MAX_STRATEGIST_LEVERS]:
                 if not isinstance(lever, dict):
                     continue
-                strat, notes = _clamp_lever(m, req, lever)
+                strat, notes = _clamp_lever(self.m, self.req, lever)
                 if strat is None:
-                    validation_notes.append(f"dropped '{lever.get('label', '?')}': {'; '.join(notes)}")
+                    self.validation_notes.append(f"dropped '{lever.get('label', '?')}': {'; '.join(notes)}")
                     continue
-                c = score_candidate(m, req, strat, source="strategist")
+                c = score_candidate(self.m, self.req, strat, source="strategist")
                 c["why"] = str(lever.get("why", ""))[:400]
                 c["evidence"] = str(lever.get("evidence", ""))[:400]
                 if notes:
                     c["validation"] = notes
-                candidates.append(c)
-        if challenger_out:
-            flags = [f for f in (challenger_out.get("flags") or []) if isinstance(f, dict)]
-            unmatched_flags = _attach_flags(candidates, flags)
+                self.candidates.append(c)
+        if self.challenger_out:
+            flags = [f for f in (self.challenger_out.get("flags") or []) if isinstance(f, dict)]
+            self.unmatched_flags = _attach_flags(self.candidates, flags)
 
-    # Final ranking is deterministic; a high-severity flag demotes a candidate below unflagged ones with a close score.
-    for c in candidates:
-        penalty = sum(0.05 if f.get("severity") == "high" else 0.02 if f.get("severity") == "medium" else 0.0 for f in c["flags"])
-        c["adjusted_score"] = c["score"] - penalty
-    candidates.sort(key=lambda c: -c["adjusted_score"])
-    ranked = candidates[:top_n]
-    stay = next((c for c in candidates if c["levers"]["freed_up_per_month"] == 0 and c["levers"]["goal_contribution_per_month"] == 0
-                 and c["levers"]["extra_income_per_month"] == 0), None)
-    best = ranked[0] if ranked else None
-    why = None
-    if best:
-        w = req["weights"]
-        why = (f"'{best['label']}' scores {best['score']:.2f} = {w['resilience']:.0%} x (1 - {best['prob_shortfall_under_stress']:.0%} shortfall risk) "
-               f"+ {w['goal']:.0%} x {best['goal_progress_at_deadline']:.0%} goal progress - {DISRUPTION_WEIGHT} x {best['disruption']:.1%} of spending cut"
-               + (f"; {len(best['flags'])} Challenger flag(s) applied" if best["flags"] else "") + ".")
-    return {
-        "account_id": account_id,
-        "mode": mode,
-        "framework": {"name": "google-adk", "available": ADK_AVAILABLE, "model": config.GEMINI_MODEL if mode == "adk" else None,
-                      "agents": ["strategist", "challenger"] if mode == "adk" else []},
-        "error": error,
-        "request": {k: v for k, v in req.items() if k != "spec"},
-        "objective": {"formula": "resilience_w x (1 - P(shortfall)) + goal_w x goal_progress - 0.25 x (freed_up / S)",
-                      "weights": req["weights"], "disruption_weight": DISRUPTION_WEIGHT,
-                      "flag_penalty": {"high": 0.05, "medium": 0.02, "low": 0.0}},
-        "grid_size": sum(1 for c in candidates if c["source"] == "grid"),
-        "ranked": ranked,
-        "recommended": best["label"] if best else None,
-        "why": why,
-        "stay_the_course": stay,
-        "strategist": strategist_out,
-        "challenger": challenger_out,
-        "unmatched_flags": unmatched_flags,
-        "validation_notes": validation_notes,
-        "tool_calls": tool_calls,
-        "timing_seconds": {"fan_out": round(t_grid, 2), "total": round(time.perf_counter() - t0, 2)},
-        "disclaimer": "Model outputs for the chosen shock on anonymized data; the agents propose and flag, the engine computes every number.",
-    }
+    def rank(self) -> dict:
+        for c in self.candidates:
+            penalty = sum(FLAG_PENALTY.get(f.get("severity"), 0.0) for f in c["flags"])
+            c["adjusted_score"] = c["score"] - penalty
+        self.candidates.sort(key=lambda c: -c["adjusted_score"])
+        ranked = self.candidates[: self.top_n]
+        stay = next((c for c in self.candidates if c["levers"]["freed_up_per_month"] == 0 and c["levers"]["goal_contribution_per_month"] == 0
+                     and c["levers"]["extra_income_per_month"] == 0), None)
+        best = ranked[0] if ranked else None
+        why = None
+        if best:
+            w = self.req["weights"]
+            why = (f"'{best['label']}' scores {best['score']:.2f} = {w['resilience']:.0%} x (1 - {best['prob_shortfall_under_stress']:.0%} shortfall risk) "
+                   f"+ {w['goal']:.0%} x {best['goal_progress_at_deadline']:.0%} goal progress - {DISRUPTION_WEIGHT} x {best['disruption']:.1%} of spending cut"
+                   + (f"; {len(best['flags'])} Challenger flag(s) applied" if best["flags"] else "") + ".")
+        return {
+            "account_id": self.account_id,
+            "mode": self.mode,
+            "framework": {"name": "google-adk", "available": ADK_AVAILABLE, "model": config.GEMINI_MODEL if self.mode == "adk" else None,
+                          "agents": ["strategist", "challenger"] if self.mode == "adk" else []},
+            "error": self.error,
+            "request": {k: v for k, v in self.req.items() if k != "spec"},
+            "objective": {"formula": "resilience_w x (1 - P(shortfall)) + goal_w x goal_progress - 0.25 x (freed_up / S)",
+                          "weights": self.req["weights"], "disruption_weight": DISRUPTION_WEIGHT, "flag_penalty": FLAG_PENALTY},
+            "grid_size": sum(1 for c in self.candidates if c["source"] == "grid"),
+            "ranked": ranked,
+            "recommended": best["label"] if best else None,
+            "why": why,
+            "stay_the_course": stay,
+            "strategist": self.strategist_out,
+            "challenger": self.challenger_out,
+            "unmatched_flags": self.unmatched_flags,
+            "validation_notes": self.validation_notes,
+            "tool_calls": self.tool_calls,
+            "timing_seconds": {"fan_out": round(self.t_grid, 2), "total": round(time.perf_counter() - self.t0, 2)},
+            "disclaimer": "Model outputs for the chosen shock on anonymized data; the agents propose and flag, the engine computes every number.",
+        }
+
+
+# ----------------------------------------------------------------------------- entry points
+def run_council(account_id: int, m: OfficialMetrics, *, r: float, h: float, one_off: float, duration: int = 6,
+                horizon: int = 24, n_paths: int = 200, use_ai: bool = True, top_n: int = 8) -> dict:
+    run = _Run(account_id, m, r=r, h=h, one_off=one_off, duration=duration, horizon=horizon, n_paths=n_paths, use_ai=use_ai, top_n=top_n)
+    run.fan_out()
+    if run.use_ai:
+        try:
+            run.absorb(run_agent(run.build_root(), run.payload(), user_id=f"acct-{account_id}"))
+        except Exception as exc:  # the council never breaks the deterministic answer
+            run.error = f"{type(exc).__name__}: {exc}"[:500]
+            run.mode = "offline"
+        run.validate()
+    return run.rank()
+
+
+async def run_council_stream(account_id: int, m: OfficialMetrics, *, r: float, h: float, one_off: float, duration: int = 6,
+                             horizon: int = 24, n_paths: int = 200, use_ai: bool = True, top_n: int = 8) -> AsyncIterator[tuple[str, dict]]:
+    """Yields ("stage", {...}), ("agent", {...}) and finally ("plan", result) for a live trace."""
+    from starlette.concurrency import run_in_threadpool
+
+    t0 = time.perf_counter()
+
+    def stage(name: str, status: str, detail: str, **data: Any) -> tuple[str, dict]:
+        out = {"name": name, "status": status, "detail": detail, "seconds": round(time.perf_counter() - t0, 2)}
+        if data:
+            out["data"] = data
+        return "stage", out
+
+    yield stage("freeze", "start", "Freezing the request: official numbers, shock, goal, weights, confirmed context")
+    run = await run_in_threadpool(lambda: _Run(account_id, m, r=r, h=h, one_off=one_off, duration=duration, horizon=horizon, n_paths=n_paths, use_ai=use_ai, top_n=top_n))
+    yield stage("freeze", "done", f"Request frozen: {run.req['shock']['label']}; goal {run.req['goal']['label']}", goal=run.req["goal"]["label"],
+                verdict=run.req["shock"]["verdict"].get("verdict") if isinstance(run.req["shock"]["verdict"], dict) else None)
+    yield stage("fan_out", "start", "Scoring the lever grid with the Monte Carlo engine")
+    await run_in_threadpool(run.fan_out)
+    yield stage("fan_out", "done", f"Scored {len(run.candidates)} candidates in {run.t_grid:.1f} s", candidates=len(run.candidates),
+                best_grid=run.candidates[0]["label"] if run.candidates else None)
+    if run.use_ai:
+        yield stage("council", "start", "Strategist and Challenger review the same frozen request in parallel")
+        try:
+            async for ev in run_agent_events_async(run.build_root(), run.payload(), user_id=f"acct-{account_id}"):
+                if ev["type"] == "agent":
+                    yield "agent", {k: v for k, v in ev.items() if k != "type"}
+                else:
+                    run.absorb(ev)
+        except Exception as exc:
+            run.error = f"{type(exc).__name__}: {exc}"[:500]
+            run.mode = "offline"
+            yield stage("council", "done", f"Agents unavailable ({type(exc).__name__}); continuing with the grid")
+        else:
+            n_lev = len((run.strategist_out or {}).get("levers") or [])
+            n_fl = len((run.challenger_out or {}).get("flags") or [])
+            yield stage("council", "done", f"Strategist proposed {n_lev} lever(s); Challenger raised {n_fl} flag(s)", levers=n_lev, flags=n_fl)
+        yield stage("validate", "start", "Clamping and re-scoring every proposed lever; attaching flags")
+        await run_in_threadpool(run.validate)
+        yield stage("validate", "done", f"{len(run.validation_notes)} lever(s) dropped; {len(run.unmatched_flags)} flag(s) unmatched")
+    else:
+        yield stage("council", "done", "No model available: grid only")
+    yield stage("rank", "start", "Ranking by the objective with flag penalties")
+    result = run.rank()
+    yield stage("rank", "done", f"Recommended: {result['recommended']}", recommended=result["recommended"])
+    yield "plan", result

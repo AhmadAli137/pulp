@@ -21,7 +21,8 @@ backend (FastAPI + pandas + numpy + Pydantic)
   services/context_manager.py     structured memory (Redis/Upstash or local JSON per account), proposals, confirmation, versions
   services/feedback_loop.py       replan, snapshot, diff with materiality rules
   services/gemini_agent.py        Gemini/Vultr tools + validated extraction; offline engine; question heuristic
-  services/council.py             Stage 3 council: fan-out grid + Google ADK Strategist/Challenger + validation
+  services/council.py             Stage 3 council: fan-out grid + Google ADK Strategist/Challenger + validation; sync and streaming entry points
+  services/explainer.py           scene script (habit, runway, two futures, lever) built in code; Explainer LlmAgent rewrites narration only
   services/features.py            Stage 1 Feature Forge: ~58 behavioural signals per account from semantic roles; rule-based flags with evidence
   services/archetypes.py          Stage 1: k-means archetypes described in numbers (code), named by Gemini on ADK (or rules)
   services/narrator.py            Stage 1 Profile Narrator: grounded sentences per account (ADK LlmAgent, template fallback, cached)
@@ -73,6 +74,8 @@ Everything authoritative is deterministic Python; the model only converses, inte
 | POST | /api/agent/chat | companion turn |
 | POST | /api/agent/plan | Stage 3 council: fan-out grid, Strategist + Challenger on Google ADK, validated ranking |
 | GET | /api/customers/{id}/insights | Stage 1 profile: flags with evidence, archetype, narrator sentences |
+| GET | /api/agent/run | server-sent events: insight, council stages and live agent events, plan, scenes, done |
+| POST | /api/agent/explain | council plus Explainer scene script in one response |
 | GET | /api/research/archetypes | archetype clusters with statistics and names |
 | GET | /api/research/hunter | Pattern Hunter findings (ADK run) or the deterministic battery |
 | GET | /api/research/features?feature= | layoff survival by quantile of any feature |

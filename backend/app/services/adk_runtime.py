@@ -54,6 +54,54 @@ async def run_agent_async(root: Any, payload: str, *, user_id: str, app_name: st
     return {"state": state, "texts": texts, "tool_calls": tool_calls}
 
 
+def _summarize(value: Any, limit: int = 240) -> str:
+    try:
+        text = value if isinstance(value, str) else json.dumps(value, default=str)
+    except Exception:
+        text = str(value)
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+async def run_agent_events_async(root: Any, payload: str, *, user_id: str, app_name: str = "pulp"):
+    """Like run_agent_async, but yields normalised events as they happen so a UI can show the agents working.
+
+    Yields dicts with type "agent" ({t, agent, kind: tool_call|tool_result|text, tool?, args?, summary?}) and finally one
+    dict with type "result" carrying {state, texts, tool_calls}.
+    """
+    import time
+
+    os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "FALSE")
+    runner = InMemoryRunner(agent=root, app_name=app_name)
+    session = await runner.session_service.create_session(app_name=app_name, user_id=user_id)
+    msg = gtypes.Content(role="user", parts=[gtypes.Part(text=payload)])
+    texts: dict[str, list[str]] = {}
+    tool_calls: list[dict] = []
+    t0 = time.perf_counter()
+    try:
+        async for ev in runner.run_async(user_id=session.user_id, session_id=session.id, new_message=msg):
+            t = round(time.perf_counter() - t0, 2)
+            author = ev.author or "?"
+            for call in ev.get_function_calls() or []:
+                args = dict(call.args or {})
+                tool_calls.append({"agent": author, "tool": call.name, "args": args})
+                yield {"type": "agent", "t": t, "agent": author, "kind": "tool_call", "tool": call.name, "args": args}
+            for resp in ev.get_function_responses() or []:
+                yield {"type": "agent", "t": t, "agent": author, "kind": "tool_result", "tool": resp.name, "summary": _summarize(resp.response)}
+            if ev.content and ev.content.parts:
+                for p in ev.content.parts:
+                    if getattr(p, "text", None):
+                        texts.setdefault(author, []).append(p.text)
+                        yield {"type": "agent", "t": t, "agent": author, "kind": "text", "summary": _summarize(p.text, 300)}
+        final = await runner.session_service.get_session(app_name=app_name, user_id=session.user_id, session_id=session.id)
+        state = dict(final.state) if final else {}
+    finally:
+        try:
+            await runner.close()
+        except Exception:
+            pass
+    yield {"type": "result", "state": state, "texts": texts, "tool_calls": tool_calls}
+
+
 def run_agent(root: Any, payload: str, *, user_id: str, app_name: str = "pulp") -> dict:
     """Synchronous entry point (FastAPI sync routes run in a worker thread, so a fresh loop is fine)."""
     return asyncio.run(run_agent_async(root, payload, user_id=user_id, app_name=app_name))

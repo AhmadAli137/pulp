@@ -4,12 +4,17 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import json
+
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 
 from .. import schemas
 from ..services import context_manager as cm
 from ..services.cohort_analysis import cohort_for, research_summary
-from ..services.council import council_available, run_council
+from ..services.council import council_available, run_council, run_council_stream
+from ..services.explainer import build_scenes, narrate
 from ..services.archetypes import flag_catalog, get_archetypes
 from ..services.hunter import get_findings
 from ..services.narrator import narrative_for
@@ -288,6 +293,55 @@ def post_plan(req: schemas.PlanRequest):
         one_off = req.one_off_in_months_of_spending * m.typical_spending
     return _clean(run_council(req.account_id, m, r=req.income_fraction, h=req.bills_increase, one_off=one_off,
                               duration=req.shock_duration, horizon=req.horizon_months, n_paths=req.n_paths, use_ai=req.use_ai))
+
+
+@router.post("/agent/explain")
+def post_explain(req: schemas.PlanRequest):
+    """Council plus the Explainer: the ranked plan and a scene script (habit, runway, two futures, lever)."""
+    m = _metrics_or_404(req.account_id)
+    one_off = req.one_off_cost if req.one_off_in_months_of_spending is None else req.one_off_in_months_of_spending * m.typical_spending
+    insights = narrative_for(req.account_id, use_ai=req.use_ai)
+    plan = run_council(req.account_id, m, r=req.income_fraction, h=req.bills_increase, one_off=one_off,
+                       duration=req.shock_duration, horizon=req.horizon_months, n_paths=req.n_paths, use_ai=req.use_ai)
+    scenes, source = narrate(build_scenes(insights, plan), use_ai=req.use_ai)
+    return _clean({"account_id": req.account_id, "insight": insights, "plan": plan, "scenes": scenes, "scenes_source": source})
+
+
+@router.get("/agent/run")
+async def get_agent_run(account_id: int, income_fraction: float = Query(0.55, ge=0.0, le=5.0), bills_increase: float = Query(0.0, ge=-1.0, le=10.0),
+                        one_off_cost: float = Query(0.0, ge=0.0), shock_duration: int = Query(6, ge=1, le=60), horizon_months: int = Query(24, ge=6, le=120),
+                        n_paths: int = Query(200, ge=50, le=2000), use_ai: bool = Query(True)):
+    """Server-sent events: the whole agentic run as it happens. Events: insight, stage, agent, plan, scenes, done, error."""
+    m = _metrics_or_404(account_id)
+
+    def sse(event: str, data) -> str:
+        return "event: " + event + "\ndata: " + json.dumps(_clean(data), default=float) + "\n\n"
+
+    async def gen():
+        import time
+        t0 = time.perf_counter()
+        try:
+            yield sse("stage", {"name": "insight", "status": "start", "detail": "Reading the Stage 1 profile: flags, archetype, narrator", "seconds": 0.0})
+            insights = await run_in_threadpool(narrative_for, account_id, use_ai)
+            yield sse("insight", insights)
+            yield sse("stage", {"name": "insight", "status": "done", "detail": insights["narrative"]["headline"], "seconds": round(time.perf_counter() - t0, 2)})
+            plan = None
+            async for etype, data in run_council_stream(account_id, m, r=income_fraction, h=bills_increase, one_off=one_off_cost, duration=shock_duration,
+                                                        horizon=horizon_months, n_paths=n_paths, use_ai=use_ai):
+                if etype == "plan":
+                    plan = data
+                yield sse(etype, data)
+            yield sse("stage", {"name": "explain", "status": "start", "detail": "Explainer writes the scene script from the plan", "seconds": round(time.perf_counter() - t0, 2)})
+            scenes = build_scenes(insights, plan)
+            scenes, source = await run_in_threadpool(narrate, scenes, use_ai)
+            yield sse("scenes", {"source": source, "scenes": scenes})
+            yield sse("stage", {"name": "explain", "status": "done", "detail": f"{len(scenes)} scenes ready", "seconds": round(time.perf_counter() - t0, 2)})
+            yield sse("done", {"seconds": round(time.perf_counter() - t0, 2)})
+        except Exception as exc:  # noqa: BLE001
+            yield sse("error", {"message": f"{type(exc).__name__}: {exc}"[:400]})
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
 
 
 @router.post("/replan")
