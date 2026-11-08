@@ -92,12 +92,18 @@ export function keySteps(events: TraceEvent[], max = 8): TraceEvent[] {
   return events.filter((_, i) => pick.has(i))
 }
 
-export default function AgentRelay({ events: allEvents, personas, columns, compact = false, live = false, autoplay = true, label = 'Agent relay', defaultMode = 'plain', mode: modeProp, simplify = false }: {
+export default function AgentRelay({ events: allEvents, personas, columns, compact = false, live = false, autoplay = true, label = 'Agent relay', defaultMode = 'plain', mode: modeProp, simplify = false, seek, onStep, hideSteps = false }: {
   events: TraceEvent[]; personas?: Persona[]; columns?: string[][]; compact?: boolean; live?: boolean; autoplay?: boolean; label?: string; defaultMode?: Mode
   /** Controlled detail level; when set, the relay hides its own Plain/Technical switch. */
   mode?: Mode
   /** Plain mode shows only the key steps (at most 8), one short line each, with a "Show every step" toggle. */
   simplify?: boolean
+  /** Jump to a step from outside (a log line or a scrubber); `n` changes on every request so the same step can be sought twice. */
+  seek?: { i: number; n: number }
+  /** Called whenever the current step changes, so a log beside the relay can follow along. */
+  onStep?: (i: number, playing: boolean) => void
+  /** Hide the built-in step list (when a separate log shows the steps). */
+  hideSteps?: boolean
 }) {
   const reduced = useReducedMotion() ?? false
   const [ownMode, setMode] = useState<Mode>(defaultMode)
@@ -168,6 +174,8 @@ export default function AgentRelay({ events: allEvents, personas, columns, compa
   }, [cur, reduced])
 
   const jump = (i: number) => { setPlaying(false); setCur(Math.max(-1, Math.min(events.length - 1, i))); setProg(1) }
+  useEffect(() => { if (seek) { started.current = true; jump(seek.i) } }, [seek?.n]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onStep?.(cur, playing) }, [cur, playing]) // eslint-disable-line react-hooks/exhaustive-deps
   const replay = () => { setCur(-1); setProg(1); setPlaying(!reduced) }
   const togglePlay = () => {
     if (playing) { setPlaying(false); return }
@@ -281,7 +289,7 @@ export default function AgentRelay({ events: allEvents, personas, columns, compa
         </svg>
       </div>
 
-      <ol ref={list} className="relay-steps" aria-label="Steps in order">
+      {!hideSteps && <ol ref={list} className="relay-steps" aria-label="Steps in order">
         {events.map((ev, i) => {
           const lean = simplify && mode === 'plain'
           const hasMore = !lean && !!(ev.items?.length || (ev.data && Object.keys(ev.data).length))
@@ -302,7 +310,7 @@ export default function AgentRelay({ events: allEvents, personas, columns, compa
             </li>
           )
         })}
-      </ol>
+      </ol>}
     </div>
   )
 }

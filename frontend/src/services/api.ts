@@ -422,6 +422,13 @@ export interface Demographics {
 /** One observable step of an agent, for the Agents page and the panel's workflow column. */
 export interface TraceEvent { t: number; stage: 1 | 2 | 3; agent: string; kind: 'start' | 'tool_call' | 'tool_result' | 'handoff' | 'output' | 'note'; title: string; to?: string; items?: string[]; data?: Record<string, unknown> }
 export interface AgentTrace { account_id: number; stages: { stage: 1 | 2 | 3; title: string; summary: string; events: TraceEvent[] }[] }
+/** One recorded agent run (a conversation turn, a persona build, a deck, a plan search, or the Stage 1 distillation). */
+export interface AgentRunSummary {
+  id: string; at: string | null; stage: 1 | 2 | 3; title: string; trigger: string; source: string
+  n_events: number; duration_s: number; agents: string[]
+}
+/** A run with every event in order, for step-by-step replay and the raw log. */
+export interface AgentRun extends AgentRunSummary { events: TraceEvent[] }
 /** Extra server-sent events on /api/agent/stage (and voice pipeline_event): profile updates and life plans. */
 export interface StageProfileEvent { changes: ProfileChange[]; context: ContextSummary; version: number; spoken: string }
 export type StageLifePlansEvent = LifePlanResult
@@ -474,6 +481,8 @@ export const api = {
   demographics: (accountId: number) => get<Demographics>(`/api/insights/demographics/${accountId}`),
   lifePlans: (body: { account_id: number; income_fraction?: number; bills_increase?: number; one_off_cost?: number; shock_duration?: number; use_ai?: boolean; mode?: 'shock' | 'long_term'; shock_starts_in?: number; horizon_months?: number; trigger?: string }) => post<LifePlanResult>('/api/agent/life-plans', body),
   agentTrace: (id: number) => get<AgentTrace>(`/api/agents/trace/${id}`),
+  agentRuns: (id: number) => get<{ account_id: number; runs: AgentRunSummary[] }>(`/api/agents/runs/${id}`),
+  agentRun: (id: number, runId: string) => get<AgentRun>(`/api/agents/runs/${id}/${encodeURIComponent(runId)}`),
   stage1Report: (id?: number | null) => get<Stage1Report>(`/api/report/stage1${id ? `?account_id=${id}` : ''}`),
   plan: (body: { account_id: number; income_fraction: number; bills_increase: number; one_off_cost: number; shock_duration: number; use_ai: boolean }) => post<PlanResult>('/api/agent/plan', body),
   replan: (id: number, reason = 'manual replan') => post<ReplanResult>('/api/replan', { account_id: id, reason }),

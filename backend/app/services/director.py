@@ -860,6 +860,18 @@ async def _stage_stream(account_id: int, message: str, *, use_ai: bool = True) -
         yield "storyboard", {"opening": True, "source": insights["narrative"]["source"], "beats": beats}
         return
 
+    # "Pulp, explain this": a section of the app in the simplest, most relatable words, with this account's numbers.
+    # Voice sends the same token inside a sentence, so look for it anywhere in the message.
+    if "explain:" in msg:
+        from .explain import explain
+        token = msg[msg.index("explain:"):]
+        out = await run_in_threadpool(explain, account_id, m, token, use_ai)
+        yield "trace", {"t": round(time.perf_counter() - t0, 2), "stage": 2, "agent": "director", "kind": "output",
+                        "title": f"Explained: {out['title']}", "items": [out["text"][:300], f"source: {out['source']}"]}
+        yield "storyboard", {"opening": False, "source": f"explain:{out['source']}", "reply": out["text"],
+                             "beats": [_beat("explain", "none", out["text"], {"topic": out["topic"]}, 6)]}
+        return
+
     if msg in ("decision:small", "decision:big"):
         scale = msg.split(":")[1]
         profile = insights_fast().get("decision_profile", {})

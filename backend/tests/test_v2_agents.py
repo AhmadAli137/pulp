@@ -382,3 +382,24 @@ def test_every_agent_run_is_recorded_and_replayable():
     s1 = client.get(f"/api/agents/runs/{ACC}/stage1").json()
     assert s1["stage"] == 1 and len(s1["events"]) > 10
     assert client.get(f"/api/agents/runs/{ACC}/nope").status_code == 404
+
+
+# ----------------------------------------------------------------------------- explain
+@pytest.mark.parametrize("topic", ["typical_month", "cushion", "runway", "discovery", "shock?r=0.55&d=6", "prepare_now?r=0.55&d=6",
+                                   "if_it_happens?r=0.55&d=6", "plan", "finalists", "plan_search", "goals", "persona", "quartiles",
+                                   "loan_check", "demographics", "agents", "stage1", "stage2", "stage3"])
+def test_every_explain_topic_answers_in_plain_words(topic):
+    from app.services import director as D
+
+    async def go():
+        return [d for k, d in [(k, d) async for k, d in D.stage_stream(ACC, f"explain:{topic}", use_ai=False)] if k == "storyboard"][-1]
+    board = asyncio.run(go())
+    assert board["reply"] and len(board["reply"]) < 600 and board["beats"][0]["visual"] == "none"
+
+
+def test_explain_inside_a_spoken_sentence():
+    from app.services import director as D
+
+    async def go():
+        return [d for k, d in [(k, d) async for k, d in D.stage_stream(ACC, "Please explain this simply: explain:cushion", use_ai=False)] if k == "storyboard"][-1]
+    assert "cushion" in asyncio.run(go())["reply"]

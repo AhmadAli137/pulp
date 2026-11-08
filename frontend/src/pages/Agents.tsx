@@ -8,6 +8,7 @@ import { ChevronDown, MessageCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import AgentRelay from '../components/agents/AgentRelay'
+import RunReplay, { type RunFilter } from '../components/agents/RunReplay'
 import AgentSymbol, { STAGE_COLOR, agentKey, metaFor, type Stage } from '../components/agents/AgentSymbol'
 import SearchFunnel from '../components/agents/SearchFunnel'
 import { ROSTER, mockLifePlans, mockTrace } from '../components/agents/fixtures'
@@ -85,6 +86,7 @@ export default function Agents() {
   const [open, setOpen] = useState<N>(1)
   const [mode, setMode] = useState<'plain' | 'technical'>('plain')
   const [curious, setCurious] = useState(false)
+  const [runFilter, setRunFilter] = useState<RunFilter>(0)
 
   useEffect(() => { api.personas().then((r) => setLivePersonas(r.personas)).catch(() => undefined) }, [])
 
@@ -179,6 +181,7 @@ export default function Agents() {
             </span>
             <p className="ag-flow">{STAGES[n].flow}</p>
             <p className="ag-num">{headline[n]}</p>
+            <button type="button" className="ag-replay-link" onClick={() => { setRunFilter(n); document.getElementById('run-replay')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>Replay runs from this stage</button>
           </article>
         ))}
       </div>
@@ -215,6 +218,8 @@ export default function Agents() {
           )}
         </section>
       )}
+
+      <RunReplay accountId={accountId} personas={personas} filter={runFilter} onFilter={setRunFilter} narrow={narrow} />
 
       <details className="ag-curious" open={curious} onToggle={(e) => setCurious((e.target as HTMLDetailsElement).open)}>
         <summary><ChevronDown size={16} aria-hidden="true" /> For the technically curious</summary>
