@@ -488,7 +488,7 @@ def get_goal_ideas(account_id: int, lens: str = Query("balanced", pattern="^(bal
     from ..services import context_manager as cm
     from ..services.goal_ideas import LENSES, model_pick, ranked
     ctx = cm.load_context(account_id)
-    have = {x.get("value", {}).get("type") for x in ctx.get("goals", [])}
+    have = {x.get("value", {}).get("type") for x in ctx.get("goals", [])} | {x.get("value", {}).get("id") for x in ctx.get("goals", [])}
     items = ranked(account_id, lens, have)
     persona = ctx.get("persona") or {}
     from ..services.persona_voice import draft_quote, quote_key

@@ -403,3 +403,13 @@ def test_explain_inside_a_spoken_sentence():
     async def go():
         return [d for k, d in [(k, d) async for k, d in D.stage_stream(ACC, "Please explain this simply: explain:cushion", use_ai=False)] if k == "storyboard"][-1]
     assert "cushion" in asyncio.run(go())["reply"]
+
+
+def test_every_angle_offers_its_own_goal_ideas():
+    tops = {lens: [i["id"] for i in client.get(f"/api/profile/88789/goal-ideas?lens={lens}").json()["ideas"][:3]]
+            for lens in ("balanced", "safety", "ambitious", "life", "habits")}
+    assert len({tuple(v) for v in tops.values()}) == 5
+    fams = {"safety": "safety", "ambitious": "growth", "life": "life", "habits": "habit"}
+    for lens, fam in fams.items():
+        first = client.get(f"/api/profile/88789/goal-ideas?lens={lens}").json()["ideas"][0]
+        assert first["family"] == fam

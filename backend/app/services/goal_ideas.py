@@ -194,19 +194,86 @@ def ideas(account_id: int) -> list[dict]:
     return out
 
 
+LENS_FAMILY = {"safety": "safety", "ambitious": "growth", "life": "life", "habits": "habit"}
+
+
+def broad_ideas(account_id: int) -> list[dict]:
+    """Goals that suit most people, sized from this account's own spending and income, so every angle has something
+    to offer even when the records show few specific signals. Ranked below the record-specific ideas."""
+    from .features import get_features
+    row = get_features().loc[account_id]
+    S = max(_f(row, "S"), 1.0)
+    I = max(_f(row, "I"), 0.0)
+    age = _f(row, "owner_age") or 40
+    joint = _f(row, "n_authorized_users") > 0
+    cash_wd = _f(row, "cash_wd_share")
+    ins = _f(row, "insurance_share")
+    out = [
+        # safety
+        _idea("repairs_fund", "A repairs fund for the home and car", "repairs", "small", "medium", 1.0 * S, 12, 3,
+              "Furnaces, brakes and roofs fail on their own schedule; a fund turns a crisis into an errand.",
+              f"Sized at one month of your spending ({_m(S)})", "safety", 0.42, "spending"),
+        _idea("health_fund", "A health and dental fund", "health", "small", "short", 0.3 * S, 9, 3,
+              "Glasses, a crown or physio are rarely fully covered and always arrive at a bad time.",
+              f"About {_m(0.3 * S)}, a third of a month's spending", "safety", 0.36, "spending"),
+        _idea("cover_check", "Make sure your income is covered if you get sick", "insurance", "small", "short", 0.1 * S, 3, 3,
+              "Disability or critical-illness cover protects the paycheque that every plan depends on.",
+              "No insurance payments leave this account" if ins == 0 else f"Insurance is {ins:.0%} of spending today",
+              "safety", 0.34 if ins == 0 else 0.2, "insurance"),
+        # growth
+        _idea("invest_monthly", "Invest a small fixed amount every month", "investing", "small", "long", 0.03 * I * 60, 60, 3,
+              "A small automatic amount, started now, grows more than a large one started later.",
+              f"About {_m(0.03 * I)} a month, 3% of what comes in", "growth", 0.4, "income"),
+        _idea("side_income_seed", "A starter fund for a side income", "side_income", "small", "short", 0.5 * S, 6, 2,
+              "Tools, a course or a licence can be the first step to a second income stream.",
+              f"About half a month of spending ({_m(0.5 * S)})", "growth", 0.33, "spending"),
+        _idea("raise_fund", "Save for the move that gets you a raise", "career", "small", "medium", 1.0 * S, 18, 3,
+              "A certification, a portfolio or the cost of interviewing elsewhere often pays for itself in a year.",
+              f"Income today {_m(I)} a month", "growth", 0.3, "income"),
+        # life events
+        _idea("big_trip", "A trip you've been putting off", "travel", "small", "medium", 1.5 * S, 24, 3,
+              "Planned and saved for, a trip is a memory instead of a credit card bill.",
+              f"About one and a half months of spending ({_m(1.5 * S)})", "life", 0.35, "spending"),
+        _idea("next_car", "The next car, paid for in cash", "vehicle", "large", "long", 6 * S, 48, 3,
+              "Buying the next car with savings avoids years of loan payments.", f"About six months of spending ({_m(6 * S)})",
+              "life", 0.3, "spending"),
+        _idea("celebration", "A celebration fund for the big moments", "celebration", "small", "medium", 1.0 * S, 18, 2,
+              "Weddings, milestone birthdays and graduations come with costs that are easy to see coming.",
+              "Two people share this account" if joint else f"Age about {age:.0f}", "life", 0.28, "life"),
+        # habits
+        _idea("no_spend_weekend", "One no-spend weekend a month", "habit", "small", "short", 0.04 * S * 12, 12, 2,
+              "A weekend a month with nothing spent resets what feels normal, and the savings add up quietly.",
+              f"Worth about {_m(0.04 * S)} a month at your usual spending", "habit", 0.38, "spending"),
+        _idea("subscription_audit", "Cancel what you no longer use", "habit", "small", "short", 0.02 * S * 12, 6, 2,
+              "Subscriptions and memberships creep in and rarely leave on their own.", "A once-a-year audit of standing payments",
+              "habit", 0.32, "spending"),
+    ]
+    if cash_wd >= 0.6:
+        out.append(_idea("cash_limit", "Set a weekly cash limit", "habit", "small", "short", 0.05 * S * 12, 12, 3,
+                         "Cash leaves no trail, so a fixed weekly amount is the simplest way to keep it in check.",
+                         f"{cash_wd:.0%} of your spending is taken out as cash", "habit", 0.44, "cash_withdrawals"))
+    return out
+
+
 def ranked(account_id: int, lens: str = "balanced", have_types: set[str] | None = None) -> list[dict]:
+    """Record-specific ideas first, then broad ones; a lens other than balanced puts its own family on top."""
     lens = lens if lens in LENSES else "balanced"
     boost = LENS_BOOST[lens]
     have_types = have_types or set()
+    specific = ideas(account_id)
+    taken = {g["type"] for g in specific} | {g["id"] for g in specific}
+    pool = specific + [g for g in broad_ideas(account_id) if g["id"] not in taken and (g["type"] not in taken or g["type"] == "habit")]
     out = []
-    for g in ideas(account_id):
+    for g in pool:
         g = dict(g)
         g["lens_score"] = round(g["relevance"] * boost.get(g["family"], 1.0), 3)
         if lens != "balanced" and boost.get(g["family"], 1.0) >= 1.5:
             g["importance"] = min(5, g["importance"] + 1)
-        g["in_profile"] = g["type"] in have_types
+        g["in_profile"] = g["id"] in have_types or (g["type"] in have_types and g["type"] != "habit")
+        g["from_records"] = g in specific or g["id"] in {x["id"] for x in specific}
         out.append(g)
-    out.sort(key=lambda g: g["lens_score"], reverse=True)
+    fam = LENS_FAMILY.get(lens)
+    out.sort(key=lambda g: ((g["family"] == fam) if fam else 0, g["lens_score"]), reverse=True)
     return out
 
 

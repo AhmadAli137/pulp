@@ -301,6 +301,8 @@ export type GoalLens = 'balanced' | 'safety' | 'ambitious' | 'life' | 'habits'
 /** A personal goal idea from the records, ranked through a lens. Amounts are code-set from the account's own figures. */
 export interface GoalIdea extends Omit<PersonaGoal, 'weight'> {
   key: string; family: 'safety' | 'growth' | 'life' | 'habit'; relevance: number; signal: string; lens_score: number; in_profile: boolean; picked_by?: 'model'
+  /** true: tied to a specific signal in this account's records; false: a general idea sized from its own numbers. */
+  from_records?: boolean
 }
 export interface GoalIdeasResult {
   account_id: number; lens: GoalLens; lenses: Record<GoalLens, string>; ideas: GoalIdea[]

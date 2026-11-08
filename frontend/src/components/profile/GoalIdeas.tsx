@@ -73,7 +73,7 @@ export default function GoalIdeas({ accountId, onAdded }: { accountId: number; o
               <ItemIcon symbol={goalSymbol(i.type)} />
               <div className="pl-main">
                 <span className="pl-title">{i.label}</span>
-                <span className="pl-line">{money(i.target_amount)} {byDate(i.target_months)}</span>
+                <span className="pl-line">{money(i.target_amount)} {byDate(i.target_months)}{i.from_records === false ? ' · a general idea' : ''}</span>
               </div>
               {inProfile
                 ? <span className="gi-in"><Check size={15} aria-hidden="true" /> Added</span>
@@ -81,7 +81,7 @@ export default function GoalIdeas({ accountId, onAdded }: { accountId: number; o
               <details>
                 <summary>Details</summary>
                 {i.quote && <p>“{shortQuote(i.quote, 160)}”</p>}
-                <p>From your records: {i.evidence}</p>
+                <p>{i.from_records === false ? 'Sized for you: ' : 'From your records: '}{i.evidence}</p>
                 <p>Importance {i.importance} of 5 · {i.horizon} term</p>
               </details>
             </li>
