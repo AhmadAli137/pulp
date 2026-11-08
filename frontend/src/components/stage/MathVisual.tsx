@@ -11,7 +11,7 @@ export default function MathVisual({ p }: { p: MathParams }) {
     if (!scale) { setShown(full.length); return }
     setShown(0)
     let i = 0
-    const id = setInterval(() => { i += 2; setShown(i); if (i >= full.length) clearInterval(id) }, 18)
+    const id = setInterval(() => { i += 4; setShown(i); if (i >= full.length) clearInterval(id) }, 14)
     return () => clearInterval(id)
   }, [full, scale])
   const text = full.slice(0, shown)

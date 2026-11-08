@@ -16,8 +16,8 @@ export default function CardsVisual({ p, onAction }: { p: CardsParams; onAction?
         const lift = Math.abs(i - (n - 1) / 2) * 14
         return (
           <motion.button key={c.key} className="stage-card-btn" onClick={() => onAction?.(`twist:${c.key}`)} aria-label={`${c.title}: ${c.text}`}
-            initial={scale ? { y: 220, opacity: 0, rotate: 0 } : false} animate={{ y: lift, opacity: 1, rotate: rot }} whileHover={{ y: lift - 26, rotate: 0, scale: 1.05, zIndex: 20 }}
-            transition={{ delay: 0.12 * i, type: 'spring', stiffness: 190, damping: 18 }} style={{ transformOrigin: 'bottom center' }}>
+            initial={scale ? { y: 40, opacity: 0, rotate: 0 } : false} animate={{ y: lift, opacity: 1, rotate: rot }} whileHover={{ y: lift - 12, rotate: 0, scale: 1.02, zIndex: 20 }}
+            transition={{ delay: 0.12 * i, duration: 0.5, ease: 'easeOut' }} style={{ transformOrigin: 'bottom center' }}>
             {c.key === 'random'
               ? <TwistCardBack style={{ width: 'min(220px, 21vw)' }} label="Shuffle the deck" />
               : <TwistCardFace title={c.title} text={c.text} cardKey={c.key} style={{ width: 'min(220px, 21vw)' }} scale={0.9} />}

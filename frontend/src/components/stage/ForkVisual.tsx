@@ -32,10 +32,10 @@ export default function ForkVisual({ p }: { p: TwoFuturesParams }) {
       )}
       {/* the shared road before the fork, then the two futures */}
       <motion.path d={path(stay)} fill="none" stroke={ROSE} {...road} opacity={0.9} filter="url(#glow-soft)"
-        initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 2.2, ease: 'easeInOut' }} />
+        initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 1.1, ease: 'easeInOut' }} />
       {!same && <motion.path d={path(plan)} fill="none" stroke={MINT} {...road} filter="url(#glow)"
-        initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 2.2, ease: 'easeInOut', delay: 0.4 }} />}
-      {!same && <motion.circle r={9} fill={INK} initial={scale ? { opacity: 0 } : false} animate={{ opacity: [0, 1, 1, 0], cx: plan.map((_, i) => X(i)), cy: plan.map((v) => Y(v)) }} transition={{ duration: 2.2, delay: 0.4, ease: 'easeInOut' }} />}
+        initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 1.1, ease: 'easeInOut', delay: 0.4 }} />}
+      {!same && <motion.circle r={9} fill={INK} initial={scale ? { opacity: 0 } : false} animate={{ opacity: [0, 1, 1, 0], cx: plan.map((_, i) => X(i)), cy: plan.map((v) => Y(v)) }} transition={{ duration: 1.1, delay: 0.4, ease: 'easeInOut' }} />}
       <circle cx={X(0)} cy={Y(stay[0] ?? 0)} r={11} fill={ORANGE} stroke={INK} strokeWidth={3} filter="url(#glow)" />
       <Label x={X(0) - 16} y={Y(stay[0] ?? 0) + 5} size={14} color={INK} anchor="end" weight={700}>today</Label>
       <Label x={x1 + 14} y={clamp(Y(stay[stay.length - 1] ?? 0) + 5, yTop, yBot + 30)} size={14} color={ROSE} weight={800}>{same ? 'stay the course' : 'if nothing changes'}</Label>

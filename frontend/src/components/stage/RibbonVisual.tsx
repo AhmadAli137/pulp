@@ -18,8 +18,8 @@ export default function RibbonVisual({ p }: { p: RibbonParams }) {
   const creep = p.spending_drift_pm - p.income_drift_pm
   return (
     <Frame label={`Spending drifting ${(p.spending_drift_pm * 100).toFixed(1)}% a month, income ${(p.income_drift_pm * 100).toFixed(1)}%`}>
-      <motion.path d={path(inc)} fill="none" stroke={MINT} strokeWidth={18} strokeLinecap="round" opacity={0.9} filter="url(#glow-soft)" initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 2 }} />
-      <motion.path d={path(spd)} fill="none" stroke="url(#juice)" strokeWidth={18} strokeLinecap="round" filter="url(#glow-soft)" initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 2, delay: 0.3 }} />
+      <motion.path d={path(inc)} fill="none" stroke={MINT} strokeWidth={18} strokeLinecap="round" opacity={0.9} filter="url(#glow-soft)" initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 1.1 }} />
+      <motion.path d={path(spd)} fill="none" stroke="url(#juice)" strokeWidth={18} strokeLinecap="round" filter="url(#glow-soft)" initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 1.1, delay: 0.3 }} />
       <Label x={x0} y={Y(inc[0]) - 20} size={15} color={MINT} weight={800}>income</Label>
       <Label x={x0} y={Y(spd[0]) + 36} size={15} color={ORANGE} weight={800}>spending</Label>
       <Label x={x0} y={448} size={13} color={MUTED}>{n} months ago</Label>

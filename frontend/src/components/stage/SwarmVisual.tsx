@@ -24,10 +24,10 @@ export default function SwarmVisual({ p }: { p: SwarmParams }) {
         <motion.path key={i} d={path(c.buffer_path)} fill="none" stroke={c.best ? 'url(#juice)' : c.source === 'strategist' ? ORANGE : INK}
           strokeWidth={c.best ? 9 : 2.4} strokeOpacity={c.best ? 1 : c.source === 'strategist' ? 0.75 : 0.35} strokeLinecap="round"
           className={c.best ? 'stage-glow-path' : ''}
-          initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 1.6, delay: (c.best ? 1.2 : 0) + (i % 9) * 0.12, ease: 'easeOut' }} />
+          initial={scale ? { pathLength: 0 } : false} animate={{ pathLength: 1 }} transition={{ duration: 1.1, delay: (c.best ? 0.6 : 0) + (i % 9) * 0.05, ease: 'easeOut' }} />
       ))}
       {best && <motion.circle r={11} fill={ORANGE} stroke={INK} strokeWidth={3} filter="url(#glow)" cx={X(best.buffer_path.length - 1, best.buffer_path.length)} cy={Y(best.buffer_path[best.buffer_path.length - 1])}
-        initial={scale ? { scale: 0, opacity: 0 } : false} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 2.8, type: 'spring', stiffness: 200, damping: 12 }} />}
+        initial={scale ? { scale: 0, opacity: 0 } : false} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 1.1, duration: 0.5, ease: 'easeOut' }} />}
       {best && <Label x={X(best.buffer_path.length - 1, best.buffer_path.length) - 18} y={Y(best.buffer_path[best.buffer_path.length - 1]) - 18} size={15} color={ORANGE} anchor="end" weight={800}>{bestName.length > 40 ? bestName.slice(0, 39) + '…' : bestName}</Label>}
       <Label x={x0} y={420} size={13} color={MUTED}>now</Label>
       <Label x={x1} y={420} size={13} color={MUTED} anchor="end">{p.horizon_months} months</Label>

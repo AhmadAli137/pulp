@@ -11,11 +11,11 @@ export const JUICE_DARK = '#EA580C'
 export const ORANGE_SOFT = '#FFD7B5'
 export const FOREST = '#183B2D'
 export const FOREST_DEEP = '#0F2A20'
-export const INK = '#FBF6EE'          // primary type on the dark stage
-export const MUTED = '#A9B8AD'        // secondary type
-export const LINE = 'rgba(251,246,238,0.16)'
-export const MINT = '#A7F3D0'
-export const ROSE = '#FB7185'
+export const INK = '#183B2D'          // primary type on the light figure
+export const MUTED = '#6E7A70'        // secondary type
+export const LINE = '#E3E8DF'
+export const MINT = '#2F7A5B'
+export const ROSE = '#C2410C'
 /* Older names kept so the visuals read the same; mapped onto the dark palette. */
 export const GRAY = MUTED
 export const DANGER = ROSE
@@ -24,7 +24,7 @@ export const EMERALD = MINT
 export const money = (n: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n)
 export const pct = (x: number) => `${Math.round(x * 100)}%`
 export const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x))
-export const spring = { type: 'spring', stiffness: 170, damping: 22 } as const
+export const spring = { duration: 0.5, ease: 'easeOut' } as const
 
 export function useMotionScale(): number {
   const reduced = useReducedMotion()
@@ -36,11 +36,12 @@ export function Frame({ label, children }: { label: string; children: React.Reac
   return (
     <svg className="stage-svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} preserveAspectRatio="xMidYMid meet">
       <defs>
-        <linearGradient id="juice" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stopColor={JUICE_LIGHT} /><stop offset="0.55" stopColor={ORANGE} /><stop offset="1" stopColor={JUICE_DARK} /></linearGradient>
-        <linearGradient id="juice-v" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={JUICE_LIGHT} /><stop offset="1" stopColor={JUICE_DARK} /></linearGradient>
-        <linearGradient id="mint-v" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#D1FAE5" /><stop offset="1" stopColor="#6EE7B7" /></linearGradient>
-        <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-        <filter id="glow-soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+        {/* light theme: one subtle orange gradient, mint as a flat marker, and the glow filters are identities */}
+        <linearGradient id="juice" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stopColor={JUICE_LIGHT} /><stop offset="1" stopColor={ORANGE} /></linearGradient>
+        <linearGradient id="juice-v" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={JUICE_LIGHT} /><stop offset="1" stopColor={ORANGE} /></linearGradient>
+        <linearGradient id="mint-v" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={MINT} /><stop offset="1" stopColor={MINT} /></linearGradient>
+        <filter id="glow"><feMerge><feMergeNode in="SourceGraphic" /></feMerge></filter>
+        <filter id="glow-soft"><feMerge><feMergeNode in="SourceGraphic" /></feMerge></filter>
       </defs>
       {children}
     </svg>
@@ -62,15 +63,15 @@ export function Cup({ x, y, w = 220, h = 260, level, label, sub, delay = 0, tone
           <path d={`M${x} ${y} L${x + w} ${y} L${x + w - inset} ${y + h} L${x + inset} ${y + h} Z`} />
         </clipPath>
       </defs>
-      <path d={`M${x} ${y} L${x + w} ${y} L${x + w - inset} ${y + h} L${x + inset} ${y + h} Z`} fill="rgba(255,255,255,0.06)" stroke={INK} strokeWidth={5} strokeLinejoin="round" />
+      <path d={`M${x} ${y} L${x + w} ${y} L${x + w - inset} ${y + h} L${x + inset} ${y + h} Z`} fill="#FFFDF8" stroke={INK} strokeWidth={3} strokeLinejoin="round" />
       <g clipPath={`url(#${id})`}>
-        <rect className="stage-liquid" x={x - 10} y={liquidTop} width={w + 20} height={h} fill={fill} style={{ transition: `y 1.6s cubic-bezier(.2,.8,.2,1) ${delay}s`, transitionProperty: 'y' }} />
+        <rect className="stage-liquid" x={x - 10} y={liquidTop} width={w + 20} height={h} fill={fill} style={{ transition: `y 1.1s cubic-bezier(.2,.8,.2,1) ${delay}s`, transitionProperty: 'y' }} />
         <g className="stage-slosh" style={{ transformOrigin: `${x + w / 2}px ${liquidTop}px` }}>
-          <path className="stage-wave" d={`M${x - 40} ${liquidTop} q 25 -9 50 0 t 50 0 t 50 0 t 50 0 t 50 0 t 50 0 t 50 0 t 50 0 V ${liquidTop + 40} H ${x - 40} Z`} fill={fill} style={{ transition: `d 1.6s ${delay}s` }} />
+          <path className="stage-wave" d={`M${x - 40} ${liquidTop} q 25 -9 50 0 t 50 0 t 50 0 t 50 0 t 50 0 t 50 0 t 50 0 t 50 0 V ${liquidTop + 40} H ${x - 40} Z`} fill={fill} style={{ transition: `d 1.1s ${delay}s` }} />
         </g>
         {[0, 1, 2, 3].map((i) => <circle key={i} className="stage-pulp" cx={x + inset + 30 + i * (lw / 4)} cy={liquidTop + 30 + (i % 2) * 40} r={6} fill="#FFE1C7" opacity={lv > 0.05 ? 0.8 : 0} />)}
       </g>
-      <path d={`M${x} ${y} L${x + w} ${y}`} stroke={INK} strokeWidth={6} strokeLinecap="round" opacity={0.9} />
+      <path d={`M${x} ${y} L${x + w} ${y}`} stroke={INK} strokeWidth={4} strokeLinecap="round" />
       {label && <text x={x + w / 2} y={y - 20} textAnchor="middle" fontSize={24} fontWeight={800} fill={INK} fontFamily="Manrope, DM Sans, sans-serif">{label}</text>}
       {sub && <text x={x + w / 2} y={y + h + 36} textAnchor="middle" fontSize={16} fill={MUTED}>{sub}</text>}
     </g>
@@ -78,18 +79,18 @@ export function Cup({ x, y, w = 220, h = 260, level, label, sub, delay = 0, tone
 }
 
 /* A flowing stream: a thick dashed path whose dashes move, with a soft glow underneath. Width scales with the amount. */
-export function Stream({ d, width, color = ORANGE, speed = 1, opacity = 0.95, glow = true }: { d: string; width: number; color?: string; speed?: number; opacity?: number; glow?: boolean }) {
+export function Stream({ d, width, color = ORANGE, speed = 1, opacity = 0.9, glow = false }: { d: string; width: number; color?: string; speed?: number; opacity?: number; glow?: boolean }) {
   return (
     <g>
-      {glow && <path d={d} fill="none" stroke={color} strokeOpacity={0.22} strokeWidth={width + 16} strokeLinecap="round" filter="url(#glow-soft)" />}
-      <path d={d} fill="none" stroke={color} strokeOpacity={0.35} strokeWidth={width + 6} strokeLinecap="round" />
+      {glow && <path d={d} fill="none" stroke={color} strokeOpacity={0.18} strokeWidth={width + 10} strokeLinecap="round" />}
       <path className="stage-stream" d={d} fill="none" stroke={color} strokeOpacity={opacity} strokeWidth={width} strokeLinecap="round" strokeDasharray="30 18" style={{ animationDuration: `${1.5 / speed}s` }} />
     </g>
   )
 }
 
 export function Label({ x, y, children, size = 16, color = MUTED, anchor = 'start', weight = 500, family }: { x: number; y: number; children: React.ReactNode; size?: number; color?: string; anchor?: 'start' | 'middle' | 'end'; weight?: number; family?: string }) {
-  return <text x={x} y={y} fontSize={size} fill={color} textAnchor={anchor} fontWeight={weight} fontFamily={family}>{children}</text>
+  // inline figures render at about half the viewBox scale, so small labels get a floor
+  return <text x={x} y={y} fontSize={Math.max(size, 14)} fill={color} textAnchor={anchor} fontWeight={weight} fontFamily={family}>{children}</text>
 }
 
 /* Big display number in Manrope. */

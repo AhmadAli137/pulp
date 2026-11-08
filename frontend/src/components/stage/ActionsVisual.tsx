@@ -16,7 +16,7 @@ export default function ActionsVisual({ p }: { p: ActionsParams }) {
         {items.map((a, i) => (
           <motion.article key={i} className={`stage-action ${a.horizon.replace(' ', '-')}`} role="listitem"
             initial={scale ? { opacity: 0, x: -40, rotate: -2 } : false} animate={{ opacity: 1, x: 0, rotate: (i % 2 ? 1 : -1) * 0.6 }}
-            transition={{ delay: 0.35 + i * 0.45, type: 'spring', stiffness: 160, damping: 20 }}>
+            transition={{ delay: 0.15 + i * 0.2, duration: 0.5, ease: 'easeOut' }}>
             <span className={`stage-action-when ${a.horizon.replace(' ', '-')}`}>{HORIZON_LABEL[a.horizon] ?? a.horizon}</span>
             <strong>{a.title}</strong>
             <p>{a.how}</p>

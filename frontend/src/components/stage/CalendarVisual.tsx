@@ -16,9 +16,9 @@ export default function CalendarVisual({ p }: { p: CalendarParams }) {
         const pay = day === 5 || (dipDays.length === 0 && day === 1)
         return (
           <motion.rect key={d} x={x0 + d * (cell + gap)} y={y} width={cell} height={cell} rx={7}
-            fill={dip ? ROSE : pay ? MINT : 'rgba(251,246,238,0.12)'}
+            fill={dip ? ROSE : pay ? MINT : '#EEF1E8'}
             filter={dip || pay ? 'url(#glow)' : undefined}
-            initial={scale ? { opacity: 0, scale: 0.5 } : false} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.025 * d + (y > 200 ? 1.4 : 0), type: 'spring', stiffness: 260, damping: 18 }} />
+            initial={scale ? { opacity: 0, scale: 0.5 } : false} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.012 * d + (y > 200 ? 0.6 : 0), duration: 0.5, ease: 'easeOut' }} />
         )
       })}
       <Label x={x0 + 2 * (cell + gap) + cell / 2} y={y + cell + 24} size={13} color={ORANGE} anchor="middle" weight={700}>bills</Label>
@@ -29,9 +29,9 @@ export default function CalendarVisual({ p }: { p: CalendarParams }) {
   return (
     <Frame label={`Timing dips: ${p.neg_months} months went below zero, ${pct(p.timing_share)} of them with enough income`}>
       {strip(120, [3, 4], 'how your months go now')}
-      <motion.text x={x0 + 3 * (cell + gap)} y={200} fontSize={15} fill={ROSE} fontWeight={800} initial={scale ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>below zero for two days, every month like this</motion.text>
+      <motion.text x={x0 + 3 * (cell + gap)} y={200} fontSize={15} fill={ROSE} fontWeight={800} initial={scale ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>below zero for two days, every month like this</motion.text>
       {strip(300, [], 'the same month, pay before bills')}
-      <motion.text x={x0} y={380} fontSize={15} fill={MINT} fontWeight={800} initial={scale ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={{ delay: 2.4 }}>same money, no dip</motion.text>
+      <motion.text x={x0} y={380} fontSize={15} fill={MINT} fontWeight={800} initial={scale ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={{ delay: 1.0 }}>same money, no dip</motion.text>
       <Big x={500} y={478} size={24} anchor="middle">{p.neg_months} of {p.months} months dipped below zero</Big>
       <Label x={500} y={508} size={15} color={MUTED} anchor="middle">in {pct(p.timing_share)} of those months the money that came in still covered what went out</Label>
     </Frame>

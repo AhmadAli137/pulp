@@ -15,7 +15,7 @@ export default function CrowdVisual({ p }: { p: CrowdParams }) {
     const cols = 40
     return Array.from({ length: DOTS }, (_, i) => {
       const c = i % cols, r = Math.floor(i / cols)
-      return { x: 90 + c * 21 + (rnd() - 0.5) * 8, y: 60 + r * 22 + (rnd() - 0.5) * 8, order: rnd(), dx: (rnd() - 0.5) * 400, dy: (rnd() - 0.5) * 300 }
+      return { x: 90 + c * 21 + (rnd() - 0.5) * 8, y: 60 + r * 22 + (rnd() - 0.5) * 8, order: rnd(), dx: (rnd() - 0.5) * 60, dy: (rnd() - 0.5) * 40 }
     })
   }, [])
   const litIdx = useMemo(() => [...dots.keys()].sort((a, b) => dots[a].order - dots[b].order).slice(0, lit), [dots, lit])
@@ -28,9 +28,9 @@ export default function CrowdVisual({ p }: { p: CrowdParams }) {
         const on = litSet.has(i)
         const me = i === you
         return (
-          <motion.circle key={i} cx={d.x} cy={d.y} r={me ? 10 : on ? 6.5 : 5} fill={on ? (me ? '#FFD7B5' : ORANGE) : 'rgba(251,246,238,0.22)'}
+          <motion.circle key={i} cx={d.x} cy={d.y} r={me ? 10 : on ? 6.5 : 5} fill={on ? (me ? '#FFD7B5' : ORANGE) : '#D9DDCF'}
             className={me ? 'stage-you' : ''} filter={me ? 'url(#glow)' : undefined}
-            initial={scale ? { opacity: 0, x: d.dx, y: d.dy } : false} animate={{ opacity: 1, x: 0, y: 0 }} transition={{ delay: 0.5 * d.order + (on ? 0.6 : 0), type: 'spring', stiffness: 90, damping: 16 }} />
+            initial={scale ? { opacity: 0, x: d.dx, y: d.dy } : false} animate={{ opacity: 1, x: 0, y: 0 }} transition={{ delay: 0.35 * d.order + (on ? 0.3 : 0), duration: 0.5, ease: 'easeOut' }} />
         )
       })}
       <g transform="translate(90, 436)">

@@ -44,9 +44,9 @@ export default function PodiumVisual({ p }: { p: PodiumParams }) {
         const soft = top ? '#5a3a24' : MUTED
         return (
           <g key={e.rank}>
-            <motion.rect x={x} width={w} rx={18} fill={top ? 'url(#juice-v)' : 'rgba(251,246,238,0.1)'} stroke={top ? 'none' : 'rgba(251,246,238,0.3)'} strokeWidth={1.5} filter={top ? 'url(#glow)' : undefined}
-              initial={scale ? { y: base, height: 0 } : false} animate={{ y: base - h, height: h }} transition={{ delay: 0.3 * i + (top ? 0.5 : 0), type: 'spring', stiffness: 120, damping: 18 }} />
-            <motion.g initial={scale ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={{ delay: 0.3 * i + 1.1 }}>
+            <motion.rect x={x} width={w} rx={18} fill={top ? 'url(#juice-v)' : '#EEF2EA'} stroke={top ? 'none' : '#D9E0CF'} strokeWidth={1.5} filter={top ? 'url(#glow)' : undefined}
+              initial={scale ? { y: base, height: 0 } : false} animate={{ y: base - h, height: h }} transition={{ delay: 0.15 * i + (top ? 0.2 : 0), duration: 0.5, ease: 'easeOut' }} />
+            <motion.g initial={scale ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={{ delay: 0.15 * i + 0.5 }}>
               <Big x={x + w / 2} y={base - h + 40} size={30} color={ink} anchor="middle">#{e.rank}</Big>
               {lines.map((ln, li) => <Label key={li} x={x + w / 2} y={base - h + 70 + li * 20} size={15} color={ink} anchor="middle" weight={800} family="Manrope, sans-serif">{ln}</Label>)}
               <Label x={x + w / 2} y={base - h + 70 + lines.length * 20 + 6} size={13} color={soft} anchor="middle" weight={600}>{pct(e.prob_shortfall)} chance of running dry</Label>
@@ -54,7 +54,7 @@ export default function PodiumVisual({ p }: { p: PodiumParams }) {
               {e.action && <Label x={x + w / 2} y={base - 14} size={10.5} color={soft} anchor="middle">{e.label.length > 34 ? e.label.slice(0, 33) + '…' : e.label}</Label>}
               {e.flags.length > 0 && (
                 <g transform={`translate(${x + w / 2 - 56}, ${base - h - 32})`}>
-                  <rect width={112} height={26} rx={13} fill={e.flags[0].severity === 'high' ? ROSE : 'rgba(249,115,22,0.25)'} stroke={e.flags[0].severity === 'high' ? 'none' : ORANGE} />
+                  <rect width={112} height={26} rx={13} fill={e.flags[0].severity === 'high' ? ROSE : '#FFE1C7'} stroke={e.flags[0].severity === 'high' ? 'none' : ORANGE} />
                   <Label x={56} y={17} size={11} color={e.flags[0].severity === 'high' ? '#1b1f1c' : '#FFD7B5'} anchor="middle" weight={800}>{e.flags[0].severity} flag</Label>
                 </g>
               )}
