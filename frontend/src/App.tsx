@@ -12,6 +12,9 @@ const Roadmap = lazy(() => import('./pages/Roadmap'))
 const Insights = lazy(() => import('./pages/Insights'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Briefings = lazy(() => import('./pages/Briefings'))
+const Agents = lazy(() => import('./pages/Agents'))
+const ProfilePage = lazy(() => import('./pages/Profile'))
+const Report = lazy(() => import('./pages/Report'))
 
 function OpeningWorkspace() {
   const { pathname } = useLocation()
@@ -42,6 +45,9 @@ export default function App() {
           <Route path="roadmap" element={<Roadmap />} />
           <Route path="insights" element={<Insights />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="agents" element={<Agents />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="report" element={<Report />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

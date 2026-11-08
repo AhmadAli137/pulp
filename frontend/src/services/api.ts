@@ -279,7 +279,76 @@ export interface Validation {
   by_flag?: { flag: string; n_with: number; bad_rate_with_pct: number; bad_rate_without_pct: number; lift: number }[]
   by_survival?: { fails_layoff_bad_rate_pct: number | null; survives_layoff_bad_rate_pct: number | null; n_fail: number; n_survive: number }
 }
-export interface Persona { key: string; name: string; kind: 'ai' | 'code' | 'memory'; runs_on: string; role: string; reads: string[]; writes: string[]; guardrail: string }
+/** An agent in the system (the registry behind the Agents page). stage 0 = shared by every stage. symbol = icon key. */
+export interface Persona { key: string; name: string; kind: 'ai' | 'code' | 'memory'; runs_on: string; role: string; reads: string[]; writes: string[]; guardrail: string; stage?: 0 | 1 | 2 | 3; symbol?: string; analogy?: string }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   v2 contracts (docs/agents/v2-contracts.md): life personas, the profile change log, personal shocks, life plans,
+   agent traces and the Stage 1 report. Backend owns the numbers; the frontend only draws them. */
+export type GoalSize = 'small' | 'large'
+export type GoalHorizon = 'short' | 'medium' | 'long'
+/** A goal with its weight in the planning objective: weight = importance x horizon urgency, normalised to sum 1. */
+export interface PersonaGoal {
+  id: string; label: string; type: string; size: GoalSize; horizon: GoalHorizon
+  target_amount: number; target_months: number; importance: number; weight: number
+  why: string; evidence: string; source: 'persona' | 'conversation' | 'user'
+}
+/** Stage 1 Persona Builder: a realistic but fictional life for an anonymized account, consistent with its records. */
+export interface LifePersona {
+  account_id: number; fictional: true; source: string; built_at: string
+  display_name: string; age: number | null; life_stage: string
+  occupation: { label: string; confidence: number; evidence: string }
+  household: string; home: string; story: string
+  goals: PersonaGoal[]
+  worries: { label: string; type: string; evidence: string }[]
+  questions: { key: string; text: string; why: string }[]
+  /** What makes this person unusual: a measure, its value, and where it sits among all accounts (0-100). */
+  traits: { label: string; value: string; percentile: number | null; note: string }[]
+  /** How they are like other people. */
+  like_others: { archetype: string; share: number; survive6_layoff_pct: number; peers_n: number; note: string }
+}
+/** One entry in the profile's history. Agents update the profile directly; every change is logged and undoable. */
+export interface ProfileChange {
+  id: string; at: string; version: number; agent: string; kind: 'seed' | 'add' | 'update' | 'remove' | 'undo'
+  field: string; label: string; before: unknown; after: unknown; reason: string; undone?: boolean
+}
+export interface ProfileDoc { account_id: number; persona: LifePersona | null; goals: PersonaGoal[]; context: ContextSummary; log: ProfileChange[]; version: number }
+/** Stage 3 Shock Generator: shocks that fit this person's life, with numbers set by code from the account. */
+export interface PersonalShock {
+  key: string; title: string; text: string; r: number; h: number; one_off: number; duration: number
+  category: 'income' | 'housing' | 'health' | 'family' | 'transport' | 'costs' | 'opportunity'
+  likelihood: 'low' | 'medium' | 'high'; why_you: string; source: string
+}
+/** A step in a multi-step plan: a real-life decision active over a range of months. */
+export interface PlanStep {
+  month_start: number; month_end: number; decision: string; title: string; detail: string
+  monthly_effect: number; one_off: number; category: 'income' | 'housing' | 'spending' | 'debt' | 'saving' | 'investing' | 'timing' | 'goal'
+}
+export interface GoalOutcome { goal_id: string; label: string; target: number; deadline_month: number; saved_at_deadline: number; progress: number; reached_month: number | null; weight: number }
+/** Month-by-month result of following a plan under the shock. cash_path has horizon_months + 1 points. */
+export interface PlanOutcome {
+  cash_path: number[]; goal_paths: Record<string, number[]>; min_cash: number; months_covered: number
+  shortfall_total: number; end_cash: number; goals: GoalOutcome[]; resilience: number; goal_score: number
+}
+export interface LifePlan {
+  id: string; name: string; summary: string; why: string; steps: PlanStep[]; outcome: PlanOutcome; score: number
+  components: { resilience: number; goals: number; disruption: number }; pareto: boolean; source: 'catalog' | 'strategist' | 'baseline'
+  flags: { risk: string; severity: string; because: string }[]
+}
+export interface LifePlanResult {
+  account_id: number; shock: { label: string; r: number; h: number; one_off: number; duration: number }; horizon_months: number
+  objective: { formula: string; weights: { resilience: number; goals: number; disruption: number }; goal_weights: { goal_id: string; label: string; weight: number; horizon: GoalHorizon; importance: number }[] }
+  baseline: LifePlan; plans: LifePlan[]; recommended: string; mode: 'adk' | 'offline'; trace: TraceEvent[]
+}
+/** One observable step of an agent, for the Agents page and the panel's workflow column. */
+export interface TraceEvent { t: number; stage: 1 | 2 | 3; agent: string; kind: 'start' | 'tool_call' | 'tool_result' | 'handoff' | 'output' | 'note'; title: string; to?: string; items?: string[]; data?: Record<string, unknown> }
+export interface AgentTrace { account_id: number; stages: { stage: 1 | 2 | 3; title: string; summary: string; events: TraceEvent[] }[] }
+/** Extra server-sent events on /api/agent/stage (and voice pipeline_event): profile updates and life plans. */
+export interface StageProfileEvent { changes: ProfileChange[]; context: ContextSummary; version: number; spoken: string }
+export type StageLifePlansEvent = LifePlanResult
+export type StageTraceEvent = TraceEvent
+export interface ReportSection { heading: string; body: string; table?: { headers: string[]; rows: (string | number)[][] } }
+export interface Stage1Report { generated_at: string; account_id: number | null; plain: { title: string; summary: string; sections: ReportSection[] }; technical: { title: string; summary: string; sections: ReportSection[] } }
 export const API_BASE = BASE
 
 // ------------------------------------------------------------------ calls
@@ -312,6 +381,12 @@ export const api = {
   personas: () => get<{ personas: Persona[] }>('/api/agent/personas'),
   deck: () => get<{ cards: DeckCard[] }>('/api/agent/deck'),
   validation: () => get<Validation>('/api/research/validation'),
+  lifeProfile: (id: number) => get<ProfileDoc>(`/api/profile/${id}`),
+  undoChange: (id: number, changeId: string) => post<ProfileDoc>(`/api/profile/${id}/undo/${changeId}`, {}),
+  personalDeck: (id: number) => get<{ account_id: number; cards: PersonalShock[]; source: string }>(`/api/agent/deck?account_id=${id}`),
+  lifePlans: (body: { account_id: number; income_fraction: number; bills_increase: number; one_off_cost: number; shock_duration: number; use_ai?: boolean }) => post<LifePlanResult>('/api/agent/life-plans', body),
+  agentTrace: (id: number) => get<AgentTrace>(`/api/agents/trace/${id}`),
+  stage1Report: (id?: number | null) => get<Stage1Report>(`/api/report/stage1${id ? `?account_id=${id}` : ''}`),
   plan: (body: { account_id: number; income_fraction: number; bills_increase: number; one_off_cost: number; shock_duration: number; use_ai: boolean }) => post<PlanResult>('/api/agent/plan', body),
   replan: (id: number, reason = 'manual replan') => post<ReplanResult>('/api/replan', { account_id: id, reason }),
   replanDiff: (id: number) => get<{ has_previous: boolean; current: Snapshot | null; previous: Snapshot | null; diff: Diff | null; note?: string }>(`/api/replan/${id}/diff`),
