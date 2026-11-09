@@ -156,6 +156,13 @@ Developer docs are also in the app at `/developers` (every endpoint, the agent f
 
 [Stage 1 report](docs/stage1-report.md) · [Agent contracts](docs/agents/v2-contracts.md) · [Demo walkthrough](demo/demo-script.md) · [Challenge and data dictionary](docs/tangerine-challenge.md) · [Methodology](docs/methodology.md) · [Limitations](docs/limitations.md) · [Architecture](docs/architecture.md)
 
+## Team
+
+- [Ahmad Ali](https://github.com/AhmadAli137)
+- [Ahmad Ayoub](https://github.com/Ahmad-Ayoub004)
+- [Ayaan Malik](https://github.com/ayaanmalik934pmn-wq)
+- [Martin Nguyen](https://github.com/mtnnguyen)
+
 ## Credits and sources
 
 **Data.** PKDD’99 Discovery Challenge Financial dataset (real anonymized bank data), from the CTU Prague Relational Dataset Repository: [relational.fel.cvut.cz/dataset/Financial](https://relational.fel.cvut.cz/dataset/Financial). Provided for the Tangerine track as monthly summaries, transactions, loans and account records, with amounts in Canadian dollars.
