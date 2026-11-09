@@ -13,7 +13,7 @@ const NODES: Node[] = [
   // Stage 1
   { id: 'csv', x: 24, y: 118, name: 'Bank records', sub: '9 CSV files', kind: 'data' },
   { id: 'scout', x: 196, y: 118, name: 'Schema Scout', sub: 'maps columns to roles', kind: 'code' },
-  { id: 'forge', x: 368, y: 118, name: 'Feature Forge', sub: '~78 signals each', kind: 'code' },
+  { id: 'forge', x: 368, y: 118, name: 'Feature Forge', sub: '79 signals each', kind: 'code' },
   { id: 'hunter', x: 556, y: 62, name: 'Pattern Hunter', sub: 'tests patterns', kind: 'model' },
   { id: 'namer', x: 556, y: 118, name: 'Archetype Namer', sub: 'six groups', kind: 'model' },
   { id: 'narrator', x: 556, y: 174, name: 'Profile Narrator', sub: 'one line per flag', kind: 'model' },

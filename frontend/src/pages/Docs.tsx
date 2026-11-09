@@ -182,8 +182,9 @@ export default function Docs() {
         <section id="architecture" className="docs-section">
           <h3>Agents and how they interact</h3>
           <p>Three stages. Stage 1 runs on the records before anyone speaks. Stage 2 runs on every conversation turn, typed or spoken.
-            Stage 3 runs when a shock comes up: a twist card on the Shocks page, Shuffle in the chat, or a shock or big decision you mention.
-            Each arrow below is a real handoff, and the same handoffs stream to the Agents page and the panel beside the chat.</p>
+            Stage 3 runs when a shock comes up: a twist card on the Shocks page, or a shock or big decision you mention to Pulp.
+            Each arrow below is a real handoff, and the same handoffs stream to the Agents page and the panel beside the chat.
+            For a guided walk through one account’s runs, open <Link to="/tour">Watch PULP work</Link>.</p>
           <AgentFlowchart />
         </section>
 
