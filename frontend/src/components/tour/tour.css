@@ -1,0 +1,165 @@
+/* "Watch PULP work" tour. Calm, card-based, one step at a time; the chapter colour comes from STAGE_COLOR. */
+.tour{--stage-color:#1c4639;display:grid;grid-template-columns:minmax(0,1fr);gap:18px;scroll-margin-top:16px}
+.tour>*,.tour-step,.tour-body,.tour-io-col,.tour-step-head>div{min-width:0}
+.tour-loading{padding:40px 0;color:var(--bank-muted,#54645a)}
+
+/* Chapter rail */
+.tour-rail ol{position:relative;display:flex;gap:6px;list-style:none;margin:0;padding:0;overflow-x:auto;scrollbar-width:none}
+.tour-rail ol::-webkit-scrollbar{display:none}
+.tour-rail li{flex:1 1 0;min-width:max-content;display:grid;gap:6px;padding:10px 12px;border:1px solid var(--bank-border,#dde4d9);border-radius:12px;background:#fff}
+.tour-rail li.on{border-color:var(--c);box-shadow:inset 0 -3px 0 var(--c)}
+.tour-rail li.done{background:#f6f8f4}
+.tour-rail button{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;font:inherit;font-size:13.5px;font-weight:650;color:var(--bank-ink,#243b31);cursor:pointer;text-align:left}
+.tour-rail li:not(.on) button{color:var(--bank-muted,#54645a)}
+.tour-rail button:focus-visible{outline:3px solid #f9b17e;outline-offset:3px;border-radius:6px}
+.tour-rail-num{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--c);color:#fff;font-size:11px;font-weight:700;flex:none}
+.tour-rail li:first-child .tour-rail-num,.tour-rail li:last-child .tour-rail-num{width:8px;height:8px}
+.tour-rail-dots{display:flex;gap:4px}
+.tour-rail-dots i{width:14px;height:3px;border-radius:2px;background:#e3e8df}
+.tour-rail-dots i.on{background:var(--c)}
+
+/* The step card */
+.tour-step{background:#fffdf8;border:1px solid var(--bank-border,#dde4d9);border-radius:16px;padding:26px 28px;box-shadow:0 1px 0 #0000000a}
+.tour-step-head{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;margin-bottom:20px}
+.tour-agent{display:grid;place-items:center;width:56px;height:56px;border-radius:14px;background:color-mix(in srgb,var(--stage-color) 10%,#fff);color:var(--stage-color)}
+.tour-eyebrow{margin:0 0 4px;font-size:12.5px;font-weight:650;letter-spacing:.02em;color:var(--stage-color);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tour-step h2{margin:0 0 6px;font-size:clamp(20px,2.2vw,26px);line-height:1.2;color:var(--bank-ink,#243b31)}
+.tour-lede{margin:0;max-width:72ch;color:var(--bank-muted,#54645a);font-size:15px;line-height:1.55}
+.tour-body{font-size:14.5px;line-height:1.5;color:var(--bank-ink,#243b31)}
+.tour-muted{color:var(--bank-muted,#54645a);font-size:13px;margin:10px 0 0}
+.tour-h4{margin:14px 0 6px;font-size:14.5px}
+.tour-rule{grid-column:1/-1;margin:4px 0 0;padding:12px 14px;border-radius:10px;background:#f0f5ee;font-size:14px}
+
+/* Badges */
+.tour-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;vertical-align:1px;border:1px solid transparent}
+.tour-badge-recorded{background:#e8f0ea;color:#1c4639;border-color:#cfe0d4}
+.tour-badge-simulated{background:#fff;color:#9c4f30;border-color:#e8c9b8}
+.tour-badge-fictional{background:#fbf0d4;color:#7a5a12;border-color:#ecd9a4}
+.tour-badge-ai{background:#eef0fb;color:#3b4a8a;border-color:#d7dcf3}
+.tour-badge-code{background:#eef1ec;color:#54645a;border-color:#dde4d9}
+.tour-badge-memory{background:#e6f0f0;color:#2f6f73;border-color:#cde2e2}
+
+/* In -> out */
+.tour-io{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:start}
+.tour-io-col{border:1px solid var(--bank-border,#dde4d9);border-radius:12px;padding:14px 16px;background:#fff;min-width:0}
+.tour-io-col.out{border-color:color-mix(in srgb,var(--stage-color) 35%,#dde4d9);background:color-mix(in srgb,var(--stage-color) 4%,#fff)}
+.tour-io-col h3{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--bank-muted,#54645a)}
+.tour-io-arrow{align-self:center;color:var(--stage-color)}
+.tour-items,.tour-calls,.tour-findings,.tour-groups,.tour-log,.tour-plan-list{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.tour-items li{padding-left:14px;position:relative;overflow-wrap:anywhere}
+.tour-items li::before{content:'';position:absolute;left:0;top:.6em;width:5px;height:5px;border-radius:50%;background:var(--stage-color)}
+.tour-items li.tour-more::before,.tour-calls .tour-more::before{display:none}
+.tour-more{color:var(--bank-muted,#54645a);font-size:13px}
+.tour-calls code{display:block;font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#3b4a8a;background:#f4f5fb;border-radius:6px;padding:5px 8px;overflow-wrap:anywhere}
+.tour-findings li strong{font-size:14px}
+.tour-findings li p{margin:3px 0 0;color:var(--bank-muted,#54645a);font-size:13px}
+
+/* Signals */
+.tour-signals{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.tour-signal{display:grid;gap:4px;padding:12px 14px;border:1px solid var(--bank-border,#dde4d9);border-radius:12px;background:#fff}
+.tour-signal-label{font-size:12.5px;color:var(--bank-muted,#54645a)}
+.tour-signal strong{font-size:19px}
+.tour-signal-bar{display:grid;gap:3px}
+.tour-signal-bar i{display:block;height:5px;border-radius:3px;background:var(--stage-color);max-width:100%}
+.tour-signal-bar{background:linear-gradient(#eef1ec,#eef1ec) no-repeat 0 0/100% 5px}
+.tour-signal-bar em{font-style:normal;font-size:12px;color:var(--bank-muted,#54645a)}
+
+/* Archetypes, flags, discovery */
+.tour-groups li{padding:9px 12px;border:1px solid var(--bank-border,#dde4d9);border-radius:10px;background:#fff}
+.tour-groups li.mine{border-color:var(--stage-color);background:color-mix(in srgb,var(--stage-color) 6%,#fff);font-weight:650}
+.tour-groups li.tour-note{border:0;background:none;padding:4px 0 0;color:var(--bank-muted,#54645a);font-size:13px}
+.tour-you{margin-left:10px;padding:1px 8px;border-radius:999px;background:var(--stage-color);color:#fff;font-size:11.5px;font-weight:700}
+.tour-flags{display:grid;gap:10px}
+.tour-flag{padding:12px 14px;border-radius:12px;border:1px solid var(--bank-border,#dde4d9);border-left:4px solid #b9c4bb;background:#fff}
+.tour-flag.sev-risk{border-left-color:#9c4f30}
+.tour-flag.sev-watch{border-left-color:#d49a3a}
+.tour-flag p{margin:4px 0 0;color:var(--bank-muted,#54645a);font-size:13.5px}
+.tour-discovery{padding:14px 16px;border-radius:12px;background:#fff6f0;border:1px solid #f0d6c6}
+.tour-discovery>span{display:block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9c4f30}
+.tour-discovery strong{font-size:16px}
+.tour-discovery p{margin:4px 0 0}
+
+/* Persona */
+.tour-persona-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;margin-bottom:12px}
+.tour-persona-head strong{font-size:18px}
+.tour-persona-head span:last-child{color:var(--bank-muted,#54645a);font-size:13.5px}
+.tour-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin:0}
+.tour-facts>div>div{padding:12px 14px;border:1px solid var(--bank-border,#dde4d9);border-radius:12px;background:#fff;height:100%;box-sizing:border-box}
+.tour-facts dt{font-size:12px;font-weight:650;color:var(--stage-color);margin-bottom:3px}
+.tour-facts dd{margin:0;display:grid;gap:4px}
+.tour-facts q{font-style:italic;color:var(--bank-ink,#243b31)}
+.tour-facts small{font-size:12px;color:var(--bank-muted,#54645a);padding-top:4px;border-top:1px dashed #e3e8df}
+
+/* Chapter 2 */
+.tour-log li>div{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:10px 12px;border:1px solid var(--bank-border,#dde4d9);border-radius:10px;background:#fff}
+.tour-log small{grid-column:2;color:var(--bank-muted,#54645a);font-size:12.5px}
+.tour-log-kind{grid-row:span 2;align-self:start;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--stage-color) 10%,#fff);color:var(--stage-color);font-size:11.5px;font-weight:700}
+.tour-change{display:grid;gap:12px}
+.tour-bubble{justify-self:end;max-width:min(420px,90%);padding:10px 14px;border-radius:16px 16px 4px 16px;background:#1c4639;color:#fff;font-size:15px}
+.tour-diff{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center}
+.tour-diff>div{padding:12px 14px;border-radius:12px;border:1px solid var(--bank-border,#dde4d9);background:#fff;min-width:0}
+.tour-diff>div.after{border-color:var(--stage-color);background:color-mix(in srgb,var(--stage-color) 6%,#fff)}
+.tour-diff span{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--bank-muted,#54645a)}
+.tour-diff p{margin:4px 0 0;overflow-wrap:anywhere}
+.tour-diff>svg{color:var(--stage-color)}
+.tour-reason{margin:0}
+.tour-control p{margin:0 0 10px}
+
+/* Chapter 3 */
+.tour-screens{display:grid;gap:8px}
+.tour-screen{display:grid;grid-template-columns:minmax(0,1.3fr) 2fr 44px;gap:10px;align-items:center;font-size:13.5px}
+.tour-screen i{display:block;height:8px;border-radius:4px;background:color-mix(in srgb,var(--stage-color) 70%,#fff)}
+.tour-screen b{text-align:right}
+.tour-formula{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:#f6f8f4;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.tour-sum{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.tour-sum span{display:grid;gap:2px;padding:8px 12px;border-radius:10px;border:1px solid var(--bank-border,#dde4d9);background:#fff;font-size:12px;color:var(--bank-muted,#54645a)}
+.tour-sum span b{font-size:16px;color:#1c4639}
+.tour-sum span.neg b{color:#9c4f30}
+.tour-sum span.total{border-color:var(--stage-color);background:color-mix(in srgb,var(--stage-color) 6%,#fff);max-width:100%}
+.tour-plan-list li>div{display:grid;grid-template-columns:170px 1fr auto;gap:10px;align-items:baseline;padding:10px 12px;border:1px solid var(--bank-border,#dde4d9);border-radius:10px;background:#fff}
+.tour-plan-list li.lead>div{border-color:var(--stage-color);box-shadow:inset 3px 0 0 var(--stage-color)}
+.tour-plan-list li.base>div{background:#f6f8f4;border-style:dashed}
+.tour-role{font-size:12px;font-weight:700;color:var(--stage-color)}
+.tour-plan-list b{font-variant-numeric:tabular-nums}
+
+/* Intro and end */
+.tour-chapters{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tour-chapter-card{height:100%;box-sizing:border-box;padding:16px;border-radius:12px;border:1px solid var(--bank-border,#dde4d9);border-top:3px solid var(--stage-color);background:#fff;display:grid;gap:4px;align-content:start}
+.tour-chapter-num{font-size:12px;font-weight:700;color:var(--stage-color)}
+.tour-chapter-card p{margin:0;color:var(--bank-muted,#54645a);font-size:13.5px}
+
+/* Buttons and controls */
+.tour-actions{display:flex;flex-wrap:wrap;gap:10px}
+.tour-btn{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 16px;border-radius:999px;border:1px solid #1c4639;background:#1c4639;color:#fff;font:inherit;font-size:14px;font-weight:650;text-decoration:none;cursor:pointer;white-space:nowrap}
+.tour-btn:hover{background:#245a49}
+.tour-btn.ghost{background:#fff;color:#1c4639;border-color:var(--bank-border,#dde4d9)}
+.tour-btn.ghost:hover{background:#f0f5ee}
+.tour-btn:disabled{opacity:.45;cursor:default}
+.tour-btn:focus-visible{outline:3px solid #f9b17e;outline-offset:2px}
+.tour-controls{position:sticky;bottom:12px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--bank-border,#dde4d9);border-radius:14px;background:#ffffffeb;backdrop-filter:blur(6px);box-shadow:0 8px 24px #1c463914}
+.tour-controls-right{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.tour-count{font-size:13px;color:var(--bank-muted,#54645a)}
+.tour-hint{margin:-6px 0 0;font-size:12.5px;color:var(--bank-muted,#54645a)}
+
+@media (max-width:760px){
+  .tour-step{padding:18px 16px}
+  .tour-step-head{grid-template-columns:1fr}
+  .tour-agent{width:44px;height:44px}
+  .tour-io,.tour-diff{grid-template-columns:1fr}
+  .tour-io-arrow,.tour-diff>svg{transform:rotate(90deg);justify-self:center}
+  .tour-chapters{grid-template-columns:1fr}
+  .tour-plan-list li>div{grid-template-columns:1fr auto}
+  .tour-plan-list .tour-role{grid-column:1/-1}
+  .tour-screen{grid-template-columns:1fr 44px}
+  .tour-screen i{grid-column:1/-1;grid-row:2}
+  .tour-rail li{flex:none;padding:8px 10px}
+  .tour-rail li:not(.on) .tour-rail-label{display:none}
+  .tour-controls{bottom:8px}
+  .tour-controls .tour-btn{padding:0 12px}
+  .tour-controls .tour-btn.ghost:not(:first-child) span{display:none}
+}
+@media (max-width:420px){
+  .tour-controls-right .tour-btn.ghost{width:38px;padding:0;justify-content:center;font-size:0;gap:0}
+  .tour-controls-right .tour-btn.ghost svg{width:16px;height:16px}
+}
+@media (prefers-reduced-motion:reduce){ .tour *{transition:none!important;animation:none!important} }

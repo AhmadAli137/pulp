@@ -15,6 +15,7 @@ const Briefings = lazy(() => import('./pages/Briefings'))
 const Agents = lazy(() => import('./pages/Agents'))
 const ProfilePage = lazy(() => import('./pages/Profile'))
 const Report = lazy(() => import('./pages/Report'))
+const Tour = lazy(() => import('./pages/Tour'))
 const Docs = lazy(() => import('./pages/Docs'))
 
 function OpeningWorkspace() {
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="agents" element={<Agents />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="report" element={<Report />} />
+          <Route path="tour" element={<Tour />} />
           {/* /docs itself is FastAPI's interactive API reference on the single-server build, so the guide lives here. */}
           <Route path="developers" element={<Docs />} />
         </Route>

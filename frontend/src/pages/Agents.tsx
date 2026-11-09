@@ -156,7 +156,8 @@ export default function Agents() {
       <section className="ag-intro" aria-label="How the agents work">
         <p>A team of agents turns your bank records into a picture of you, listens as you talk, and plans for what life throws at you. <strong>AI agents read and decide; code does every calculation.</strong></p>
         <div className="ag-intro-actions">
-          <button type="button" className="agents-try" onClick={() => openPulp('__intro__')}><MessageCircle size={15} />Try it: open Pulp</button>
+          <Link to="/tour" className="agents-try">Watch PULP work: the guided tour</Link>
+          <button type="button" className="agents-more" onClick={() => openPulp('__intro__')}><MessageCircle size={15} />Try it: open Pulp</button>
           <Link to="/report" className="agents-more">Stage 1 report</Link>
           <Link to="/developers" className="agents-more">Developer docs</Link>
           {trace && !trace.live && <span className="agents-sample" title="The live trace endpoint has not answered yet; this sample uses this account's engine numbers.">Sample · switches to live automatically</span>}

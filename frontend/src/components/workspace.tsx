@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, BookOpen, ChartNoAxesCombined, FileText, Fingerprint, LayoutDashboard, Map, Network, Settings, Target, UserRound } from 'lucide-react'
+import { Activity, ArrowRight, BookOpen, Clapperboard, ChartNoAxesCombined, FileText, Fingerprint, LayoutDashboard, Map, Network, Settings, Target, UserRound } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import './agents/nav.css'
 
@@ -23,6 +23,7 @@ export const ACCOUNT_PAGES = [
 
 /* The site footer's "How it works" links. */
 export const HOW_IT_WORKS = [
+  { to: '/tour', label: 'Watch PULP work', icon: Clapperboard, subtitle: 'A guided, skippable walk through what every agent did for this account: records to a person, how the profile changes, and how a shock becomes four plans.' },
   { to: '/agents', label: 'Agents', icon: Network, subtitle: 'Watch every agent work: what each one reads, decides and hands on, across all three stages.' },
   { to: '/report', label: 'Stage 1 report', icon: FileText, subtitle: 'Everything PULP learned from the records, in plain words and in technical detail.' },
   { to: '/developers', label: 'Developer docs', icon: BookOpen, subtitle: 'The API, the agents and how they hand work to each other, the stack and the infrastructure.' },
@@ -51,16 +52,16 @@ export function WorkspaceNav() {
   )
 }
 
-/* For judges and developers: a quiet link at the far end of the tab bar, set apart from the four customer tabs.
-   It stays lit on every "how it works" page (Agents, Stage 1 report, Developer docs). */
-const BEHIND_THE_SCENES = ['/agents', '/report', '/developers']
+/* For judges and developers: a quiet link at the far end of the tab bar, set apart from the four customer tabs. It opens
+   the guided tour and stays lit on every "how it works" page (tour, Agents, Stage 1 report, Developer docs). */
+const BEHIND_THE_SCENES = ['/tour', '/agents', '/report', '/developers']
 
 export function BehindTheScenesLink() {
   const on = BEHIND_THE_SCENES.includes(useLocation().pathname)
   return (
     <nav className="behind-scenes" aria-label="Behind the scenes">
-      <Link to="/agents" className={on ? 'is-on' : undefined} aria-current={on ? 'page' : undefined}
-        title="See the agents at work, the Stage 1 report and the developer docs">
+      <Link to="/tour" className={on ? 'is-on' : undefined} aria-current={on ? 'page' : undefined}
+        title="A guided tour of the agents at work, then the agent runs, the Stage 1 report and the developer docs">
         <Network size={15} aria-hidden="true" />Behind the scenes<ArrowRight size={13} aria-hidden="true" />
       </Link>
     </nav>

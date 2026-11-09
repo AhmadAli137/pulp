@@ -465,7 +465,7 @@ test('main destinations fit desktop and mobile and retain the account', async t 
     await fits('/profile')
     // How it works lives in the footer, each page listed once across the header, tabs and footer.
     const footer = p.getByRole('navigation', { name: 'How it works' })
-    const howItWorks = [['Agents', '/agents'], ['Stage 1 report', '/report'], ['Developer docs', '/developers'], ['Settings', '/settings']]
+    const howItWorks = [['Watch PULP work', '/tour'], ['Agents', '/agents'], ['Stage 1 report', '/report'], ['Developer docs', '/developers'], ['Settings', '/settings']]
     assert.deepEqual(await footer.getByRole('link').allTextContents(), howItWorks.map(([title]) => title))
     for (const [title, path] of howItWorks) {
       await footer.getByRole('link', { name: title, exact: true }).click()
@@ -682,4 +682,35 @@ test('developer docs list every endpoint group and fit a phone', async t => {
   await plans.getByText('/api/agent/life-plans', { exact: true }).first().waitFor()
   await p.getByRole('combobox', { name: 'On this page' }).waitFor()
   assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
+})
+
+test('Behind the scenes opens the guided tour, which steps, skips chapters and fits a phone', async t => {
+  const p = await pageFor(t)
+  await p.goto(base + '/')
+  await loadAccount(p, account)
+  assert.deepEqual(await navigation(p).getByRole('link').allInnerTexts(), ['Overview', 'Shocks', 'My Plan', 'Insights'])
+  await p.getByRole('navigation', { name: 'Behind the scenes' }).getByRole('link').click()
+  await p.waitForURL(/\/tour/)
+  const step = p.locator('.tour-step h2')
+  await step.waitFor({ timeout: 45000 })
+  assert.match(await step.innerText(), /^How PULP got to know/)
+  await p.getByRole('button', { name: /^Next/ }).click()
+  await p.locator('.tour-step').filter({ hasText: 'Schema Scout' }).waitFor()
+  assert.equal(new URL(p.url()).searchParams.get('chapter'), '1')
+  await p.keyboard.press('ArrowRight')
+  await p.locator('.tour-step').filter({ hasText: 'Feature Forge' }).waitFor()
+  await p.getByRole('button', { name: 'Skip chapter' }).click()
+  await p.locator('.tour-step').filter({ hasText: 'Chapter 2' }).waitFor()
+  await p.getByRole('button', { name: 'Skip chapter' }).click()
+  await p.locator('.tour-step').filter({ hasText: 'Chapter 3' }).waitFor()
+  await p.getByRole('button', { name: 'Skip to the end' }).click()
+  await p.getByRole('heading', { name: 'That is the whole process' }).waitFor()
+  await p.getByRole('button', { name: 'Start again' }).waitFor()
+
+  const phone = await pageFor(t, { width: 390, height: 844 })
+  await phone.goto(base + '/')
+  await loadAccount(phone, account)
+  await phone.goto(base + '/tour?chapter=3')
+  await phone.locator('.tour-step').filter({ hasText: 'Chapter 3' }).waitFor({ timeout: 45000 })
+  assert.ok(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
 })
