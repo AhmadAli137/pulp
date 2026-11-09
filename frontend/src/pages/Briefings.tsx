@@ -45,7 +45,7 @@ export default function Briefings() {
             {data.changes.length ? (
               <ul>{data.changes.map((change, index) => <li key={index}>{change.text} · {change.date}</li>)}</ul>
             ) : <p>No personal updates were saved during this period.</p>}
-            <Link to="/twin">Update balances and goal savings</Link>
+            <Link to="/profile">Update your details on Profile</Link>
           </section>
           <section className="financial-section">
             <h2>Your goals at a glance</h2>

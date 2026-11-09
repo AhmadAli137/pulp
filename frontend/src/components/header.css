@@ -1,0 +1,100 @@
+/* Calm header: the logo, one account chip (with a small menu) and Ask Pulp. Nothing wraps, at any width. */
+.bank-workspace .bank-header-inner{min-height:64px;gap:12px;flex-wrap:nowrap}
+.bank-workspace .bank-brand{flex:none;min-width:0}
+.bank-workspace .bank-account-tools{position:relative;gap:8px;min-width:0;flex:0 1 auto;justify-content:flex-end}
+/* Ask Pulp shares the chip's pill shape and height, so the right of the header reads as one set */
+.bank-workspace .bank-ask-pulp{flex:none;min-height:38px;border-radius:999px;padding-inline:14px}
+
+/* The chip: "74916 · Élise" in one colour and one weight (only the dot is muted), or "Pick an account" */
+.bank-account-chip-wrap{min-width:0}
+.bank-account-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;min-height:38px;padding:3px 10px 3px 6px;
+  color:var(--bank-green);border:1px solid var(--bank-border);border-radius:999px;background:#fff;
+  font:inherit;font-size:13.5px;font-weight:600;white-space:nowrap;cursor:pointer}
+/* Signed out, the chip is the first thing to do: still an outline, but with a green edge and a wallet, so it reads as an action */
+.bank-account-chip.is-empty{gap:7px;padding-left:12px;border-color:#b9cbb6}
+.bank-account-chip-lead{flex:none;color:var(--bank-green)}
+.bank-account-chip:hover{background:#f3f6f0}
+.bank-account-chip[aria-expanded="true"]{background:#f0f5ee;border-color:#cbd6c9}
+/* On Profile (and Account details, which belongs to it) the chip is marked like the active tab: green, with a 2px green ring */
+.bank-account-chip.is-current{background:#f0f5ee;border-color:var(--bank-green);box-shadow:inset 0 0 0 1px var(--bank-green)}
+.bank-account-chip.is-loading{color:var(--bank-muted);cursor:progress}
+.bank-account-chip:focus-visible{outline:3px solid #f9b17e;outline-offset:1px}
+/* A small avatar, so the chip is no heavier than the Ask Pulp pill beside it */
+.bank-account-chip-avatar{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;
+  color:#FFE2BF;background:#183B2D;font-size:10px;font-weight:700;letter-spacing:.02em;transition:background-color .2s ease}
+/* Until the persona's name has arrived, the avatar is a quiet placeholder (no icon flashing in, then swapping) */
+.bank-account-chip.is-pending .bank-account-chip-avatar{background:#e6ece4}
+.bank-account-chip-text{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.bank-account-chip-id{font-variant-numeric:tabular-nums}
+.bank-account-chip-dot{color:var(--bank-muted)}
+/* After a switch the new name eases in, so the chip widens gently instead of jumping. On first paint, a reload or a
+   page change it is simply there (Layout adds .is-new only on a switch). */
+.bank-account-chip-name{display:inline-block;max-width:16ch;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+.bank-account-chip-name.is-new{animation:bank-chip-name-in .28s ease both}
+@keyframes bank-chip-name-in{from{max-width:0;opacity:0}to{max-width:16ch;opacity:1}}
+.bank-account-chip-caret{flex:none;color:var(--bank-muted);transition:transform .15s ease}
+.bank-account-chip[aria-expanded="true"] .bank-account-chip-caret{transform:rotate(180deg)}
+
+/* The menu under the chip. It hangs from the right of the header's tools, so its right edge sits on the page gutter. */
+.bank-account-menu{position:absolute;z-index:40;top:calc(100% + 8px);right:0;width:320px;max-width:calc(100vw - 32px);
+  display:grid;padding:0 6px;color:var(--bank-ink);border:1px solid var(--bank-border);border-radius:12px;background:#fff;
+  box-shadow:0 12px 40px #102b2226}
+/* Three sections on one rhythm: 6px above and below each, a rule between */
+.bank-account-menu-section{display:grid;gap:2px;padding:6px 0}
+.bank-account-menu-section+.bank-account-menu-section{border-top:1px solid var(--bank-border)}
+.bank-account-menu-who{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;gap:10px;padding:6px 10px 10px}
+.bank-account-menu-who>span{display:grid;gap:1px;min-width:0}
+.bank-account-menu-who strong{overflow:hidden;color:var(--bank-green);font-size:14.5px;text-overflow:ellipsis;white-space:nowrap}
+.bank-account-menu-who>span>span{color:var(--bank-muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.bank-account-menu-who .bank-account-chip-avatar{width:28px;height:28px}
+/* Your profile and Sign out of demo: full-width rows with one hit area and one hover */
+.bank-account-menu-row{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:0 10px;
+  color:var(--bank-ink);border:0;border-radius:8px;background:none;font:inherit;font-size:13.5px;font-weight:600;
+  text-align:left;text-decoration:none;cursor:pointer}
+.bank-account-menu-row svg{flex:none;color:var(--bank-muted)}
+.bank-account-menu-row:hover{background:#f3f6f0;color:var(--bank-green)}
+.bank-account-menu-row:hover svg{color:var(--bank-green)}
+.bank-account-menu-row[aria-current]{background:#f0f5ee;color:var(--bank-green);font-weight:700}
+.bank-account-menu-row[aria-current] svg{color:var(--bank-green)}
+.bank-account-menu-row-end{margin-left:auto}
+.bank-account-menu-row:focus-visible{outline:3px solid #f9b17e;outline-offset:-1px}
+.bank-account-menu-switch{padding-inline:10px}
+.bank-account-menu-switch .bank-account-form{padding-block:4px}
+.bank-account-menu-label{margin:4px 0 2px;color:var(--bank-muted);font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+
+/* The demo account ID form, used in the menu and in the empty state */
+.bank-account-form{display:grid;gap:6px;min-width:0}
+.bank-account-form label{font-size:13px;font-weight:650;color:var(--bank-ink)}
+.bank-account-form-row{display:flex;gap:8px;min-width:0}
+.bank-account-form input{flex:1 1 auto;width:100%;min-width:0;height:38px;padding:0 10px;color:var(--bank-ink);
+  border:1px solid #cbd6c9;border-radius:7px;background:#fff;font:inherit;font-size:14px;font-variant-numeric:tabular-nums}
+.bank-account-form input:focus-visible{outline:3px solid #f9b17e;outline-offset:1px}
+.bank-account-form input[aria-invalid="true"]{border-color:var(--bank-orange)}
+.bank-account-form .bank-button{flex:none}
+.bank-account-form-error{margin:0;color:var(--bank-orange);font-size:12.5px;line-height:1.35}
+.bank-workspace .bank-picker .bank-picker-id{max-width:360px;margin-top:22px;padding-top:18px;border-top:1px solid var(--bank-border)}
+
+@media (max-width:720px){
+  .bank-workspace .bank-header-inner{position:relative;min-height:58px;padding-block:9px}
+  .bank-account-chip{font-size:13px}
+  /* On phones Ask Pulp keeps its place after the chip as a 38px round icon; its label stays for screen readers */
+  .bank-workspace .bank-ask-pulp{width:38px;min-width:38px;height:38px;padding:0;gap:0}
+  .bank-ask-pulp-label{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  /* The menu is a sheet across the header, inside the 16px gutters, so it never runs off the screen */
+  .bank-workspace .bank-account-tools{position:static}
+  .bank-account-menu{top:calc(100% - 2px);left:0;right:0;width:auto;max-width:none}
+}
+@media (max-width:400px){
+  /* Small phones (iPhone SE and mini): the chip's avatar gives way first, so the logo keeps its room */
+  .bank-account-chip .bank-account-chip-avatar{display:none}
+  .bank-account-chip{padding-left:12px}
+  .bank-workspace .bank-account-tools{gap:6px}
+}
+@media (max-width:340px){
+  /* Very narrow: then the name, the account ID stays */
+  .bank-account-chip-name{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .bank-account-chip-caret,.bank-account-chip-avatar{transition:none}
+  .bank-account-chip-name{animation:none}
+}

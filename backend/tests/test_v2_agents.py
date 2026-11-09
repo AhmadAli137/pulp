@@ -386,7 +386,7 @@ def test_every_agent_run_is_recorded_and_replayable():
 
 # ----------------------------------------------------------------------------- explain
 @pytest.mark.parametrize("topic", ["typical_month", "cushion", "runway", "discovery", "shock?r=0.55&d=6", "prepare_now?r=0.55&d=6",
-                                   "if_it_happens?r=0.55&d=6", "plan", "finalists", "plan_search", "goals", "persona", "quartiles",
+                                   "if_it_happens?r=0.55&d=6", "shock_numbers?r=0.55&d=6", "plan", "finalists", "plan_search", "goals", "persona", "quartiles",
                                    "loan_check", "demographics", "agents", "stage1", "stage2", "stage3"])
 def test_every_explain_topic_answers_in_plain_words(topic):
     from app.services import director as D

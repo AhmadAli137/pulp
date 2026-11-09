@@ -2,11 +2,21 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, WalletCards } from 'lucide-react'
 import { api, type SampleAccount } from '../services/api'
 import { useApp } from '../stores/useApp'
+import { PICKER_FIELD_ID, focusPickerField, usePicker } from '../stores/picker'
+import AccountIdForm from './AccountIdForm'
 
 export default function DemoAccountPicker() {
   const { loadingProfile, loadAccount } = useApp()
   const [accounts, setAccounts] = useState<SampleAccount[] | null>(null)
   const [failed, setFailed] = useState(false)
+  const focusAskedAt = usePicker((s) => s.focusAskedAt)
+
+  // The header's chip leads to this field while it is on screen, rather than opening a second one.
+  useEffect(() => usePicker.getState().mount(), [])
+  // Right after signing out, the next useful step is this field.
+  useEffect(() => {
+    if (focusAskedAt && usePicker.getState().takeFocus()) focusPickerField()
+  }, [focusAskedAt])
 
   useEffect(() => {
     let active = true
@@ -22,12 +32,12 @@ export default function DemoAccountPicker() {
     <section className="card bank-picker" aria-labelledby="bank-picker-title">
       <div className="bank-icon" aria-hidden="true"><WalletCards size={23} /></div>
       <h2 id="bank-picker-title">Pick an account to begin</h2>
-      <p>Use a sample account to explore PULP with anonymized banking records. You can also enter a demo account ID above.</p>
+      <p>Use a sample account to explore PULP with anonymized banking records.</p>
       {(loadingProfile || (!accounts && !failed)) && (
         <p className="bank-loading" role="status"><span aria-hidden="true" />{loadingProfile ? 'Loading account…' : 'Loading sample accounts…'}</p>
       )}
       {(failed || accounts?.length === 0) && (
-        <p className="bank-picker-note" role="alert">Sample accounts are unavailable. If you have a demo account ID, enter it above.</p>
+        <p className="bank-picker-note" role="alert">Sample accounts are unavailable. If you have a demo account ID, enter it below.</p>
       )}
       {!!accounts?.length && (
         <div className="bank-account-options" role="group" aria-label="Sample accounts">
@@ -40,6 +50,8 @@ export default function DemoAccountPicker() {
           ))}
         </div>
       )}
+      {/* No account yet: the ID field is right here, not behind the header's account menu. */}
+      <AccountIdForm className="bank-picker-id" inputId={PICKER_FIELD_ID} />
     </section>
   )
 }

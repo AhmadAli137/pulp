@@ -2,6 +2,7 @@
    role, the plans that fall short, the trade-off, the steps over time with the agents' reasoning, and cash month by
    month. Compact mode (the 460px Pulp panel) shows the best balance only. Props stay { result, compact }. */
 import { Detail } from '../Detail'
+import { useShowDetail } from '../../stores/view'
 import ExplainButton from '../ExplainButton'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -19,8 +20,7 @@ import StepList, { outcomeLine } from './StepList'
 import TradeoffChart, { TradeoffLegend } from './TradeoffChart'
 import './plans.css'
 
-/** variant 'summary' (the Shocks page): only what to do first, with a link to the full view in My Plan. */
-export default function LifePlansView({ result, compact = false, variant = 'full' }: { result: LifePlanResult; compact?: boolean; variant?: 'full' | 'summary' }) {
+export default function LifePlansView({ result, compact = false }: { result: LifePlanResult; compact?: boolean }) {
   const longTerm = result.plan_mode === 'long_term'
   const finalists = result.plans
   const cautionary = result.cautionary ?? []
@@ -49,6 +49,8 @@ export default function LifePlansView({ result, compact = false, variant = 'full
   const shock = longTerm ? null : { start: result.shock_starts_in ?? 1, duration: result.shock.duration }
   const preview = isMock(result)
   const S = useApp((st) => (st.profile?.account_id === result.account_id ? st.profile.typical_spending : undefined))
+  // In Simple view "What to do first" is the card's only block, so it drops its own frame and sits straight under the question.
+  const solo = !useShowDetail()
 
   if (compact) {
     return (
@@ -75,30 +77,20 @@ export default function LifePlansView({ result, compact = false, variant = 'full
     )
   }
 
-  if (variant === 'summary') {
-    return (
-      <section className="lp lp-summary" aria-label="What to do first">
-        <p className="lp-lead"><b>{recommended.role_label ?? 'Best balance'}:</b> {recommended.name}. {outcomeLine(recommended, horizon, longTerm)}</p>
-        <StepList plan={recommended} horizon={horizon} longTerm={longTerm} />
-        <p className="lp-summary-foot">
-          Chosen from {result.search?.generated ?? finalists.length} plans the agents tried for this shock.{' '}
-          <Link to="/plan">See all four plans and how they were chosen in My Plan</Link>
-        </p>
-      </section>
-    )
-  }
-
   return (
     <section className="lp" aria-label={longTerm ? 'Long-term plans' : 'Life plans'}>
       <p className="lp-context">
-        {longTerm ? <>Five-year plans with no shock, over {Math.round(horizon / 12)} years.</> : <>For this shock: income at {pct(result.shock.r)}{result.shock.h ? `, bills ${result.shock.h > 0 ? '+' : ''}${pct(result.shock.h)}` : ''}{result.shock.one_off ? `, ${dollars(result.shock.one_off)} once` : ''} for {result.shock.duration} months, starting in month {shock?.start}.</>}
-        {' '}{result.search ? `${result.search.generated} plans tried, four kept.` : ''}
+        {/* My Plan's lead already states the shock (months, money in and out) or the five-year frame; this line adds
+            only what is new. "Four kept" only where the four are shown (Full detail); Simple view shows the best one. */}
+        {longTerm ? <>Over {Math.round(horizon / 12)} years</> : <>The shock starts in month {shock?.start}</>}
+        {result.search ? <> · best of {result.search.generated} plans tried<Detail>, four kept</Detail></> : ''}
         {preview && <span className="lp-preview" title="The planner endpoint is not answering yet; these are illustrative numbers from the same formulas.">preview data</span>}
       </p>
 
-      <div className="lp-block lp-first">
+      <div className={`lp-block lp-first${solo ? ' lp-first-solo' : ''}`}>
         <div className="section-head"><h3>{selected.id === recommended.id ? 'What to do first' : <>Steps for <span className="lp-sub">“{selected.name}”</span></>}</h3><ExplainButton topic="plan" label="what to do first" /></div>
-        <p className="lp-lead">{selected.role_label ? <b>{selected.role_label}: </b> : null}{outcomeLine(selected, horizon, longTerm)}</p>
+        {/* My Plan's answer sentence already gives the recommended plan's outcome; another plan's outcome is new. */}
+        {selected.id !== recommended.id && <p className="lp-lead">{selected.role_label ? <b>{selected.role_label}: </b> : null}{outcomeLine(selected, horizon, longTerm)}</p>}
         <StepList plan={selected} horizon={horizon} longTerm={longTerm} />
         {(selected.versus || selected.why) && <p className="lp-read"><JuiceDrop /> <b>Pulp’s read</b> {selected.versus ?? selected.why}</p>}
         {selected.id !== recommended.id && <button type="button" className="lp-btn ghost" onClick={() => setSelectedId(recommended.id)}>Back to the recommended plan</button>}

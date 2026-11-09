@@ -115,3 +115,40 @@
     padding: 14px;
   }
 }
+
+/* "The numbers behind this shock": one card, a peer of the cushion and cash cards (same dotted card head), with the
+   two official plans as flat inner panels (no second border) and a shared footnote, on one 16px rhythm. */
+.scenario-numbers {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-margin-top: 16px;
+}
+.scenario-numbers > .card-head { margin-bottom: 0; }
+.scenario-numbers > .grid { gap: 16px; }
+.scenario-plan {
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: #F7F8F3;
+}
+.scenario-plan > h3 {
+  margin: 0 0 8px;
+  font-family: var(--font);
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.scenario-plan > .scenario-action { margin-bottom: 0; }
+.scenario-numbers-note { margin: 0; }
+/* The hand-off to My Plan closes the shock results; 32px before the optional tools below it. */
+.scenario-handoff.link-row.link-row-go { margin: 0 0 12px; font-size: 15px; }
+
+/* The engine's warnings for a shock, if any, between the answer's setup and the cushion card. */
+.scenario-warnings { display: grid; gap: 8px; }
+.scenario-warnings .scenario-warning { margin: 0; }
+/* The cushion card's one-line intro (the assumption the chart rests on) and the what-if line, shown only once a slider
+   moves away from the shock that was run. */
+.scenario-figure .scenario-intro { margin: 0 0 8px; }
+.whatif-result:empty { display: none; }

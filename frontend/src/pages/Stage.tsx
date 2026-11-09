@@ -1,5 +1,7 @@
 /* Conversation-first home: native live audio, concise text replies, and optional inline figures.
-   The microphone starts only after the person chooses Talk to Pulp. */
+   The microphone starts only after the person chooses Talk to Pulp.
+   NOT ROUTED: App.tsx no longer mounts this page and nothing imports it. Kept for reference only; its old menu does not
+   reflect the four-tab navigation in components/workspace.tsx. */
 import { ArrowRight, ArrowUp, ArrowUpRight, Check, ChevronDown, Compass, Dice5, LoaderCircle, Menu, Mic, RotateCcw, Shuffle, Sparkles, Square, Users, Volume2, VolumeX, Wallet, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -13,7 +15,7 @@ import { API_BASE, api, type Beat, type Persona, type Proposal, type SampleAccou
 import { useApp } from '../stores/useApp'
 import CurrentPlan from '../components/CurrentPlan'
 import ResilienceEntry from '../components/ResilienceEntry'
-import { PRIMARY_WORKSPACE, SUPPORTING_WORKSPACE, WorkspaceNav } from '../components/workspace'
+import { ACCOUNT_PAGES, HOW_IT_WORKS, PRIMARY_WORKSPACE, WorkspaceNav } from '../components/workspace'
 import '../stage.css'
 
 
@@ -311,7 +313,7 @@ export default function Stage({ onReplayIntro }: { onReplayIntro: () => void }) 
         <nav className="agent-menu" aria-label="Explore PULP">
           <div><span>THE BIGGER PICTURE</span><button aria-label="Close menu" onClick={() => setMenu(false)}><X size={16} /></button></div>
           {PRIMARY_WORKSPACE.filter(p => p.to !== '/').map(p => <button key={p.to} onClick={() => nav(p.to)}><p.icon size={17} />{p.label}<ArrowUpRight size={14} /></button>)}
-          <details className="supporting-nav"><summary>Reviews, evidence & settings</summary>{SUPPORTING_WORKSPACE.map(p => <button key={p.to} onClick={() => nav(p.to)}>{p.label}<ArrowUpRight size={14}/></button>)}</details>
+          <details className="supporting-nav"><summary>Reviews, evidence & settings</summary>{[...ACCOUNT_PAGES, ...HOW_IT_WORKS].map(p => <button key={p.to} onClick={() => nav(p.to)}>{p.label}<ArrowUpRight size={14}/></button>)}</details>
           <p>Everything Pulp shows comes from these pages' numbers. They stay here when you want the detail.</p>
         </nav>
       </>)}

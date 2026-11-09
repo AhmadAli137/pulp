@@ -120,8 +120,8 @@
 }
 
 @media (max-width:600px){
-  .pulp-launcher{right:14px;bottom:14px;width:56px;height:56px}
-  .pulp-launcher .tangerine-mascot{width:42px;height:42px}
+  /* Phones: the round Ask Pulp icon in the header is the way in, so no floating button sits on top of the page */
+  .pulp-launcher{display:none}
   .pulp-panel{top:8px;right:8px;bottom:8px;width:calc(100vw - 16px)}
   .pulp-panel-dock .stage-chip span,.pulp-panel-dock .stage-mic span{display:none}
   .pulp-panel-dock .stage-mic{width:34px;padding:0}
@@ -130,8 +130,8 @@
   .pulp-launcher,.pulp-panel *{animation:none!important;transition:none!important}
 }
 
-/* The header button is for keyboard users on wide screens; on phones the floating mascot is the way in. */
-@media (max-width:720px){ .bank-ask-pulp{display:none} }
+/* Phones keep the header's round Ask Pulp icon (header.css); the floating mascot is hidden at 600px and below. */
+@media (max-width:600px){ .bank-workspace .bank-ask-pulp{display:inline-flex} }
 
 /* Workflow column: an offline badge and the four-row summary of what ran. */
 .pulp-offline{display:inline-block;margin-left:8px;font:700 10.5px 'DM Sans',sans-serif;font-style:normal;letter-spacing:.03em;text-transform:uppercase;color:#7a5a12;background:#fbf0d4;border:1px solid #ecd9a4;border-radius:999px;padding:2px 8px;vertical-align:2px}

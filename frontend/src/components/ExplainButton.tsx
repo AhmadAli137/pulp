@@ -7,6 +7,7 @@ export interface ShockParams { r?: number; h?: number; o?: number; d?: number }
 export const EXPLAIN_NAMES: Record<string, string> = {
   typical_month: 'your typical month', cushion: 'your cushion', runway: 'your runway', discovery: 'the biggest discovery',
   shock: 'what this shock does', cushion_chart: 'the cushion chart', prepare_now: 'Prepare now', if_it_happens: 'If it happens',
+  shock_numbers: 'the numbers behind this shock',
   plan: 'your plan', finalists: 'the four plans', plan_search: 'how the plans were chosen', goals: 'your goals',
   persona: 'the person behind the account', quartiles: 'spending versus savings', loan_check: 'the loan check',
   demographics: 'where you live and who you are', agents: 'how the agents work', stage1: 'Stage 1', stage2: 'Stage 2', stage3: 'Stage 3',

@@ -28,7 +28,15 @@ interface AppState {
   geminiConfigured: boolean | null
   aiLabel: string
   loadAccount: (id: number) => Promise<void>
+  /** Switch from the loaded account to another. The current account stays until the new one has loaded,
+   *  so an unknown ID leaves the user where they were. Resolves to an error message, or null once switched.
+   *  With no account loaded it loads the ID and resolves to its error (which is then not also kept as profileError). */
+  switchAccount: (id: number) => Promise<string | null>
   clearAccount: () => void
+  /** The last persona name the header saw for an account, kept while the profile doc refetches so the account chip
+   *  does not drop "· Élise" between pages. Keyed by account; cleared on sign-out. */
+  personaName: { id: number; name: string } | null
+  rememberPersona: (id: number, name: string) => void
   setInputs: (p: Partial<ShockInputs>, preset?: string | null) => void
   setShockHasHappened: (value: boolean) => void
   applyPreset: (key: string) => void
@@ -66,6 +74,16 @@ const EMPTY_ACCOUNT = {
   lastReplan: null,
 }
 
+const PERSONA_KEY = 'pulp.persona'
+function readSavedPersona(): { id: number; name: string } | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(PERSONA_KEY) ?? 'null')
+    return v && Number.isSafeInteger(v.id) && typeof v.name === 'string' && v.name ? { id: v.id, name: v.name } : null
+  } catch {
+    return null
+  }
+}
+
 export function readSavedAccount(): number | null {
   try {
     const saved = localStorage.getItem(ACCOUNT_KEY)
@@ -81,6 +99,12 @@ let shockRequest = 0
 
 export const useApp = create<AppState>((set, get) => ({
   ...EMPTY_ACCOUNT,
+  personaName: readSavedPersona(),
+  rememberPersona: (id, name) => {
+    if (get().personaName?.id === id && get().personaName?.name === name) return
+    try { localStorage.setItem(PERSONA_KEY, JSON.stringify({ id, name })) } catch { /* ignore */ }
+    set({ personaName: { id, name } })
+  },
   refreshSession: async () => {
     const id = get().accountId
     if (!id) return
@@ -116,11 +140,37 @@ export const useApp = create<AppState>((set, get) => ({
       set({ loadingProfile: false, profileError: msg, accountId: null, profile: null })
     }
   },
+  switchAccount: async (id) => {
+    if (!get().accountId) {
+      // Nothing to keep: load it, and hand any error back to the caller to show where the ID was typed.
+      const request = accountRequest + 1
+      await get().loadAccount(id)
+      const failure = request === accountRequest ? get().profileError : null
+      if (failure) set({ profileError: null })
+      return failure
+    }
+    const request = ++accountRequest
+    set({ loadingProfile: true, profileError: null })
+    try {
+      const profile = await api.profile(id)
+      if (request !== accountRequest) return null
+      try { localStorage.setItem(ACCOUNT_KEY, String(id)) } catch { /* ignore */ }
+      ++shockRequest
+      set({ ...EMPTY_ACCOUNT, accountId: id, profile })
+      void Promise.all([get().refreshContext(), get().runShock()])
+      return null
+    } catch (e) {
+      if (request !== accountRequest) return null
+      set({ loadingProfile: false })
+      return e instanceof ApiError && e.status > 0 && e.status < 500
+        ? e.message : 'Couldn’t load this demo account. Try again.'
+    }
+  },
   clearAccount: () => {
     ++accountRequest
     ++shockRequest
-    try { localStorage.removeItem(ACCOUNT_KEY) } catch { /* ignore */ }
-    set(EMPTY_ACCOUNT)
+    try { localStorage.removeItem(ACCOUNT_KEY); localStorage.removeItem(PERSONA_KEY) } catch { /* ignore */ }
+    set({ ...EMPTY_ACCOUNT, personaName: null })
   },
   setInputs: (p, preset = null) => set((s) => ({ shockInputs: { ...s.shockInputs, ...p }, activePreset: preset })),
   setShockHasHappened: (shockHasHappened) => set({ shockHasHappened }),

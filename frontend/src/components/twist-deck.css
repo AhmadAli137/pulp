@@ -43,3 +43,20 @@
 .twist-character svg{width:72%!important;max-width:96px;height:auto}
 .twist-deck-card.up .twist-card{animation:twist-flip .38s ease-out}
 @keyframes twist-flip{from{transform:perspective(600px) rotateY(90deg)}to{transform:none}}
+
+/* On Shocks the face-down cards sit under the page's answer, so they stay quiet: a light tangerine tint on cream with a
+   thin orange edge (not a saturated orange slab), and in Simple view a size smaller, so the eye lands on the answer first. */
+.twist-deck .twist-card-back{background:#fcf1e6;box-shadow:0 2px 8px #1e2b2214,inset 0 0 0 1.5px #f2b98c}
+.twist-deck .twist-card-back-inner{border:1px solid #f4cfae;background:radial-gradient(circle at 50% 50%,#f6d6ba 0 1.3px,transparent 1.8px) 0 0/18px 18px}
+.twist-deck .twist-back-mark{font-size:1.35em}
+.twist-deck .twist-back-label{color:#9c4f30}
+.bank-workspace[data-view="simple"] .twist-slot{width:clamp(100px,17%,128px)}
+.bank-workspace[data-view="simple"] .twist-deck-card{font-size:12px}
+@media (max-width:720px){.bank-workspace[data-view="simple"] .twist-slot{width:calc(50% - 7px);max-width:132px}}
+/* Simple view keeps the deck short, so the cushion chart that proves the answer is not pushed far below it: the pile
+   is a small stack with its caption and two buttons beside it rather than stacked under it. */
+.bank-workspace[data-view="simple"] .deck-pile-wrap{width:auto;max-width:none;display:grid;grid-template-columns:88px minmax(0,190px);grid-template-areas:"pile caption" "pile actions";align-content:center;align-items:center;gap:6px 14px}
+.bank-workspace[data-view="simple"] .deck-pile{grid-area:pile;width:88px;font-size:11px}
+.bank-workspace[data-view="simple"] .deck-caption{grid-area:caption;align-self:end;text-align:left}
+.bank-workspace[data-view="simple"] .deck-actions{grid-area:actions;align-self:start}
+@media (max-width:720px){.bank-workspace[data-view="simple"] .deck-pile-wrap{width:100%;padding-left:10px;grid-template-columns:88px minmax(0,220px)}}

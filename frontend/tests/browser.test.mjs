@@ -44,10 +44,53 @@ function navigation(p) {
   return p.getByRole('navigation', { name: 'Main navigation' })
 }
 
+// The header's one account chip: "Account 90114, Claire" to screen readers, or "Pick an account" when none is loaded.
+function accountChip(p) {
+  return p.getByRole('banner').getByRole('button', { name: /^(Account \d+|Pick an account|Loading account)/ })
+}
+
+// The chip opens a small menu: Profile, the demo account ID field (to switch) and sign out.
+async function openAccountMenu(p) {
+  const chip = accountChip(p)
+  if (await chip.getAttribute('aria-expanded') !== 'true') await chip.click()
+  const menu = p.getByRole('dialog', { name: 'Account', exact: true })
+  await menu.waitFor()
+  return menu
+}
+
+// The empty state ("Pick an account to begin"), which carries its own demo account ID field.
+function picker(p) {
+  return p.getByRole('main').getByRole('region', { name: 'Pick an account to begin', exact: true })
+}
+
+function pickerFieldFocused(p) {
+  return p.waitForFunction(() => document.activeElement?.id === 'picker-account-id')
+}
+
 async function loadAccount(p, id) {
-  await p.getByRole('textbox', { name: 'Demo account' }).fill(String(id))
-  await p.getByRole('button', { name: 'Load account', exact: true }).click()
-  await p.getByRole('button', { name: 'Sign out of demo', exact: true }).waitFor()
+  const chip = accountChip(p)
+  await chip.waitFor()
+  let form
+  if ((await chip.textContent()).trim() === 'Pick an account' && await picker(p).waitFor({ timeout: 15000 }).then(() => true, () => false)) {
+    // Signed out on a page with the empty state: the chip leads to its ID field rather than opening a second form.
+    await chip.click()
+    await pickerFieldFocused(p)
+    assert.equal(await p.getByRole('dialog', { name: 'Account', exact: true }).count(), 0)
+    form = picker(p)
+  } else {
+    form = await openAccountMenu(p)
+  }
+  await form.getByRole('textbox', { name: 'Demo account' }).fill(String(id))
+  await form.getByRole('button', { name: 'Load account', exact: true }).click()
+  await p.getByRole('banner').getByRole('button', { name: new RegExp(`^Account ${id}\\b`) }).waitFor()
+}
+
+// The chip shows "<id>" or "<id> · <first name>" and is named "Account <id>" or "Account <id>, <first name>".
+// Reads the visible text (not textContent, which would run the avatar's initials into the ID) and the accessible name.
+async function chipShows(p, id) {
+  const chip = accountChip(p)
+  assert.match(await chip.locator('.bank-account-chip-text').innerText(), new RegExp(`^${id}(\\s·\\s\\S.*)?$`, 'u'))
+  assert.match(await chip.getAttribute('aria-label') ?? '', new RegExp(`^Account ${id}(, \\S.*)?$`, 'u'))
 }
 
 function postTo(p, path) {
@@ -65,14 +108,57 @@ test('an unfamiliar account can be loaded by ID and survives a reload', async t 
   const samples = await (await p.request.get(`${base}/api/accounts/sample`)).json()
   assert.ok(samples.accounts.every(({ account_id }) => account_id !== account))
 
-  await loadAccount(p, account)
+  // With no account loaded the ID field sits in the empty state, usable straight away; the header shows one chip.
+  assert.equal((await accountChip(p).textContent()).trim(), 'Pick an account')
+  await p.getByRole('main').getByRole('textbox', { name: 'Demo account' }).fill(String(account))
+  await p.getByRole('main').getByRole('button', { name: 'Load account', exact: true }).click()
   const heading = p.getByRole('heading', { name: `Account ${account}`, exact: true })
   await heading.waitFor()
   await p.getByRole('link', { name: 'Run a shock', exact: true }).waitFor()
   await p.getByRole('link', { name: 'View my plan', exact: true }).waitFor()
+  await chipShows(p, account)
+  // The header is calm: no ID box, Load button or sign-out button until the chip is opened.
+  assert.equal(await p.getByRole('banner').getByRole('textbox').count(), 0)
+  assert.equal(await p.getByRole('button', { name: 'Sign out of demo', exact: true }).count(), 0)
   await p.reload()
   await heading.waitFor()
-  assert.equal(await p.getByRole('textbox', { name: 'Demo account' }).inputValue(), String(account))
+  await chipShows(p, account)
+  // The chip reads as "Account <id>, <first name>" (no "middle dot"), and points at its menu only while it is open.
+  await p.getByRole('banner').getByRole('button', { name: new RegExp(`^Account ${account}, \\p{L}`, 'u') }).waitFor()
+  assert.equal(await accountChip(p).getAttribute('aria-haspopup'), 'dialog')
+  assert.equal(await accountChip(p).getAttribute('aria-controls'), null)
+  const menu = await openAccountMenu(p)
+  assert.equal(await accountChip(p).getAttribute('aria-controls'), 'account-menu')
+  // The current account is shown above the switch field; the field starts empty, ready for another ID.
+  await menu.getByText(`Account ${account}`, { exact: true }).waitFor()
+  const field = menu.getByRole('textbox', { name: 'Demo account' })
+  assert.equal(await field.inputValue(), '')
+  assert.equal(await field.getAttribute('placeholder'), 'Another account ID')
+  await p.keyboard.press('Escape')
+  await menu.waitFor({ state: 'detached' })
+  assert.ok(await accountChip(p).evaluate(el => el === document.activeElement), 'Escape returns focus to the chip')
+  // Tabbing past the last item closes the menu, so it never covers the page once focus has left it.
+  await openAccountMenu(p)
+  await menu.getByRole('button', { name: 'Sign out of demo', exact: true }).focus()
+  await p.keyboard.press('Tab')
+  await menu.waitFor({ state: 'detached' })
+
+  // An account whose profile has no persona is named by its ID alone, with no stray separator or name.
+  const q = await pageFor(t)
+  await q.route(`**/api/profile/${account}`, async route => {
+    const response = await route.fetch()
+    await route.fulfill({ response, json: { ...(await response.json()), persona: null } })
+  })
+  await q.goto(base)
+  await loadAccount(q, account)
+  await q.waitForFunction(() => {
+    const chip = document.querySelector('.bank-account-chip')
+    return chip && !chip.classList.contains('is-pending')
+  })
+  await q.getByRole('banner').getByRole('button', { name: `Account ${account}`, exact: true }).waitFor()
+  assert.equal(await accountChip(q).getAttribute('aria-label'), `Account ${account}`)
+  assert.equal((await accountChip(q).locator('.bank-account-chip-text').innerText()).trim(), String(account))
+  await chipShows(q, account)
 })
 
 test('combined shock shows matching cash and both plans, with a meaningful wait-or-pay decision', async t => {
@@ -145,12 +231,42 @@ test('combined shock shows matching cash and both plans, with a meaningful wait-
   await choiceTable.getByRole('row', { name: 'Shortfall over 6 months $0.00 $1,010.06' }).waitFor()
   await p.getByRole('heading', { name: 'Wait on the purchase', exact: true }).waitFor()
 
+  // Once the shock has happened, the backup plan comes first. Both official plans live on Shocks only.
   await p.getByRole('checkbox', { name: 'This shock has already happened' }).check()
-  await navigation(p).getByRole('link', { name: 'My Plan', exact: true }).click()
-  await p.getByRole('heading', { name: 'My Plan', exact: true }).waitFor()
-  const plans = p.getByRole('region', { name: 'Resilience plans' })
+  const plans = p.getByRole('region', { name: 'The numbers behind this shock', exact: true })
   await plans.getByRole('heading', { name: 'Prepare now', exact: true }).waitFor()
-  assert.deepEqual(await plans.getByRole('heading').allTextContents(), ['If it happens', 'Prepare now'])
+  assert.deepEqual(await plans.getByRole('heading').allTextContents(), ['The numbers behind this shock', 'If it happens', 'Prepare now'])
+  // Shocks shows the damage and hands over to My Plan; it does not repeat My Plan's steps.
+  assert.equal(await p.getByRole('heading', { name: 'What could you do about it?', exact: true }).count(), 0)
+  // One hand-off to My Plan, after both the numbers and the cash chart (whichever comes first), never in between.
+  const handoff = p.getByRole('link', { name: 'What should I do? See My Plan', exact: true })
+  await handoff.waitFor()
+  assert.equal(await handoff.count(), 1)
+  assert.equal(await plans.getByRole('link', { name: 'What should I do? See My Plan', exact: true }).count(), 0)
+  assert.ok(await handoff.evaluate((link) => {
+    const after = (el) => !!el && Boolean(el.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING)
+    const chart = [...document.querySelectorAll('h2')].find((h) => h.textContent?.trim() === 'Cash over time')
+    return after(document.getElementById('resilience-plans')) && after(chart)
+  }), 'the hand-off comes after the numbers and the cash chart')
+  // My Plan opens with what to do, and does not repeat the two tables; one link leads back to them.
+  await navigation(p).getByRole('link', { name: 'My Plan', exact: true }).click()
+  // The tab's question is its h1, under a small "My Plan" eyebrow, and one answer sentence comes straight after it.
+  await p.getByRole('heading', { name: 'What should I do?', exact: true, level: 1 }).waitFor()
+  assert.equal(await p.getByRole('heading', { name: 'What should I do?', exact: true }).count(), 1, 'The question is asked once on My Plan')
+  await p.locator('.bank-page-eyebrow').filter({ hasText: 'My Plan' }).waitFor()
+  assert.equal(await plans.count(), 0, 'My Plan does not repeat Prepare now / If it happens')
+  assert.equal(await p.getByRole('heading', { name: 'Prepare now', exact: true }).count(), 0)
+  assert.equal(await p.getByRole('heading', { name: 'If it happens', exact: true }).count(), 0)
+  await p.getByRole('link', { name: 'See the numbers behind this shock', exact: true }).click()
+  await p.getByRole('heading', { name: 'What if life happens?', level: 1 }).waitFor()
+  assert.equal(new URL(p.url()).pathname, '/shock')
+  await plans.getByRole('heading', { name: 'If it happens', exact: true }).waitFor()
+  await plans.getByRole('heading', { name: 'Prepare now', exact: true }).waitFor()
+  // The link lands on the numbers: the section is scrolled into view (smooth scrolling may take a moment).
+  await p.waitForFunction(() => {
+    const r = document.getElementById('resilience-plans')?.getBoundingClientRect()
+    return !!r && r.top < innerHeight && r.bottom > 0 && r.top >= -1
+  }, null, { timeout: 5000 })
 
   await navigation(p).getByRole('link', { name: 'Shocks', exact: true }).click()
   await p.getByLabel(/^Duration/).fill('8')
@@ -226,29 +342,65 @@ test('sign-out asks for confirmation and clears account restoration after refres
   await accountHeading.waitFor()
   const signOut = p.getByRole('button', { name: 'Sign out of demo', exact: true })
   const dialog = p.getByRole('dialog', { name: 'Sign out of demo?' })
+  await openAccountMenu(p)
   await signOut.click()
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
   await accountHeading.waitFor()
+  await chipShows(p, account)
+  // Cancel hands focus back to the chip.
+  await p.waitForFunction(() => document.activeElement?.classList.contains('bank-account-chip'))
+  await openAccountMenu(p)
   await signOut.click()
   await dialog.getByRole('button', { name: 'Sign out', exact: true }).click()
 
-  const picker = p.getByRole('heading', { name: 'Pick an account to begin', exact: true })
-  await picker.waitFor()
+  const pickerHeading = p.getByRole('heading', { name: 'Pick an account to begin', exact: true })
+  await pickerHeading.waitFor()
+  // After a confirmed sign-out the next step is choosing an account, so focus lands on the empty state's ID field.
+  await pickerFieldFocused(p)
   await p.reload()
-  await picker.waitFor()
-  assert.equal(await p.getByRole('textbox', { name: 'Demo account' }).inputValue(), '')
+  await pickerHeading.waitFor()
+  assert.equal((await accountChip(p).textContent()).trim(), 'Pick an account')
+  assert.equal(await p.getByRole('main').getByRole('textbox', { name: 'Demo account' }).inputValue(), '')
   assert.equal(await p.evaluate(() => localStorage.getItem('pulp.account')), null)
+  // Signed out beside the empty state, the chip leads to its field instead of opening a second form.
+  await accountChip(p).blur()
+  await accountChip(p).click()
+  await pickerFieldFocused(p)
+  assert.equal(await p.getByRole('dialog', { name: 'Account', exact: true }).count(), 0)
+  assert.equal(await p.getByRole('textbox', { name: 'Demo account' }).count(), 1)
+  // On a page with no empty state, the chip's menu offers the ID field only: no profile link, no sign out.
+  await p.getByRole('navigation', { name: 'How it works' }).getByRole('link', { name: 'Settings', exact: true }).click()
+  await p.getByRole('heading', { name: 'Settings', level: 1 }).waitFor()
+  const menu = await openAccountMenu(p)
+  const menuField = menu.getByRole('textbox', { name: 'Demo account' })
+  assert.equal(await menuField.inputValue(), '')
+  assert.equal(await p.getByRole('textbox', { name: 'Demo account' }).count(), 1)
   assert.equal(await signOut.count(), 0)
+  assert.equal(await menu.getByRole('link', { name: 'Your profile' }).count(), 0)
+  // An unknown ID typed here is reported here: the menu stays open with the error, and the page shows none.
+  await menuField.fill('999999')
+  await menu.getByRole('button', { name: 'Load account', exact: true }).click()
+  await menu.getByRole('alert').filter({ hasText: /not in the dataset/i }).waitFor()
+  assert.equal(await p.getByRole('main').getByRole('alert').filter({ hasText: /not in the dataset/i }).count(), 0)
+  assert.equal((await accountChip(p).textContent()).trim(), 'Pick an account')
+  assert.ok(await menuField.evaluate(el => el === document.activeElement), 'The field keeps focus after an unknown ID')
+  // A known ID loads, then the menu closes and focus returns to the chip, which now names the account.
+  await menuField.fill(String(account))
+  await menu.getByRole('button', { name: 'Load account', exact: true }).click()
+  await menu.waitFor({ state: 'detached' })
+  await chipShows(p, account)
+  await p.waitForFunction(() => document.activeElement?.classList.contains('bank-account-chip'))
 })
 
-test('invalid IDs show feedback and unknown IDs clear the previous account', async t => {
+test('invalid IDs show feedback and an unknown ID keeps the previous account', async t => {
   const p = await pageFor(t)
   await p.goto(base)
   await loadAccount(p, account)
   const heading = p.getByRole('heading', { name: `Account ${account}`, exact: true })
   await heading.waitFor()
-  const field = p.getByRole('textbox', { name: 'Demo account' })
-  const load = p.getByRole('button', { name: 'Load account', exact: true })
+  const menu = await openAccountMenu(p)
+  const field = menu.getByRole('textbox', { name: 'Demo account' })
+  const load = menu.getByRole('button', { name: 'Load account', exact: true })
 
   await field.fill('abc')
   await load.click()
@@ -256,8 +408,11 @@ test('invalid IDs show feedback and unknown IDs clear the previous account', asy
   await heading.waitFor()
   await field.fill('999999')
   await load.click()
-  await p.getByRole('alert').filter({ hasText: /not in the dataset/i }).waitFor()
-  assert.equal(await heading.count(), 0)
+  // The error shows in the menu, where the ID was typed, and the account the user had stays loaded.
+  await menu.getByRole('alert').filter({ hasText: /not in the dataset/i }).waitFor()
+  await heading.waitFor()
+  await chipShows(p, account)
+  assert.equal(await p.evaluate(() => localStorage.getItem('pulp.account')), String(account))
 })
 
 test('main destinations fit desktop and mobile and retain the account', async t => {
@@ -267,17 +422,95 @@ test('main destinations fit desktop and mobile and retain the account', async t 
     await loadAccount(p, account)
     await p.getByRole('heading', { name: `Account ${account}`, exact: true }).waitFor()
     const nav = navigation(p)
-    const pages = [['Overview', '/'], ['Profile', '/profile'], ['Shocks', '/shock'], ['My Plan', '/plan'], ['Insights', '/insights'], ['Agents', '/agents']]
+    const fits = async path => assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Overflow on ${path} at ${width}px`)
+    // Exactly four tabs, one question each; no "Account tools" menu. The question is the h1, the tab name a small
+    // eyebrow above it, and one answer sentence follows straight after the heading, before anything else on the page.
+    const pages = [['Overview', '/', 'How am I doing?'], ['Shocks', '/shock', 'What if life happens?'], ['My Plan', '/plan', 'What should I do?'], ['Insights', '/insights', 'How do I compare?']]
+    const question = Object.fromEntries(pages.map(([title, , q]) => [title, q]))
     assert.deepEqual(await nav.getByRole('link').allTextContents(), pages.map(([title]) => title))
-    for (const [title, path] of pages) {
+    assert.equal(await p.getByText('Account tools', { exact: true }).count(), 0)
+    for (const [title, path, q] of pages) {
       await nav.getByRole('link', { name: title, exact: true }).click()
+      await p.getByRole('heading', { name: q, exact: true, level: 1 }).waitFor()
+      assert.equal(await p.locator('.bank-page-eyebrow').textContent(), title)
+      const answer = p.locator('main .page-answer')
+      await answer.waitFor()
+      // While its numbers load a tab holds the answer's place with a quiet pending line; the account's own figures follow.
+      if (path === '/' || path === '/insights') await p.locator('main .page-answer:not(.is-pending)').waitFor({ timeout: 30000 })
+      assert.equal(await answer.count(), 1, `One answer sentence on ${path}`)
+      assert.ok(await answer.evaluate((el) => {
+        const first = [...document.querySelectorAll('main *')].find((n) => n.matches('section, .card, .page-lead, .page-answer, h2'))
+        return first === el
+      }), `The answer comes first on ${path}`)
+      if (path === '/' || path === '/insights') assert.match(await answer.textContent(), /\d/, `The answer on ${path} uses the account's numbers`)
+      assert.equal(new URL(p.url()).pathname, path)
+      await chipShows(p, account)
+      await fits(path)
+    }
+    // Profile opens from the account chip's menu; there its link is marked as the current page and the chip is tinted.
+    const persona = p.getByRole('banner').getByRole('link', { name: 'Your profile', exact: true })
+    let menu = await openAccountMenu(p)
+    await fits('the open account menu')
+    assert.equal(await persona.getAttribute('aria-current'), null)
+    await persona.click()
+    await p.getByRole('heading', { name: 'Profile', level: 1 }).waitFor()
+    assert.equal(new URL(p.url()).pathname, '/profile')
+    await menu.waitFor({ state: 'detached' })
+    assert.match(await accountChip(p).getAttribute('class') ?? '', /\bis-current\b/)
+    await openAccountMenu(p)
+    assert.equal(await persona.getAttribute('aria-current'), 'page')
+    await p.keyboard.press('Escape')
+    await menu.waitFor({ state: 'detached' })
+    assert.equal(await nav.locator('[aria-current]').count(), 0, 'No tab is current on Profile')
+    await fits('/profile')
+    // How it works lives in the footer, each page listed once across the header, tabs and footer.
+    const footer = p.getByRole('navigation', { name: 'How it works' })
+    const howItWorks = [['Agents', '/agents'], ['Stage 1 report', '/report'], ['Developer docs', '/developers'], ['Settings', '/settings']]
+    assert.deepEqual(await footer.getByRole('link').allTextContents(), howItWorks.map(([title]) => title))
+    for (const [title, path] of howItWorks) {
+      await footer.getByRole('link', { name: title, exact: true }).click()
       await p.getByRole('heading', { name: title, level: 1 }).waitFor()
       assert.equal(new URL(p.url()).pathname, path)
-      assert.equal(await p.getByRole('textbox', { name: 'Demo account' }).inputValue(), String(account))
-      assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Overflow on ${path} at ${width}px`)
+      await fits(path)
     }
+    const everyLink = [...await nav.getByRole('link').allTextContents(), ...await footer.getByRole('link').allTextContents(), 'Profile']
+    assert.equal(new Set(everyLink).size, everyLink.length, 'No destination is listed twice')
+    // Pages that left the menu are one link away from the tab they belong to. There, that tab stays highlighted
+    // and a back link above the title returns to it. Each folded page is linked from one place only.
+    const folded = [['My Plan', '/plan', 'Next steps: this week, month and year', 'Next steps', '/roadmap'],
+      ['My Plan', '/plan', 'Compare ways to reach a goal', 'Goals', '/goals'],
+      ['Insights', '/insights', 'Read your briefing', 'Briefings', '/briefings']]
+    for (const [tab, tabPath, link, title, path] of folded) {
+      await nav.getByRole('link', { name: tab, exact: true }).click()
+      await p.getByRole('heading', { name: question[tab], level: 1 }).waitFor()
+      await p.getByRole('link', { name: link, exact: true }).click()
+      await p.getByRole('heading', { name: title, level: 1 }).waitFor()
+      assert.equal(new URL(p.url()).pathname, path)
+      assert.equal(await nav.getByRole('link', { name: tab, exact: true }).getAttribute('aria-current'), 'true', `${tab} stays highlighted on ${path}`)
+      assert.equal(await nav.locator('[aria-current]').count(), 1, `Only ${tab} is highlighted on ${path}`)
+      await fits(path)
+      await p.getByRole('main').getByRole('link', { name: `Back to ${tab}`, exact: true }).click()
+      await p.getByRole('heading', { name: question[tab], level: 1 }).waitFor()
+      assert.equal(new URL(p.url()).pathname, tabPath)
+    }
+    // Account details belongs to Profile: linked from there, the account chip is highlighted, and it points back.
+    await openAccountMenu(p)
+    await persona.click()
+    await p.getByRole('heading', { name: 'Profile', level: 1 }).waitFor()
+    assert.equal(await p.getByRole('link', { name: 'Compare ways to reach a goal', exact: true }).count(), 0, 'Goals is linked from My Plan only')
+    await p.getByRole('link', { name: 'Review account details and balances', exact: true }).click()
+    await p.getByRole('heading', { name: 'Account details', level: 1 }).waitFor()
+    assert.match(await accountChip(p).getAttribute('class') ?? '', /\bis-current\b/)
+    menu = await openAccountMenu(p)
+    assert.equal(await persona.getAttribute('aria-current'), 'true', 'The profile link is marked as the parent of Account details')
+    await p.keyboard.press('Escape')
+    await menu.waitFor({ state: 'detached' })
+    assert.equal(await nav.locator('[aria-current]').count(), 0)
+    await fits('/twin')
+    await p.getByRole('main').getByRole('link', { name: 'Back to Profile', exact: true }).click()
+    await p.getByRole('heading', { name: 'Profile', level: 1 }).waitFor()
     await p.goto(base + '/explore')
-    await p.getByRole('heading', { name: 'Shocks', level: 1 }).waitFor()
+    await p.getByRole('heading', { name: 'What if life happens?', level: 1 }).waitFor()
     assert.equal(new URL(p.url()).pathname, '/shock')
   }
 })
@@ -386,8 +619,7 @@ test('the opening is brief and can be replayed and skipped in Settings', async t
   await intro.waitFor()
   await intro.waitFor({ state: 'hidden', timeout: 3500 })
 
-  await p.getByText('Account tools', { exact: true }).click()
-  await p.getByRole('navigation', { name: 'Account tools' }).getByRole('link', { name: 'Settings' }).click()
+  await p.getByRole('navigation', { name: 'How it works' }).getByRole('link', { name: 'Settings', exact: true }).click()
   await p.getByRole('button', { name: 'Replay intro', exact: true }).click()
   await intro.getByRole('button', { name: /^Skip/ }).click()
   await intro.waitFor({ state: 'hidden' })
@@ -426,7 +658,7 @@ test('Simple view tucks detail away, Profile opens on tabs, and Explain this ans
   await p.getByRole('button', { name: 'Show full detail' }).click()
   await p.getByRole('heading', { name: /Cash buffer/ }).waitFor()
 
-  await navigation(p).getByRole('link', { name: 'Profile', exact: true }).click()
+  await (await openAccountMenu(p)).getByRole('link', { name: 'Your profile', exact: true }).click()
   const tabs = p.getByRole('tablist', { name: 'Profile sections' })
   for (const name of ['Goals', 'Worries & questions', 'How you compare', 'History']) await tabs.getByRole('tab', { name, exact: true }).waitFor()
   await tabs.getByRole('tab', { name: 'History', exact: true }).click()

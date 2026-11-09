@@ -2,6 +2,7 @@
    top worry and first question, then one section at a time: Goals, Worries & questions, How you compare, History. */
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { MoreLinks } from '../components/workspace'
 import '../components/clarity.css'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import ExplainButton from '../components/ExplainButton'
@@ -116,6 +117,11 @@ export default function Profile() {
           </>
         )}
       </section>
+
+      <MoreLinks links={[
+        { to: '/twin', text: 'Review account details and balances' },
+        { to: '/plan', text: 'See how your goals play out in My Plan' },
+      ]} />
     </div>
   )
 }

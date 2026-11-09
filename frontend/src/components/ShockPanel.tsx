@@ -1,17 +1,16 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { matchesShockInputs, type Beat, type ShockInputs, type ShockReport } from '../services/api'
-import { PRESETS, useApp } from '../stores/useApp'
-import LifePlansView, { VerdictMark } from './plans/LifePlansView'
-import { useLifePlans } from './plans/usePlanData'
-import { SqueezeLoader } from './PulpMascot'
+import { useApp } from '../stores/useApp'
 import PurchaseComparison from './PurchaseComparison'
 import ScenarioPlans from './ScenarioPlans'
+import { MoreLinks } from './workspace'
 import ShockCashChart from './ShockCashChart'
 import ThreadFigure from './stage/ThreadFigure'
 import TwistDeck from './TwistDeck'
 import { Card, DataTable, ErrorBox, fmt } from './ui'
 import { Detail } from './Detail'
 import ExplainButton from './ExplainButton'
+import PageAnswer, { Num } from './PageAnswer'
 
 export default function ShockPanel() {
   const {
@@ -41,6 +40,7 @@ export default function ShockPanel() {
 
   return (
     <div className="stack scenario">
+      <PageAnswer pending={shockLoading || !report} busy={shockLoading}>{shockAnswer(shockLoading ? null : report, shockLoading, editing, shockError)}</PageAnswer>
       <Card title="Set up a shock">
         <p className="scenario-intro">Turn over a card, or type your own numbers below. If income has stopped, enter only what you can count on, including 0% when nothing is confirmed.</p>
         <TwistDeck editing={editing} onPick={() => setDraft({})} />
@@ -74,49 +74,48 @@ export default function ShockPanel() {
   )
 }
 
+/** The answer to "What if life happens?" for the shock that was run, said with the shock itself so it stands on its own:
+ *  does the cash last the period, and by how much. Whole dollars from the official report; the verdict and the tables
+ *  below carry the detail. */
+function shockAnswer(report: ShockReport | null, loading: boolean, editing: boolean, error: string | null): ReactNode {
+  if (loading) return 'Working out what this shock would do to your cash…'
+  if (error && !report) return 'That shock could not be worked out; try again below.'
+  if (!report) return editing ? 'Run the shock below to see how long your cash would last.' : 'Pick a shock below to see how long your cash would last.'
+  const { shocked, verdict, applied_inputs: ai } = report
+  const period = `${verdict.horizon_months} ${verdict.horizon_months === 1 ? 'month' : 'months'}`
+  const percent = (v: number) => `${Math.round(v * 100)}%`
+  const what: string[] = []
+  if (ai.income_fraction === 0) what.push('income stops')
+  else if (ai.income_fraction < 1) what.push(`income drops to ${percent(ai.income_fraction)}`)
+  else if (ai.income_fraction > 1) what.push(`income rises to ${percent(ai.income_fraction)}`)
+  if (ai.bills_increase > 0) what.push(`bills go up ${percent(ai.bills_increase)}`)
+  else if (ai.bills_increase < 0) what.push(`bills go down ${percent(-ai.bills_increase)}`)
+  if (ai.one_off_cost > 0) what.push(`a ${fmt.money(ai.one_off_cost)} cost lands`)
+  const when = what.length ? `If ${what.length < 2 ? what[0] : `${what.slice(0, -1).join(', ')} and ${what.at(-1)}`}` : 'With no shock'
+  if (shocked.buffer_left < 0) return <>{when}, you would need <Num>{fmt.money(-shocked.buffer_left)}</Num> more cash than you have on day one.</>
+  if (verdict.exact_at_horizon) return <>{when}, your cash would last exactly the <Num>{period}</Num>, reaching <Num>$0</Num> at the end.</>
+  if (verdict.survives) return <>{when}, you would get through the <Num>{period}</Num> with about <Num>{fmt.money(verdict.cash_left_at_horizon)}</Num> left at the end.</>
+  if (verdict.shortfall_over_horizon <= 0) return <>{when}, regular income still covers spending, but there is no cash cushion to start with.</>
+  const runsOut = shocked.buffer_left === 0 || shocked.runway_status === 'exhausted'
+    ? <>your cash cushion would be used up at the start</>
+    : <>your cash would run out after about <Num>{shocked.runway_label} months</Num></>
+  return <>{when}, {runsOut}, and you would be about <Num>{fmt.money(verdict.shortfall_over_horizon)}</Num> short by month <Num>{verdict.horizon_months}</Num>.</>
+}
+
 function ShockResults({ report, responseFirst, showTable }: { report: ShockReport; responseFirst: boolean; showTable: boolean }) {
-  const { baseline, shocked, verdict, upfront_cost: upfront } = report
-  const ai = report.applied_inputs
-  const sp = { r: ai.income_fraction, h: ai.bills_increase, o: ai.one_off_cost, d: ai.horizon_months }
-  const months = verdict.horizon_months
-  const tone = verdict.exact_at_horizon ? 'exact' : verdict.survives ? 'ok' : 'bad'
-  const runway = shocked.runway_status === 'no_shortfall' ? 'No monthly shortfall' : `${shocked.runway_label} months${shocked.runway_status === 'capped' ? ' (display limit)' : ''}`
-  const heading = verdict.exact_at_horizon ? 'Cash covers exactly this period'
-    : shocked.buffer_left < 0 ? 'More cash is needed upfront'
-    : shocked.buffer_left === 0 ? 'The cash cushion is used up at the start'
-    : verdict.survives ? 'Cash covers this period' : 'Cash runs short before the end'
+  const { baseline, shocked } = report
 
   return (
     <>
-      <section className={`verdict scenario-verdict ${tone}`} aria-label="Shock result" role="status">
-        <VerdictMark ok={verdict.survives} size={48} />
-        <div>
-          <div className="section-head"><h2>{heading}</h2><ExplainButton topic="shock" label="what this shock does" shock={sp} /></div>
-          <p>
-            In this scenario, <strong className="scenario-amount">{fmt.money(shocked.income_after, 2)}</strong> comes in each month
-            and <strong className="scenario-amount">{fmt.money(shocked.spending_after, 2)}</strong> goes out.
-            {upfront > 0 && <> The <strong className="scenario-amount">{fmt.money(upfront, 2)}</strong> one-time cost is due at the start.</>}
-          </p>
-          <p>
-            {shocked.buffer_left < 0
-              ? <>The upfront cash gap is <strong className="scenario-amount">{fmt.money(-shocked.buffer_left, 2)}</strong>. Later income cannot cover a bill due today.</>
-              : verdict.exact_at_horizon
-                ? <>The estimate reaches <strong className="scenario-amount">$0</strong> at month {months}.</>
-                : verdict.survives
-                  ? <>Estimated cash left at month {months} is <strong className="scenario-amount">{fmt.money(verdict.cash_left_at_horizon, 2)}</strong>.</>
-                  : verdict.shortfall_over_horizon > 0
-                    ? <>Over {months} months, an estimated <strong className="scenario-amount">{fmt.money(verdict.shortfall_over_horizon, 2)}</strong> is still needed.</>
-                    : 'Regular income covers ongoing spending under these assumptions, with no cash cushion at the start.'}
-          </p>
-          <p className="small muted">Runway · {runway}. Assumes the same income and spending for all {months} {months === 1 ? 'month' : 'months'}.</p>
-          {report.warnings?.map((w) => <p key={w} className="scenario-warning" role="note">{w}</p>)}
-        </div>
-      </section>
+      {/* The answer above says whether the cash lasts and by how much, and the cushion card's own header gives the money
+          in and out, so no line of figures sits between them; only the engine's warnings, if any. */}
+      {report.warnings?.length ? <div className="scenario-warnings">{report.warnings.map((w) => <p key={w} className="scenario-warning" role="note">{w}</p>)}</div> : null}
       <CushionWhatIf report={report} />
       {responseFirst && <ScenarioPlans report={report} responseFirst />}
       <ShockCashChart report={report} showTable={showTable} />
       {!responseFirst && <ScenarioPlans report={report} responseFirst={false} />}
-      <Detail><ShockLifePlans report={report} happened={responseFirst} /></Detail>
+      {/* Once, after the damage and its numbers in either order: what to do about it lives on My Plan. */}
+      <MoreLinks className="scenario-handoff" links={[{ to: '/plan', text: 'What should I do? See My Plan' }]} />
       <details className="disclose">
         <summary>Can a purchase wait? Compare paying now with waiting</summary>
         <PurchaseComparison key={`${report.account_id}:${JSON.stringify(report.applied_inputs)}`} report={report} showTable={showTable} />
@@ -139,20 +138,6 @@ function ShockResults({ report, responseFirst, showTable }: { report: ShockRepor
   )
 }
 
-/** Multi-step plans for this shock from the Life Planner, run once per change of the shock inputs. */
-function ShockLifePlans({ report, happened }: { report: ShockReport; happened: boolean }) {
-  const accountId = useApp((st) => st.accountId)
-  const i = report.applied_inputs
-  const inputs: ShockInputs = { income_fraction: i.income_fraction, bills_increase: i.bills_increase, one_off_cost: i.one_off_cost, horizon_months: i.horizon_months }
-  const label = (i.preset && PRESETS[i.preset]?.label) || 'This shock'
-  const { result } = useLifePlans(accountId, { mode: 'shock', inputs, happened, label, trigger: 'Ran a shock on the Shocks page' })
-  return (
-    <Card title="What could you do about it?" className="plan-card" right={<ExplainButton topic="plan" label="your plan" />}>
-      {result ? <LifePlansView key={`${report.account_id}:${JSON.stringify(i)}:${happened}`} result={result} variant="summary" /> : <SqueezeLoader label="Squeezing plans out of your records…" />}
-    </Card>
-  )
-}
-
 /** The cushion figure with two what-if sliders. The runway follows the official rule: cash after the one-off cost
     divided by the monthly gap, 0 when nothing is left, "no shortfall" when income covers spending. */
 function CushionWhatIf({ report }: { report: ShockReport }) {
@@ -171,6 +156,9 @@ function CushionWhatIf({ report }: { report: ShockReport }) {
   const covers = runway == null || runway >= months
   return (
     <Card title="Your cushion, month by month" className="scenario-figure" right={<ExplainButton topic="cushion_chart" label="the cushion chart" shock={{ r, h: ai.bills_increase, o: ai.one_off_cost, d: months }} />}>
+      <p className="scenario-intro">Cash left at the end of each month, assuming the same income and spending for all {m0} {m0 === 1 ? 'month' : 'months'}.</p>
+      {/* At the shock that was run the figure's verdict line and the runway line would only repeat the answer at the top,
+          so they appear once the sliders move away from it. */}
       <ThreadFigure beat={timelineBeat(report, changed ? { r, months, income, gap, runway, label } : undefined)} />
       <fieldset className="whatif">
         <legend>What if</legend>
@@ -178,10 +166,10 @@ function CushionWhatIf({ report }: { report: ShockReport }) {
           <input type="range" min={0} max={100} step={5} value={Math.round(r * 100)} onChange={(e) => setR(Number(e.target.value) / 100)} /></label>
         <label className="lp-slider"><span className="lp-slider-head"><b>Months the shock lasts</b><output>{months} mo</output></span>
           <input type="range" min={1} max={24} step={1} value={months} onChange={(e) => setMonths(Number(e.target.value))} /></label>
-        <p className="whatif-result" role="status">
+        <p className="whatif-result" role="status">{changed && <>
           Runway <b>{runway == null ? 'no shortfall' : `${label} months`}</b> · {covers ? 'covers' : 'does not cover'} {months} months
-          {changed && <> · official result {official === 'no shortfall (120+)' ? 'no shortfall' : `${official} months`} at {Math.round(r0 * 100)}% for {m0} months</>}
-        </p>
+          {' '}· official result {official === 'no shortfall (120+)' ? 'no shortfall' : `${official} months`} at {Math.round(r0 * 100)}% for {m0} months
+        </>}</p>
         {changed && <button type="button" className="lp-btn ghost" onClick={() => { setR(r0); setMonths(m0) }}>Reset</button>}
       </fieldset>
     </Card>
@@ -207,6 +195,7 @@ function timelineBeat(report: ShockReport, wi?: { r: number; months: number; inc
       monthly_gap: wi ? wi.gap : s.monthly_gap, buffer_start: s.buffer_left, runs_out_month: runsOut, runway_label: wi ? wi.label : s.runway_label,
       verdict: wi ? (runsOut == null ? 'what if: the cushion lasts' : 'what if: the cushion runs out') : report.verdict.verdict,
       events: [{ month: 0, label: what }, runsOut != null ? { month: runsOut, label: 'cushion empty' } : { month: months, label: 'still standing' }],
+      hide_verdict: !wi,
     },
   }
 }

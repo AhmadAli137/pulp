@@ -234,6 +234,8 @@
 /* Clarity pass: what to do first, as numbered steps; secondary detail in disclosures */
 .lp-first{border:1px solid #E8E2D6;border-radius:14px;background:#FFFCF6;padding:16px 18px}
 .lp-first>h3{font-size:18px}
+/* Simple view: the only block in the card, so one border and one padding around the answer, not two */
+.lp-first.lp-first-solo{border:0;border-radius:0;background:none;padding:0}
 .lp-lead{margin:0 0 12px;font-size:15px;line-height:1.5;color:#22352c}
 .lp-lead b{color:#183B2D}
 .lp-steps{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:12px}
@@ -253,6 +255,4 @@
 .lp-more[open]{padding-bottom:14px}
 .lp-more-body{display:grid;gap:22px;margin-top:8px}
 .lp-weights-details>summary{cursor:pointer;font-weight:700;font-size:14px;color:#183B2D;margin-bottom:8px}
-.lp-summary .lp-steps{margin-bottom:8px}
-.lp-summary-foot{margin:0;font-size:13.5px;color:#4f5a50}
 @media (prefers-reduced-motion:reduce){.lp-more>summary::before{transition:none}}

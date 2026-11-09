@@ -156,10 +156,10 @@ export default function TimelineVisual({ p }: { p: TimelineParams }) {
         )
       })()}
 
-      {/* the answer in words */}
-      <text x={W / 2} y={H - 16} fontSize={fs(narrow ? 15 : 19)} fontWeight={800} fill={emptyAt === null ? FOREST : RED} textAnchor="middle">
+      {/* the answer in words (left out when the page around the figure already says it) */}
+      {!p.hide_verdict && <text x={W / 2} y={H - 16} fontSize={fs(narrow ? 15 : 19)} fontWeight={800} fill={emptyAt === null ? FOREST : RED} textAnchor="middle">
         {narrow && verdict.length > 52 ? (v => v[0].toUpperCase() + v.slice(1))(verdict.replace(/^Does not make it: /, '')) : verdict}
-      </text>
+      </text>}
     </svg>
   )
 }

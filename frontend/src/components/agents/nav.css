@@ -1,15 +1,63 @@
-/* Six primary tabs. Wide screens show them all; narrower screens scroll the tab strip in its own container with a
-   fade at the trailing edge, so the page itself never scrolls sideways. */
+/* Four primary tabs. They fit from phone width up; the strip can still scroll in its own container if text is
+   enlarged, so the page itself never scrolls sideways. */
 .bank-workspace .bank-nav-inner{min-width:0}
 .bank-workspace .bank-nav-inner .workspace-tabs{flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
 .bank-workspace .bank-nav-inner .workspace-tabs::-webkit-scrollbar{display:none}
 .bank-workspace .bank-nav-inner .workspace-tabs a{flex:none;scroll-snap-align:start;white-space:nowrap}
-.bank-nav-inner .bank-menu{flex:none}
-@media (max-width:1060px){
-  .bank-workspace .bank-nav-inner .workspace-tabs{gap:6px}
-  .bank-workspace .bank-nav-inner .workspace-tabs a{padding-inline:8px}
-}
 @media (max-width:900px){
   .bank-workspace .bank-nav-inner{flex-wrap:nowrap!important}
-  .bank-workspace .bank-nav-inner .workspace-tabs{padding-right:28px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 30px),transparent)}
 }
+@media (max-width:420px){
+  /* Equal-width tabs, so the highlight and underline are the same size on every tab */
+  .bank-workspace .bank-nav-inner .workspace-tabs{gap:0}
+  .bank-workspace .bank-nav-inner .workspace-tabs a{flex:1 1 0;min-width:max-content;justify-content:center;text-align:center}
+}
+/* On a page folded into a tab (Next steps, Goals, Briefings), that tab stays highlighted. */
+.bank-workspace .workspace-tabs a.is-parent{color:var(--bank-green);border-bottom-color:var(--bank-green);background:#f0f5ee}
+
+/* Back to the tab (or Profile) a folded page belongs to */
+.bank-back-link{display:inline-flex;align-items:center;gap:6px;min-height:32px;margin:-6px 0 6px;color:var(--bank-green);
+  font-size:13.5px;font-weight:650;text-decoration:none}
+.bank-back-link:hover{text-decoration:underline;text-underline-offset:3px}
+.bank-back-link:focus-visible{outline:3px solid #f9b17e;outline-offset:2px;border-radius:4px}
+
+/* Destinations inside a tab: small arrow links, a little apart from the content above */
+.link-row.link-row-go{margin-top:8px}
+.link-row-go a{display:inline-flex;align-items:center;gap:5px;font-weight:600;text-decoration:none}
+.link-row-go a:hover{text-decoration:underline;text-underline-offset:3px}
+.link-row-go a svg{flex:none;transition:transform .15s ease}
+.link-row-go a:hover svg{transform:translateX(2px)}
+@media (prefers-reduced-motion:reduce){.link-row-go a svg{transition:none}}
+
+/* Quiet site footer: how PULP works, away from the four questions. */
+.bank-workspace{display:flex;flex-direction:column}
+.bank-workspace>.bank-main{flex:1 0 auto}
+.bank-workspace>main.bank-main{padding-bottom:40px}
+.site-footer{border-top:1px solid var(--bank-border);background:#f1f2ec;color:var(--bank-muted)}
+.site-footer-inner{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:12px 32px;padding-block:22px 28px}
+.site-footer-nav{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 32px}
+/* A quiet label, not another link */
+.site-footer-nav h2{margin:0;color:var(--bank-muted);font:700 11.5px/1.6 var(--font);letter-spacing:.06em;text-transform:uppercase}
+.site-footer-nav ul{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0;list-style:none}
+.site-footer-nav a{color:var(--bank-muted);font-size:13px;font-weight:500;text-decoration:none;text-underline-offset:3px}
+.site-footer-nav a:hover,.site-footer-nav a[aria-current="page"]{color:var(--bank-green);text-decoration:underline}
+.site-footer-nav a:focus-visible{outline:3px solid #f9b17e;outline-offset:2px;border-radius:4px}
+.site-footer-note{margin:0;font-size:12px;max-width:44ch}
+@media (max-width:720px){
+  /* Bottom padding clears the floating Pulp button (56px + 16px) */
+  .site-footer-inner{flex-direction:column;align-items:stretch;gap:6px;padding-block:14px 72px}
+  .site-footer-nav{flex-direction:column;align-items:stretch;gap:2px}
+  /* Two even columns, so the links wrap 2 + 2 at any phone width */
+  .site-footer-nav ul{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+  .site-footer-nav a{display:inline-flex;align-items:center;min-height:44px}
+}
+
+/* "Behind the scenes": muted and right-aligned, so it reads as separate from the four customer tabs */
+.bank-workspace .behind-scenes{flex:none;display:flex;align-items:center;padding-left:16px;border-left:1px solid var(--bank-border);margin-left:8px}
+.bank-workspace .behind-scenes a{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border-radius:999px;
+  color:#5f6f66;font-size:13.5px;font-weight:600;text-decoration:none;white-space:nowrap;transition:background .15s ease,color .15s ease}
+.bank-workspace .behind-scenes a:hover{color:var(--bank-green);background:#f0f5ee}
+.bank-workspace .behind-scenes a.is-on{color:var(--bank-green);background:#f0f5ee}
+.bank-workspace .behind-scenes a:focus-visible{outline:3px solid #f9b17e;outline-offset:2px}
+/* Phones: the four tabs need the whole row, so the footer's "How it works" links carry it there */
+@media (max-width:720px){ .bank-workspace .behind-scenes{display:none} }

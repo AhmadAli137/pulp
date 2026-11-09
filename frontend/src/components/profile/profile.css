@@ -159,6 +159,14 @@
 .pf-tabs button{flex:none;border:0;background:none;padding:10px 14px;font:600 15px var(--sans);color:#54645a;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
 .pf-tabs button.on{color:#1c4639;border-bottom-color:#E86A0C}
 .pf-tabs button:focus-visible{outline:2px solid #E86A0C;outline-offset:-2px}
+/* Phones: the four section tabs wrap to two rows of two equal columns, so none is cut off and labels wrap evenly. Each cell keeps its own rule, so both
+   rows read as tab rows and the orange underline sits on a line. */
+@media (max-width:720px){
+  .pf-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 4px;overflow:visible;border-bottom:0}
+  .pf-tabs button{min-width:0;padding:10px 8px;font-size:14px;text-align:center;white-space:normal;text-wrap:balance;margin-bottom:0;
+    border-bottom:1px solid #dde4d9;box-shadow:inset 0 -2px 0 transparent}
+  .pf-tabs button.on{border-bottom-color:#dde4d9;box-shadow:inset 0 -2px 0 #E86A0C}
+}
 .pf-panel{display:grid;gap:12px;padding:18px 20px;border:1px solid #dde4d9;border-radius:14px;background:#fff;min-width:0}
 .pf-panel h2{margin:0}
 .pf-actions{display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center}

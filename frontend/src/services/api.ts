@@ -239,7 +239,7 @@ export interface ActionsParams { headline: string; actions: ActionItem[] }
 export interface PictureParams { inflow: number; outflow: number; buffer: number; months_of_spending: number; runway_label: string; headline?: string }
 export interface CupParams { buffer: number; outflow: number; months_of_spending: number; label: string }
 export interface RiverParams { inflow: number; outflow: number; surplus: number; parts_in: Record<string, number>; parts_out: Record<string, number> }
-export interface TimelineParams { duration_months: number; income_before: number; income_after: number; spending_after: number; monthly_gap: number; buffer_start: number; runs_out_month: number | null; runway_label: string; verdict: string; events: { month: number; label: string }[] }
+export interface TimelineParams { duration_months: number; income_before: number; income_after: number; spending_after: number; monthly_gap: number; buffer_start: number; runs_out_month: number | null; runway_label: string; verdict: string; events: { month: number; label: string }[]; /** leave out the verdict line under the bars (the page already says it) */ hide_verdict?: boolean }
 export interface CalendarParams { neg_months: number; timing_share: number; months: number }
 export interface CrowdParams { n_total: number; archetype: { name: string; size: number; share: number; survive6_layoff_pct: number }; you: { survives6_layoff: boolean; runway_layoff: number | null } }
 export interface RibbonParams { months: number; spending_drift_pm: number; income_drift_pm: number; inflow: number; outflow: number }

@@ -7,17 +7,15 @@
   --pattern-grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.22 0 0 0 0 0.18 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* header lockup: PULP. with the acronym spelled out, initials in brand orange */
+/* header lockup: PULP. with the acronym spelled out (one quiet line, wide screens only) */
 .bank-brand{gap:9px}
 .brand-lockup{display:flex;flex-direction:column;gap:3px;min-width:0}
 .brand-acronym{font:600 11.5px/1.1 var(--font);letter-spacing:.02em;color:#54645a;white-space:nowrap}
-.brand-acronym b{color:var(--brand-orange);font-weight:800}
-.brand-tagline{font:500 11px/1.1 var(--font);color:#8C9286;white-space:nowrap}
-@media (max-width:1100px){.brand-tagline{display:none}}
-@media (max-width:640px){.brand-acronym{display:none}}
+/* a quiet subtitle: plain small text, the initials not set apart */
+.brand-acronym b{color:inherit;font-weight:inherit}
+@media (max-width:900px){.brand-acronym{display:none}}
 
-/* the green account banner and branded section headers carry a faint segment pattern */
-.bank-account-summary{background-image:var(--pattern-segment);background-size:96px 96px;background-position:right -20px top -20px}
+/* branded section headers carry a faint segment pattern */
 .brand-section .card-head{position:relative}
 .brand-section{background-image:var(--pattern-segment-ink);background-repeat:no-repeat;background-position:top right}
 .brand-banner{background-image:var(--pattern-segment-ink),var(--pattern-grain);background-repeat:no-repeat,repeat;background-position:top right,0 0}
@@ -37,6 +35,17 @@
 .plan-tabs button{border:0;background:none;border-radius:999px;padding:7px 16px;font:700 13px var(--font);color:#4f5a50;cursor:pointer}
 .plan-tabs button.on{background:#fff;color:#183B2D;box-shadow:0 1px 3px #0000001a}
 .plan-tabs button:focus-visible{outline:3px solid #f9b17e;outline-offset:2px}
+/* My Plan: title, lead, the plan switch (with the link back to the shock's numbers) and the plan, on one 24px rhythm */
+.main>.stack.plan-page{gap:24px}
+.plan-head-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:12px 24px}
+/* The links back to Shocks: controls, so quieter than the context line above (meta size, muted ink, arrow kept) */
+.plan-head-row>.plan-links.link-row-go{margin:0;font-size:var(--t-meta,13px);gap:6px 18px}
+.plan-head-row>.plan-links a{color:var(--bank-muted,#54645a)}
+.plan-head-row>.plan-links a:hover,.plan-head-row>.plan-links a:focus-visible{color:var(--bank-ink,#1d2f27)}
+@media (max-width:620px){.plan-head-row>.plan-links{flex-wrap:nowrap;white-space:nowrap}.plan-link-more{display:none}}
+/* the shock summary over the plan: plain text colour, so the plan below stays the visual answer */
+.page-lead b.plan-lead-num{color:inherit;font-weight:600}
+.plan-empty-action{margin:4px 0 0}
 
 /* shared slider and button styles (used on Overview, Shocks and plans) */
 .lp-slider{display:flex;flex-direction:column;gap:2px;font-size:12.5px}

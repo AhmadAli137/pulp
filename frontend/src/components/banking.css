@@ -23,7 +23,6 @@
 .bank-header-inner,
 .bank-nav-inner,
 .bank-account-tools,
-.bank-account-form,
 .bank-actions {
   display: flex;
   align-items: center;
@@ -61,34 +60,7 @@
   gap: 12px;
 }
 
-.bank-account-form {
-  gap: 8px;
-}
-
-.bank-account-form label {
-  font-size: 13px;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.bank-account-form input {
-  width: 100px;
-  height: 38px;
-  min-width: 0;
-  padding: 0 10px;
-  color: var(--bank-ink);
-  border: 1px solid #cbd6c9;
-  border-radius: 7px;
-  background: #fff;
-  font-variant-numeric: tabular-nums;
-}
-
-.bank-account-form input[aria-invalid="true"] {
-  border-color: var(--bank-orange);
-}
-
-.bank-button,
-.bank-signout {
+.bank-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -106,8 +78,7 @@
   cursor: pointer;
 }
 
-.bank-button:hover,
-.bank-signout:hover {
+.bank-button:hover {
   background: #eef3ec;
 }
 
@@ -125,10 +96,6 @@
 .bank-button:disabled {
   opacity: .65;
   cursor: wait;
-}
-
-.bank-signout {
-  border-color: transparent;
 }
 
 .bank-workspace .workspace-tabs {
@@ -158,62 +125,6 @@
   color: var(--bank-green);
   border-bottom-color: var(--bank-green);
   background: #f0f5ee;
-}
-
-.bank-menu {
-  position: relative;
-  z-index: 2;
-  margin-left: auto;
-}
-
-.bank-menu summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px;
-  color: var(--bank-green);
-  font-size: 13px;
-  font-weight: 650;
-  white-space: nowrap;
-  cursor: pointer;
-  list-style: none;
-}
-
-.bank-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.bank-menu summary:focus-visible {
-  outline: 3px solid #f9b17e;
-  outline-offset: 1px;
-  border-radius: 5px;
-}
-
-.bank-menu-panel {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  width: 190px;
-  padding: 5px;
-  border: 1px solid var(--bank-border);
-  border-radius: 9px;
-  background: #fff;
-  box-shadow: 0 8px 24px #1c463919;
-}
-
-.bank-menu-panel a {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 10px;
-  color: var(--bank-green);
-  border-radius: 5px;
-  text-decoration: none;
-}
-
-.bank-menu-panel a:hover,
-.bank-menu-panel a[aria-current="page"] {
-  background: #eef3ec;
 }
 
 .bank-workspace .bank-main {
@@ -378,32 +289,39 @@
   gap: 16px;
 }
 
+/* Overview's account row: which records the answer above comes from, and the two ways on. Quiet on purpose, so the
+   answer stays the strongest thing on the page. */
 .bank-account-summary {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: clamp(20px, 3.5vw, 30px);
-  color: #fff;
-  border-radius: 14px;
-  background: var(--bank-green);
+  gap: 12px 18px;
+  padding: 14px 18px;
+  color: var(--bank-ink);
+  border: 1px solid var(--bank-border);
+  border-radius: 12px;
+  background: #fff;
 }
 
 .bank-demo-badge {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: #eff4ed;
-  font-size: 12px;
-  font-weight: 650;
+  color: var(--bank-muted);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .bank-account-summary h2 {
-  margin-top: 4px;
-  color: #fff;
+  margin: 0;
+  color: var(--bank-ink);
   font-family: Manrope, var(--font);
-  font-size: 26px;
+  font-size: 16px;
+}
+
+.bank-workspace .bank-account-summary > div > h2 {
+  font-size: 16px !important;
 }
 
 .bank-account-summary p {
@@ -412,28 +330,8 @@
   align-items: center;
   gap: 6px;
   margin-top: 3px;
-  color: #dfebe3;
+  color: var(--bank-muted);
   font-size: 13px;
-}
-
-.bank-account-summary .bank-button {
-  color: #fff;
-  border-color: #a5bcb0;
-  background: transparent;
-}
-
-.bank-account-summary .bank-button:hover {
-  background: #2d5949;
-}
-
-.bank-account-summary .bank-button-primary {
-  color: var(--bank-green);
-  border-color: #fff;
-  background: #fff;
-}
-
-.bank-account-summary .bank-button-primary:hover {
-  background: #eef3ec;
 }
 
 .bank-overview-grid {
@@ -513,6 +411,11 @@
   padding-top: 13px;
   border-top: 1px solid var(--bank-border);
 }
+
+/* The typical month's figures are facts, so plain ink; only a shortfall keeps the warning colour (set inline). */
+.bank-flow .bank-money { color: var(--bank-ink); }
+.bank-flow-cushion { margin-top: 10px; }
+.bank-flow-cushion .bank-flow-aside { color: var(--bank-muted); font: 500 13px/1.25 var(--sans, inherit); }
 
 .bank-runway {
   margin-top: 17px;
@@ -612,32 +515,6 @@
     width: calc(100% - 32px);
   }
 
-  .bank-header-inner {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 8px;
-    padding-block: 9px 12px;
-  }
-
-  .bank-account-tools {
-    display: contents;
-  }
-
-  .bank-account-form {
-    grid-row: 2;
-    grid-column: 1 / -1;
-  }
-
-  .bank-account-form input {
-    flex: 1 1 100px;
-  }
-
-  .bank-signout {
-    grid-row: 1;
-    grid-column: 2;
-    justify-self: end;
-  }
-
   .bank-nav-inner,
   .bank-workspace .workspace-tabs {
     gap: 4px;
@@ -655,11 +532,6 @@
 
   .bank-workspace .workspace-tabs svg {
     display: none;
-  }
-
-  .bank-menu summary {
-    padding-inline: 4px 0;
-    font-size: 12px;
   }
 
   .bank-workspace .bank-main {

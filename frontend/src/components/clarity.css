@@ -7,7 +7,8 @@
 .disclose[open]>summary{border-bottom:1px solid var(--bank-border,#dde4d9)}
 .disclose>:not(summary){margin:14px 18px}
 .disclose>.card,.disclose>section.card{border:0;box-shadow:none;margin:0;padding:14px 18px}
-.page-lead{margin:0;font-size:17px;line-height:1.5;color:#22352c;max-width:70ch}
+/* context under a tab's answer sentence: quieter than the answer, so it reads as detail */
+.page-lead{margin:0;font-size:15px;line-height:1.5;color:var(--bank-muted,#54645a);max-width:70ch}
 .page-lead b{color:var(--bank-green,#1c4639)}
 .bank-lead{font-size:16px !important;line-height:1.5;margin:6px 0 4px !important;max-width:62ch}
 .link-row{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;margin:0}

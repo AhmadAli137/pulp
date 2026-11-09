@@ -281,3 +281,6 @@
   .run-open{padding:12px}
 }
 @media (prefers-reduced-motion:reduce){.run-refresh .spin{animation:none}}
+/* Next to "Try it": the other two behind-the-scenes pages */
+.agents-more{display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border:1px solid var(--bank-border,#dde4d9);border-radius:999px;color:var(--bank-green,#1c4639);font-size:13.5px;font-weight:600;text-decoration:none;background:#fff}
+.agents-more:hover{background:#f0f5ee}

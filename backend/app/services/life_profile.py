@@ -41,7 +41,10 @@ def build_life_profile(monthly, summary: dict, loan=None) -> dict:
     period = {"from": str(recent.month.iloc[0]), "to": str(recent.month.iloc[-1]), "months": len(recent)}
     steady = cv is not None and cv <= .2 and len(recent) >= 3
     headline = "A starting picture that needs more context" if len(recent) < 3 else "Regular money coming in, with little room for another commitment" if steady and median_room <= max(0, inflow * .1) else "Regular money coming in, with some room to plan" if steady else "A plan that needs room for uneven months"
-    account_story = f"Across {len(recent)} recorded months through {period['to']}, more money left than came in during {negative} months. In a typical month, {_cash_difference(median_room)}."
+    # The middle of these recent months, said as such: Overview's "typical month" uses every recorded month, so this
+    # recent window must not claim the same words for a different figure.
+    middle = f"In the middle month of those {len(recent)}" if len(recent) > 1 else "In that month"
+    account_story = f"Across {len(recent)} recorded months through {period['to']}, more money left than came in during {negative} months. {middle}, {_cash_difference(median_room)}."
     if cv is not None and cv > .2 and len(recent) >= 3:
         account_story += f" Money coming in ranged from ${float(recent.money_in.min()):,.0f} to ${float(recent.money_in.max()):,.0f} per month."
     confirmed = []

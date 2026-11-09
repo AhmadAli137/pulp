@@ -123,6 +123,13 @@ def t_happens(a, m, p):
     return "If it happens", f, t
 
 
+def t_numbers(a, m, p):
+    """Both official plans together (Shocks shows them as one block, "The numbers behind this shock")."""
+    _, fp, tp = t_prepare(a, m, p)
+    _, fh, th = t_happens(a, m, p)
+    return "The numbers behind this shock", {**fp, **fh}, f"Prepare now: {tp} {th}"
+
+
 def t_plan(a, m, p):
     from . import context_manager as cm
     lp = cm.load_context(a).get("life_plans") or {}
@@ -207,7 +214,7 @@ def t_search(a, m, p):
 
 TOPICS: dict[str, Callable] = {
     "typical_month": t_month, "cushion": t_cushion, "runway": t_runway, "discovery": t_discovery,
-    "shock": t_shock, "cushion_chart": t_shock, "prepare_now": t_prepare, "if_it_happens": t_happens,
+    "shock": t_shock, "cushion_chart": t_shock, "prepare_now": t_prepare, "if_it_happens": t_happens, "shock_numbers": t_numbers,
     "plan": t_plan, "finalists": t_finalists, "plan_search": t_search, "goals": t_goals, "persona": t_persona,
     "quartiles": t_quartiles, "loan_check": t_loans, "demographics": t_demo, "agents": t_agents,
     "stage1": t_stage(1), "stage2": t_stage(2), "stage3": t_stage(3),
