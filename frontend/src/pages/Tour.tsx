@@ -10,8 +10,11 @@ import { ArrowLeft, ArrowRight, Check, FastForward, MessageCircle, Pause, Play, 
 import { Link, useSearchParams } from 'react-router-dom'
 import DemoAccountPicker from '../components/DemoAccountPicker'
 import AgentSymbol, { STAGE_COLOR, metaFor, type Stage } from '../components/agents/AgentSymbol'
-import { api, type AgentTrace, type DiscoveryResult, type Insights, type LifePlan, type LifePlanResult, type PlanSearch, type ProfileChange, type ProfileDoc, type TraceEvent } from '../services/api'
+import { api, type AgentTrace, type DiscoveryResult, type Insights, type LifePlan, type LifePlanResult, type PlanSearch, type ProfileChange, type ProfileDoc, type TraceEvent, type Validation } from '../services/api'
 import { useApp } from '../stores/useApp'
+import { useShowDetail } from '../stores/view'
+import ThreadFigure from '../components/stage/ThreadFigure'
+import { ChangeFlip, CountUp, Cups, PersonCard, PulpSays, RoleSort, Squeeze, Stamped, UndoPicture } from '../components/tour/SimpleViews'
 import '../components/tour/tour.css'
 
 type SearchViewProps = { search: PlanSearch; plans: LifePlan[]; animate?: boolean }
@@ -26,6 +29,8 @@ class Guard extends Component<{ children: ReactNode }, { failed: boolean }> {
 
 type Chapter = 0 | 1 | 2 | 3 | 4
 interface Step { chapter: Chapter; key: string; agent: string; title: string; lede: string; body: ReactNode }
+/** Simple view: one plain sentence and a picture instead of the detailed lede and body. */
+type SimpleStep = { title?: string; lede: string; body: ReactNode }
 
 const CHAPTERS: { n: 1 | 2 | 3; title: string; blurb: string }[] = [
   { n: 1, title: 'From records to you', blurb: 'Six agents turn anonymous bank tables into signals, patterns and a fictional person.' },
@@ -45,6 +50,7 @@ function useTourData(accountId: number | null) {
   const [discovery, setDiscovery] = useState<DiscoveryResult | null>(null)
   const [profile, setProfile] = useState<ProfileDoc | null>(null)
   const [plans, setPlans] = useState<LifePlanResult | null>(null)
+  const [validation, setValidation] = useState<Validation | null>(null)
   const [failed, setFailed] = useState<string[]>([])
   useEffect(() => {
     if (!accountId) return
@@ -56,10 +62,11 @@ function useTourData(accountId: number | null) {
     api.discovery(accountId).then((d) => { if (!stop) setDiscovery(d) }).catch(miss('discovery'))
     api.lifeProfile(accountId).then((d) => { if (!stop) setProfile(d) }).catch(miss('profile'))
     api.lifePlans({ account_id: accountId, ...SHOCK, use_ai: false }).then((d) => { if (!stop) setPlans(d) }).catch(miss('plans'))
+    api.validation().then((d) => { if (!stop) setValidation(d) }).catch(() => undefined)
     return () => { stop = true }
   }, [accountId])
   const loading = !failed.length && (!trace || !insights || !profile || !plans)
-  return { trace, insights, discovery, profile, plans, failed, loading }
+  return useMemo(() => ({ trace, insights, discovery, profile, plans, validation, failed, loading }), [trace, insights, discovery, profile, plans, validation, failed, loading])
 }
 
 /* ---------- small building blocks ---------- */
@@ -429,6 +436,196 @@ function buildSteps(d: ReturnType<typeof useTourData>, accountId: number, openPu
   return steps
 }
 
+/* ---------- Simple view: the same steps as pictures ---------- */
+function buildSimple(d: ReturnType<typeof useTourData>, accountId: number): (step: Step) => SimpleStep | null {
+  const { trace, insights, discovery, profile, plans, validation } = d
+  const s1 = evs(trace, 1), s2 = evs(trace, 2)
+  const persona = profile?.persona ?? null
+  const name = persona?.display_name?.split(' ')[0] ?? `account ${accountId}`
+  const f = insights?.features ?? {}
+  const num = (k: string) => (typeof f[k]?.value === 'number' ? (f[k].value as number) : null)
+  const log = [...(profile?.log ?? [])].sort((a, b) => a.version - b.version || a.at.localeCompare(b.at))
+  const changes = log.filter((c) => c.kind !== 'seed')
+  const said = (c: ProfileChange): string | null => {
+    const i = s2.findIndex((e) => e.data?.change_id === c.id)
+    for (let j = i - 1; i >= 0 && j >= 0; j--) if (s2[j].agent === 'user') return s2[j].items?.[0] ?? null
+    return null
+  }
+  const t3 = plans?.trace ?? []
+
+  return (step) => {
+    switch (step.key) {
+      case 'intro': return {
+        lede: `Pulp read ${name}’s bank records, got to know ${name}, and planned for a layoff. Here is how, in pictures.`,
+        body: (
+          <div className="ts-intro">
+            <PulpSays mood="wave">Three short chapters. Tap Next, or press Autoplay and watch.</PulpSays>
+            <ol className="ts-chapter-strip">
+              {CHAPTERS.map((c) => <li key={c.n} style={{ ['--stage-color' as string]: STAGE_COLOR[c.n] }}><b>{c.n}</b><span>{c.title}</span></li>)}
+            </ol>
+          </div>
+        ),
+      }
+      case 'scout': {
+        const r = pick(s1, 'schema_scout', 'tool_result')[0]
+        const m = String(r?.title ?? '').match(/^(\d+) tables, ([\d,]+) rows/)
+        const tables = m ? Number(m[1]) : 9
+        const rows = m ? Number(m[2].replace(/,/g, '')) : 0
+        return { title: 'Sorting the records', lede: 'First, the bank’s tables are sorted into a few plain roles that every other agent can read.', body: <RoleSort tables={tables} rows={rows} roles={['Money in', 'Money out', 'Bills', 'Balance']} /> }
+      }
+      case 'forge': {
+        const keys: [string, string][] = [['cash_deposit_share', 'Paid in as cash'], ['spending_ratio', 'Income spent'], ['fee_months_share', 'Months with a fee'], ['B', 'Cash cushion'], ['income_cv', 'Uneven income']]
+        const cups = keys.filter(([k]) => typeof f[k]?.percentile === 'number').map(([k, label]) => ({
+          label, value: f[k].percentile as number,
+          sub: k === 'B' ? money(num('B') ?? 0) : k === 'income_cv' ? `score ${(num(k) ?? 0).toFixed(2)}` : pct(num(k) ?? 0),
+        }))
+        return { title: `How ${name} compares`, lede: `Then the records become signals. Each cup shows where ${name} ranks among 4,500 accounts: the fuller, the higher.`, body: <Cups title={`${name}, ranked against everyone`} cups={cups} /> }
+      }
+      case 'hunter': {
+        const calls = (pick(s1, 'pattern_hunter', 'start')[0]?.data?.tool_calls_made as number | undefined) ?? pick(s1, 'pattern_hunter', 'tool_call').length
+        const bs = validation?.by_survival
+        return {
+          title: 'Finding patterns, then checking them', lede: 'An AI detective ran statistical tests across every account. Then its best finding was checked against what really happened.',
+          body: (
+            <div className="ts-row">
+              <CountUp to={calls} label="tests run by the Pattern Hunter" sub="It chose the tests; code computed every answer." />
+              {bs?.fails_layoff_bad_rate_pct != null && bs.survives_layoff_bad_rate_pct != null && (
+                <Cups tone="warn" title="Loans that really went bad" cups={[
+                  { label: 'Fails our layoff test', value: bs.fails_layoff_bad_rate_pct, sub: `${bs.n_fail} borrowers`, highlight: true },
+                  { label: 'Passes it', value: bs.survives_layoff_bad_rate_pct, sub: `${bs.n_survive} borrowers` },
+                ]} />
+              )}
+            </div>
+          ),
+        }
+      }
+      case 'archetype': {
+        const clusters = (pick(s1, 'archetype_namer', 'tool_result')[0]?.data?.clusters ?? []) as { name: string; size: number; survive6_layoff_pct: number }[]
+        const mine = insights?.archetype?.name
+        return {
+          title: `Who ${name} is like`, lede: `Everyone was sorted into six groups by how they handle money. ${name} is a “${mine ?? 'member of one'}”.`,
+          body: <Cups title="How many in each group last a six-month layoff" cups={clusters.map((c) => ({ label: c.name, value: c.survive6_layoff_pct, sub: `${c.size.toLocaleString('en-CA')} people`, highlight: c.name === mine }))} />,
+        }
+      }
+      case 'narrator': {
+        const I = num('I'), S = num('S'), B = num('B')
+        const disc = discovery?.discovery
+        return {
+          title: 'The one thing worth knowing', lede: disc ? `The one thing worth telling ${name}: “${disc.title}”.` : 'What is worth telling this person.',
+          body: (
+            <div className="ts-row">
+              {I != null && S != null && B != null && (
+                <div className="ts-figure"><ThreadFigure beat={{ id: `tour-picture-${accountId}`, visual: 'picture', caption: '', duration_s: 0, params: {
+                  inflow: I, outflow: S, buffer: B, months_of_spending: S > 0 ? B / S : 0, runway_label: I >= S ? 'no shortfall (120+)' : (B / (S - I)).toFixed(1) } }} /></div>
+              )}
+              {disc && <PulpSays mood="concerned">{disc.plain} {disc.action}</PulpSays>}
+            </div>
+          ),
+        }
+      }
+      case 'persona': {
+        if (!persona) return null
+        return {
+          title: `Meet ${persona.display_name.split(' ')[0]}`, lede: `Meet ${persona.display_name}: a made-up person who fits these records, so Pulp knows what to ask.`,
+          body: (
+            <div className="ts-row">
+              <PersonCard name={persona.display_name} age={persona.age} work={persona.occupation.label} home={persona.home} household={persona.household} quote={persona.worries.find((w) => w.quote)?.quote} />
+              <Cups title="How much each goal counts" cups={persona.goals.slice(0, 4).map((g) => ({ label: g.label, value: g.weight * 100, sub: money(g.target_amount) }))} />
+            </div>
+          ),
+        }
+      }
+      case 'seed': {
+        const seed = log.filter((c) => c.kind === 'seed')
+        const goals = seed.filter((c) => c.field === 'goals'), worries = seed.filter((c) => c.field !== 'goals')
+        return {
+          title: 'Where the profile starts', lede: `${name}’s profile starts with what the records suggest. From here, anything ${name} says can change it.`,
+          body: (
+            <div className="ts-seed">
+              <div><CountUp to={goals.length} label="goals to start" /><ul>{goals.map((c) => <li key={c.id}>{c.label}</li>)}</ul></div>
+              <div><CountUp to={worries.length} label="worries to start" /><ul>{worries.map((c) => <li key={c.id}>{c.label}</li>)}</ul></div>
+            </div>
+          ),
+        }
+      }
+      case 'control': return {
+        title: `${name} stays in control`, lede: 'Nothing is hidden: say “no” and Pulp takes the last change back.',
+        body: <UndoPicture changes={changes.length} undone={changes.filter((c) => c.undone || c.kind === 'undo').length} />,
+      }
+      case 'shock': {
+        const deck = (pick(s1, 'shock_generator', 'output')[0]?.items ?? []).map((t) => t.replace(/\s*\((high|medium|low)\)$/, ''))
+        return {
+          title: 'Life deals a card', lede: `Life happens: a deck of shocks made for ${name}. This time the dealer turns over a layoff.`,
+          body: <div className="ts-figure wide"><ThreadFigure beat={{ id: `tour-shuffle-${accountId}`, visual: 'shuffle', caption: '', duration_s: 0, params: {
+            deck: deck.length ? deck : ['Laid off'], dealt: { key: 'layoff', title: 'Laid off', text: `Income falls to ${pct(plans?.shock.r ?? 0.55)} for ${plans?.shock.duration ?? 6} months.` } } }} /></div>,
+        }
+      }
+      case 'fit': {
+        const out = pick(t3, 'life_fit', 'output')[0]
+        const m = out?.title.match(/(\d+)\D+(\d+)\D+(\d+)/)
+        const [good, hard, no] = m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0, 0, 0]
+        const total = good + hard + no || 1
+        const examples = (out?.items ?? []).slice(0, 3).map((t) => { const parts = t.split(': '); return { what: parts[0], why: (parts[2] ?? parts[1] ?? '').split(', ').slice(0, 2).join(' · ') } })
+        return {
+          title: `What fits ${name}’s life`, lede: `Before planning, every possible move is checked against ${name}’s life: age, time, household and where they live.`,
+          body: (
+            <div className="ts-row">
+              <Cups title={`${total} possible moves`} cups={[
+                { label: 'Fit well', value: (good / total) * 100, sub: `${good} moves` },
+                { label: 'Harder', value: (hard / total) * 100, sub: `${hard} moves`, highlight: true },
+                { label: 'Do not fit', value: (no / total) * 100, sub: `${no} moves` },
+              ]} />
+              <div className="ts-why-wrap"><p className="ts-why-head">Harder for {name}, for example</p><ul className="ts-why">{examples.map((e) => <li key={e.what}><b>{e.what}</b><span>{e.why}</span></li>)}</ul></div>
+            </div>
+          ),
+        }
+      }
+      case 'search': {
+        const sr = plans?.search
+        if (!sr) return null
+        return {
+          title: `Squeezing ${sr.generated} plans down to ${sr.finalists}`, lede: `Then the press: ${sr.generated} plans go in, and only the ones that work for ${name} come out.`,
+          body: <Squeeze stages={[{ label: 'Plans built', count: sr.generated }, { label: 'Fit this life', count: sr.feasible }, { label: 'Beat the rest', count: sr.pareto }, { label: 'Finalists', count: sr.finalists }]} />,
+        }
+      }
+      case 'frontier': return { title: 'The best trade-offs', lede: 'Every dot is a plan. Faded dots lose to another plan on everything; the bright ones are the best trade-offs.', body: step.body }
+      case 'challenger': {
+        const runs = pick(t3, 'challenger', 'output')[0]
+        const items = (runs?.items ?? []).slice(0, 3).map((t) => {
+          const [plan, rest = ''] = t.split(/: (?=Runs short)/)
+          const month = rest.match(/Runs short in month (\d+)/)?.[1]
+          return { name: plan, stamp: month ? `Short in month ${month}` : 'Runs short' }
+        })
+        return { title: 'Plans that look fine but fail', lede: 'A sceptic agent hunts for plans that look sensible but still run out of money.', body: <Stamped items={items} /> }
+      }
+      case 'finalists': {
+        if (!plans) return null
+        const best = plans.plans.find((p) => p.id === plans.recommended) ?? plans.plans[0]
+        return {
+          title: 'Four plans, one leads', lede: `Four very different plans survive. “${best?.role_label ?? 'Best balance'}” scores highest for ${name}, and no month runs short.`,
+          body: (
+            <Cups unit="" title="Score out of 100 (fuller is better)" cups={[
+              ...plans.plans.map((p) => ({ label: p.role_label ?? p.name, value: Math.round(p.score * 100), sub: p.steps.length > 1 ? `${p.steps[0].title} + ${p.steps.length - 1} more` : (p.steps[0]?.title ?? p.name), highlight: p.id === best?.id })),
+              { label: 'Change nothing', value: Math.round(plans.baseline.score * 100), sub: plans.baseline.outcome.shortfall_total > 0 ? `${money(plans.baseline.outcome.shortfall_total)} short` : 'no shortfall' },
+            ]} />
+          ),
+        }
+      }
+      case 'end': return { title: 'That is the whole story', lede: step.lede, body: <div className="ts-end"><PulpSays mood="celebrate">That is how I got to know {name}, from records to a plan.</PulpSays>{step.body}</div> }
+    }
+    if (step.key.startsWith('change-')) {
+      const c = changes.find((x) => `change-${x.id}` === step.key)
+      if (!c) return null
+      const words = said(c)
+      return {
+        lede: words ? `${name} said something, and the profile changed on its own, logged as a new version.` : 'The profile changed, logged as a new version.',
+        body: <ChangeFlip said={words} before={fmtValue(c.before)} after={fmtValue(c.after)} label={c.label} version={c.version} />,
+      }
+    }
+    return null
+  }
+}
+
 /* ---------- the page ---------- */
 export default function Tour() {
   const accountId = useApp((s) => s.accountId)
@@ -436,6 +633,8 @@ export default function Tour() {
   const data = useTourData(accountId)
   const [params, setParams] = useSearchParams()
   const steps = useMemo(() => (accountId && !data.loading ? buildSteps(data, accountId, openPulp) : []), [accountId, data, openPulp])
+  const detailed = useShowDetail()
+  const simpleOf = useMemo(() => (accountId && !data.loading ? buildSimple(data, accountId) : () => null), [accountId, data])
   const [i, setI] = useState(0)
   const [playing, setPlaying] = useState(false)
   const reduce = useReducedMotion()
@@ -495,6 +694,7 @@ export default function Tour() {
   if (data.loading) return <p className="tour-loading" role="status">Gathering what the agents did for account {accountId}…</p>
   if (!step) return <p className="tour-loading" role="alert">The agents’ records could not be loaded ({data.failed.join(', ')}). Try again in a moment.</p>
 
+  const simple = simpleOf(step)
   const meta = metaFor(step.agent)
   const color = STAGE_COLOR[stageOf(step.chapter)]
   return (
@@ -522,7 +722,7 @@ export default function Tour() {
       </nav>
 
       <AnimatePresence mode="wait">
-        <motion.article key={step.key} className="tour-step" aria-live="polite"
+        <motion.article key={`${step.key}-${detailed ? 'd' : 's'}`} className={`tour-step${detailed ? '' : ' simple'}`} aria-live="polite"
           initial={reduce ? false : { opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? undefined : { opacity: 0, x: -18 }} transition={{ duration: 0.22 }}>
           <header className="tour-step-head">
             <span className="tour-agent"><AgentSymbol agent={step.agent} size={40} active={playing} /></span>
@@ -531,11 +731,11 @@ export default function Tour() {
                 {step.chapter >= 1 && step.chapter <= 3 ? `Chapter ${step.chapter} · ` : ''}{meta.name}{' '}
                 <Badge kind={meta.kind === 'ai' ? 'ai' : meta.kind === 'memory' ? 'memory' : 'code'} />
               </p>
-              <h2>{step.title}</h2>
-              <p className="tour-lede">{step.lede}</p>
+              <h2>{(!detailed && simple?.title) || step.title}</h2>
+              <p className="tour-lede">{!detailed && simple ? simple.lede : step.lede}</p>
             </div>
           </header>
-          <div className="tour-body">{step.body}</div>
+          <div className={`tour-body${!detailed && simple ? ' is-simple' : ''}`}>{!detailed && simple ? simple.body : step.body}</div>
         </motion.article>
       </AnimatePresence>
 

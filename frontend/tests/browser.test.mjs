@@ -704,7 +704,7 @@ test('Behind the scenes opens the guided tour, which steps, skips chapters and f
   await p.getByRole('button', { name: 'Skip chapter' }).click()
   await p.locator('.tour-step').filter({ hasText: 'Chapter 3' }).waitFor()
   await p.getByRole('button', { name: 'Skip to the end' }).click()
-  await p.getByRole('heading', { name: 'That is the whole process' }).waitFor()
+  await p.getByRole('heading', { name: /^That is the whole (process|story)$/ }).waitFor()
   await p.getByRole('button', { name: 'Start again' }).waitFor()
 
   const phone = await pageFor(t, { width: 390, height: 844 })
