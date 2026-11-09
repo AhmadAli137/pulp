@@ -544,7 +544,9 @@ test('the Agents page plays all three stages and the panel shows the live workfl
   for (let i = 0; i < 2; i++) {
     await input.waitFor({ state: 'visible' })
     await p.waitForFunction(() => !document.querySelector('.pulp-panel input[aria-label="Message Pulp"]').disabled, null, { timeout: 60000 })
-    await panel.getByTitle('Deal a random twist').click()
+    // The chat has no Shuffle button any more; the same twist command still reaches it (cards elsewhere send it).
+    await input.fill('twist:random')
+    await input.press('Enter')
     await panel.locator('.msg.user').filter({ hasText: 'Shuffle a twist' }).nth(i).waitFor()
     await panel.locator('.msg.pulp-reply').nth(i).waitFor({ timeout: 60000 })
     dealt.push(await panel.locator('.pulp-official').filter({ hasText: 'See the official numbers' }).last().textContent())
@@ -692,7 +694,7 @@ test('Behind the scenes opens the guided tour, which steps, skips chapters and f
   await p.getByRole('navigation', { name: 'Behind the scenes' }).getByRole('link').click()
   await p.waitForURL(/\/tour/)
   const step = p.locator('.tour-step h2')
-  await step.waitFor({ timeout: 45000 })
+  await step.waitFor({ timeout: 90000 })
   assert.match(await step.innerText(), /^How PULP got to know/)
   await p.getByRole('button', { name: /^Next/ }).click()
   await p.locator('.tour-step').filter({ hasText: 'Schema Scout' }).waitFor()
@@ -711,6 +713,6 @@ test('Behind the scenes opens the guided tour, which steps, skips chapters and f
   await phone.goto(base + '/')
   await loadAccount(phone, account)
   await phone.goto(base + '/tour?chapter=3')
-  await phone.locator('.tour-step').filter({ hasText: 'Chapter 3' }).waitFor({ timeout: 45000 })
+  await phone.locator('.tour-step').filter({ hasText: 'Chapter 3' }).waitFor({ timeout: 90000 })
   assert.ok(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
 })

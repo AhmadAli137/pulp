@@ -1,10 +1,30 @@
 /* Pulp side panel: a mascot launcher and a right-hand drawer that matches the banking workspace (banking.css tokens). */
-.pulp-launcher{position:fixed;right:22px;bottom:22px;z-index:58;width:64px;height:64px;border-radius:50%;border:1px solid #dde4d9;background:#fff;box-shadow:0 10px 30px #1c463926;display:grid;place-items:center;padding:6px;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
-.pulp-launcher:hover{transform:translateY(-2px);box-shadow:0 14px 34px #1c463933}
+/* The floating Pulp button: a labelled pill with a big tangerine, a soft breathing halo and the odd expression */
+.pulp-launcher-wrap{position:fixed;right:22px;bottom:22px;z-index:58;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}
+.pulp-launcher-wrap>*{pointer-events:auto}
+.pulp-launcher{position:relative;display:flex;align-items:center;gap:4px;height:76px;padding:6px 20px 6px 6px;border-radius:999px;border:1px solid #f1c9a5;
+  background:linear-gradient(135deg,#fff 0%,#fff6ec 100%);box-shadow:0 12px 32px #c2561a2e,0 2px 6px #1c46391a;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
+.pulp-launcher::before{content:'';position:absolute;left:4px;top:4px;width:68px;height:68px;border-radius:50%;border:2px solid #f28c28;opacity:0;animation:launcher-halo 4.5s ease-out infinite;pointer-events:none}
+.pulp-launcher:hover{transform:translateY(-3px);box-shadow:0 16px 38px #c2561a40,0 2px 6px #1c46391a}
 .pulp-launcher:focus-visible{outline:3px solid #f9b17e;outline-offset:3px}
-.pulp-launcher .tangerine-mascot{width:48px;height:48px}
+.pulp-launcher-face{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 50% 60%,#fff 0 55%,#ffe9d4 100%)}
+.pulp-launcher-face.is-hop{animation:launcher-hop .9s cubic-bezier(.3,1.4,.5,1) 1}
+.pulp-launcher .tangerine-mascot{width:58px;height:58px}
+.pulp-launcher-label{font:700 15px/1 var(--font,inherit);color:#1c4639;letter-spacing:-.01em;white-space:nowrap}
+.pulp-launcher.is-working .pulp-launcher-label::after{content:' · working';font-weight:600;color:#9c4f30}
 .pulp-launcher.open{opacity:0;pointer-events:none}
-.pulp-launcher-dot{position:absolute;top:4px;right:4px;width:11px;height:11px;border-radius:50%;background:#ed8a53;border:2px solid #fff;animation:stage-pulse 1.1s ease-in-out infinite}
+.pulp-launcher-dot{position:absolute;top:6px;left:56px;width:12px;height:12px;border-radius:50%;background:#ed8a53;border:2px solid #fff;animation:stage-pulse 1.1s ease-in-out infinite}
+/* a hint that peeks out above the button now and then */
+.pulp-peek{position:relative;display:flex;align-items:center;max-width:260px;padding:10px 8px 10px 14px;border-radius:16px 16px 4px 16px;background:#1c4639;color:#fff;
+  box-shadow:0 10px 26px #1c463940;animation:peek-in .35s cubic-bezier(.3,1.3,.5,1) both}
+.pulp-peek-text{border:0;background:none;color:inherit;font:600 14px/1.35 var(--font,inherit);text-align:left;cursor:pointer;padding:0}
+.pulp-peek-x{flex:none;display:grid;place-items:center;width:24px;height:24px;margin-left:6px;border:0;border-radius:50%;background:#ffffff1f;color:#fff;cursor:pointer}
+.pulp-peek-x:hover{background:#ffffff33}
+@keyframes launcher-halo{0%,70%{opacity:0;transform:scale(.9)}78%{opacity:.55}100%{opacity:0;transform:scale(1.32)}}
+@keyframes launcher-hop{0%{transform:none}25%{transform:translateY(2px) scale(1.06,.94)}55%{transform:translateY(-10px) rotate(-4deg)}80%{transform:translateY(0) rotate(2deg)}100%{transform:none}}
+@keyframes peek-in{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
+@media (max-width:900px){.pulp-launcher{height:64px;padding-right:6px}.pulp-launcher-label{display:none}.pulp-launcher::before{width:56px;height:56px}.pulp-launcher-face{width:52px;height:52px}.pulp-launcher .tangerine-mascot{width:48px;height:48px}.pulp-launcher-dot{left:44px}}
+@media (prefers-reduced-motion:reduce){.pulp-launcher::before,.pulp-launcher-face.is-hop,.pulp-peek{animation:none}}
 
 .pulp-panel{position:fixed;top:16px;right:16px;bottom:16px;width:min(460px,calc(100vw - 32px));z-index:60;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);transition:width .22s ease;background:#f7f7f2;border:1px solid #dde4d9;border-radius:18px;box-shadow:0 24px 80px #1c463930;color:#243b31;font-family:'DM Sans',system-ui,sans-serif;overflow:hidden}
 .pulp-panel[hidden]{display:none}
@@ -121,7 +141,7 @@
 
 @media (max-width:600px){
   /* Phones: the round Ask Pulp icon in the header is the way in, so no floating button sits on top of the page */
-  .pulp-launcher{display:none}
+  .pulp-launcher-wrap{display:none}
   .pulp-panel{top:8px;right:8px;bottom:8px;width:calc(100vw - 16px)}
   .pulp-panel-dock .stage-chip span,.pulp-panel-dock .stage-mic span{display:none}
   .pulp-panel-dock .stage-mic{width:34px;padding:0}
@@ -165,3 +185,26 @@
 /* Walkthrough and figure captions read at bubble size, never as display type. */
 .pulp-panel .animated-walkthrough p,.pulp-panel .thread-figure figcaption{font-size:15px;line-height:1.5;font-family:'DM Sans',system-ui,sans-serif}
 @media (max-width:420px){.pulp-mini{width:88px;height:66px}.pulp-mini-canvas{transform:scale(.22)}}
+
+/* Your chats: a list in place of the thread */
+.pulp-chats{flex:1 1 auto;min-height:0;overflow:auto;padding:14px 16px;display:grid;align-content:start;gap:10px}
+.pulp-chats>header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pulp-chats>header strong{font-size:16px;color:#1c4639}
+.pulp-chats-new{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:999px;border:1px solid #1c4639;background:#1c4639;color:#fff;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.pulp-chats-new:hover{background:#245a49}
+.pulp-chats-note,.pulp-chats-empty{margin:0;font-size:12.5px;color:#54645a}
+.pulp-chats ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.pulp-chats li{display:flex;align-items:stretch;border:1px solid #dde4d9;border-radius:12px;background:#fff;overflow:hidden}
+.pulp-chats li.on{border-color:#1c4639;box-shadow:inset 3px 0 0 #f28c28}
+.pulp-chats-open{flex:1 1 auto;min-width:0;display:grid;gap:3px;padding:10px 12px;border:0;background:none;text-align:left;font:inherit;cursor:pointer;color:#243b31}
+.pulp-chats-open:hover{background:#f6f8f4}
+.pulp-chats-open b{font-size:13.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pulp-chats-open span{font-size:12px;color:#54645a}
+.pulp-chats-del{flex:none;width:40px;border:0;border-left:1px solid #eef1ec;background:none;color:#8a958d;cursor:pointer}
+.pulp-chats-del:hover{color:#b4441f;background:#fff7f3}
+.pulp-icon.on{background:#f0f5ee;color:#1c4639}
+.pulp-icon:disabled{opacity:.45;cursor:default}
+.pulp-panel-thread[hidden]{display:none!important}
+.pulp-panel-title{min-width:0}
+.pulp-panel-title span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pulp-panel-title span:empty{display:none}

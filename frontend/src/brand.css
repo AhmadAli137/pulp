@@ -8,9 +8,12 @@
 }
 
 /* header lockup: PULP. with the acronym spelled out (one quiet line, wide screens only) */
-.bank-brand{gap:9px}
+.bank-brand{gap:11px}
+.bank-workspace .bank-brand-name{font-size:32px;letter-spacing:-.055em}
+.bank-workspace .bank-brand svg{filter:drop-shadow(0 3px 6px #e86a0c33);transition:transform .25s ease}
+.bank-workspace .bank-brand:hover svg{transform:rotate(-10deg) scale(1.05)}
 .brand-lockup{display:flex;flex-direction:column;gap:3px;min-width:0}
-.brand-acronym{font:600 11.5px/1.1 var(--font);letter-spacing:.02em;color:#54645a;white-space:nowrap}
+.brand-acronym{font:650 12.5px/1.1 var(--font);letter-spacing:.02em;color:#3d5247;white-space:nowrap}
 /* a quiet subtitle: plain small text, the initials not set apart */
 .brand-acronym b{color:inherit;font-weight:inherit}
 @media (max-width:900px){.brand-acronym{display:none}}
@@ -82,3 +85,16 @@
 .bank-loading,.pulp-panel-empty{background-image:var(--pattern-segment-ink);background-repeat:no-repeat;background-position:center;background-size:140px 140px}
 @media print{.bank-page-heading::after,.bank-nav-band{background:none}}
 .card>.card-head h2:has(svg)::before{display:none}
+
+/* Wide screens: the green citrus pattern fills the empty side margins, fading out before it reaches the content.
+   Fixed behind everything, so it never moves the layout or sits under text. */
+.bank-workspace{position:relative;isolation:isolate}
+@media (min-width:1360px){
+  .bank-workspace::before,.bank-workspace::after{content:'';position:fixed;top:0;bottom:0;z-index:-1;pointer-events:none;
+    width:calc((100vw - 1180px) / 2 - 8px);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Cg fill='none' stroke='%231C4639' stroke-width='1.3'%3E%3Cg stroke-opacity='.16'%3E%3Ccircle cx='42' cy='44' r='30'/%3E%3Ccircle cx='42' cy='44' r='24'/%3E%3Cpath d='M42 20v48M21.2 32l41.6 24M21.2 56l41.6-24'/%3E%3C/g%3E%3Cg stroke-opacity='.1'%3E%3Ccircle cx='118' cy='116' r='20'/%3E%3Cpath d='M118 96v40M100.7 106l34.6 20M100.7 126l34.6-20'/%3E%3C/g%3E%3C/g%3E%3Ccircle cx='112' cy='34' r='3' fill='%23F28C28' fill-opacity='.22'/%3E%3Ccircle cx='30' cy='122' r='2.2' fill='%231C4639' fill-opacity='.16'/%3E%3C/svg%3E"),radial-gradient(ellipse at 50% 40%,#1c46390d,transparent 70%);
+    background-size:150px 150px,100% 100%;background-repeat:repeat,no-repeat}
+  .bank-workspace::before{left:0;-webkit-mask-image:linear-gradient(90deg,#000 30%,transparent);mask-image:linear-gradient(90deg,#000 30%,transparent)}
+  .bank-workspace::after{right:0;background-position:75px 75px,0 0;-webkit-mask-image:linear-gradient(270deg,#000 30%,transparent);mask-image:linear-gradient(270deg,#000 30%,transparent)}
+}
+@media print{.bank-workspace::before,.bank-workspace::after{display:none}}

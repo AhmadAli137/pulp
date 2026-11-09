@@ -4,7 +4,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { readSavedAccount, useApp } from '../stores/useApp'
 import { focusPickerField, usePicker } from '../stores/picker'
 import AccountIdForm from './AccountIdForm'
-import { PulpMark } from './PulpMascot'
+import { PulpMark, Tangerine } from './PulpMascot'
 import PulpPanel, { clearSavedThreads } from './pulp/PulpPanel'
 import { useProfileDoc } from './profile/useProfileDoc'
 import { BehindTheScenesLink, HowItWorksFooter, PRIMARY_WORKSPACE, WORKSPACE, WorkspaceNav, parentPage } from './workspace'
@@ -143,7 +143,7 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
       <header className="bank-header">
         <div className="bank-width bank-header-inner">
           <Link className="bank-brand" to="/" aria-label="PULP home">
-            <PulpMark size={32} />
+            <PulpMark size={44} />
             <span className="brand-lockup">
               <span className="bank-brand-name">PULP<span>.</span></span>
               <span className="brand-acronym" aria-hidden="true"><b>P</b>lanning <b>U</b>nder <b>L</b>ife’s <b>P</b>ressures</span>
@@ -208,7 +208,7 @@ export default function Layout({ onReplayIntro }: { onReplayIntro: () => void })
             {accountId && (
               <button className="bank-button bank-ask-pulp" type="button" onClick={() => openPulp()}>
                 {/* On phones only the icon shows; the label stays for screen readers, so the name is "Ask Pulp" at every width. */}
-                <MessageCircle size={16} aria-hidden="true" /><span className="bank-ask-pulp-label">Ask Pulp</span>
+                <MessageCircle className="bank-ask-pulp-icon" size={16} aria-hidden="true" /><span className="bank-ask-pulp-face" aria-hidden="true"><Tangerine /></span><span className="bank-ask-pulp-label">Ask Pulp</span>
               </button>
             )}
           </div>

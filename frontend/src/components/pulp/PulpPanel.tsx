@@ -1,10 +1,11 @@
 /* Pulp as a side companion: a mascot button that opens a panel with the conversation and the live voice agent.
    With Agents on, the panel widens and the agent workflow runs live in a column to the left of the chat.
    Every number Pulp shows still comes from the engine; agents update the profile directly, logged and undoable. */
-import { ArrowUp, Maximize2, Mic, RotateCcw, Shuffle, Square, Users, Volume2, VolumeX, X } from 'lucide-react'
+import { ArrowUp, History, Maximize2, Mic, RotateCcw, SquarePen, Square, Trash2, Users, Volume2, VolumeX, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Tangerine } from '../PulpMascot'
+import PulpLauncher from './PulpLauncher'
 import PulpText from '../stage/PulpText'
 import Visual from '../stage/Visual'
 import ThreadFigure from '../stage/ThreadFigure'
@@ -21,7 +22,7 @@ import '../../stage.css'
 import './pulp-panel.css'
 
 const fieldNames: Record<string, string> = { goals: 'Goal', concerns: 'Concern', constraints: 'Planning detail', preferences: 'Preference', upcoming_events: 'Life event' }
-const GREETING = 'Hi, I’m Pulp. Ask me about your money, talk it through out loud, or draw a twist card to see how you would hold up.'
+const GREETING = 'Hi, I’m Pulp. Ask me about your money, talk it through out loud, or tell me what might happen and I’ll show you how you would hold up.'
 
 type Msg =
   | { id: string; kind: 'walkthrough'; beats: Beat[]; autoplay?: boolean }
@@ -48,33 +49,94 @@ const userText0 = (m: string) => m === 'decision:small' ? 'Help me with an every
 let seq = 0
 const nid = (p: string) => `${p}-${++seq}`
 
-/* The whole thread, visuals included, is kept per account in this browser so scrolling back (or reloading) still shows
-   every figure. Plan results are trimmed (no candidate list or trace) to stay small. Cleared on sign-out. */
-const THREAD_KEY = (id: number) => `pulp.thread.${id}`
+/* Saved chats. Each visit starts a fresh chat (one left within the last few hours is picked up again); earlier chats are
+   kept per account in this browser and can be reopened from "Your chats". Visuals are saved with them; plan results are
+   trimmed (no candidate list or trace) to stay small. Pulp's memory of the profile lives on the server and carries
+   across chats. Everything here is cleared on sign-out. */
+interface ChatMeta { id: string; title: string; started: string; updated: string; turns: number }
+interface ChatIndex { current: string | null; list: ChatMeta[] }
+const INDEX_KEY = (acc: number) => `pulp.chats.${acc}`
+const CHAT_KEY = (acc: number, sid: string) => `pulp.chat.${acc}.${sid}`
+const LEGACY_KEY = (acc: number) => `pulp.thread.${acc}`
 const THREAD_MAX = 60
+const CHATS_MAX = 20
+const RESUME_MS = 3 * 60 * 60 * 1000
+const newChatId = () => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 function slimMsg(m: Msg): Msg {
   if (m.kind !== 'plans') return m
   const r = m.result
   return { ...m, result: { ...r, trace: [], search: r.search ? { ...r.search, candidates: [] } : r.search } }
 }
-function saveThread(id: number, thread: Msg[]) {
+function readIndex(acc: number): ChatIndex {
+  try { const raw = localStorage.getItem(INDEX_KEY(acc)); const v = raw ? JSON.parse(raw) as ChatIndex : null; if (v?.list) return v } catch { /* ignore */ }
+  return { current: null, list: [] }
+}
+function writeIndex(acc: number, idx: ChatIndex) { try { localStorage.setItem(INDEX_KEY(acc), JSON.stringify(idx)) } catch { /* ignore */ } }
+const firstUser = (thread: Msg[]) => thread.find((m): m is Extract<Msg, { kind: 'user' }> => m.kind === 'user')?.text ?? ''
+function chatTitle(thread: Msg[]) { const t = firstUser(thread).trim(); return t ? (t.length > 60 ? t.slice(0, 59) + '…' : t) : 'New chat' }
+function saveChat(acc: number, sid: string, thread: Msg[]): ChatIndex | null {
+  const turns = thread.filter((m) => m.kind === 'user').length
   try {
     let items = thread.slice(-THREAD_MAX).map(slimMsg)
     let json = JSON.stringify(items)
-    while (json.length > 1_500_000 && items.length > 10) { items = items.slice(Math.ceil(items.length / 4)); json = JSON.stringify(items) }
-    localStorage.setItem(THREAD_KEY(id), json)
+    while (json.length > 1_200_000 && items.length > 10) { items = items.slice(Math.ceil(items.length / 4)); json = JSON.stringify(items) }
+    localStorage.setItem(CHAT_KEY(acc, sid), json)
   } catch { /* storage full or blocked: the live thread still works */ }
+  if (!turns) return null
+  const idx = readIndex(acc)
+  const now = new Date().toISOString()
+  const had = idx.list.find((c) => c.id === sid)
+  const meta: ChatMeta = { id: sid, title: chatTitle(thread), started: had?.started ?? now, updated: now, turns }
+  idx.list = [meta, ...idx.list.filter((c) => c.id !== sid)]
+  for (const old of idx.list.slice(CHATS_MAX)) { try { localStorage.removeItem(CHAT_KEY(acc, old.id)) } catch { /* ignore */ } }
+  idx.list = idx.list.slice(0, CHATS_MAX)
+  idx.current = sid
+  writeIndex(acc, idx)
+  return idx
 }
-function loadThread(id: number): Msg[] | null {
+function loadChat(acc: number, sid: string): Msg[] | null {
   try {
-    const raw = localStorage.getItem(THREAD_KEY(id))
+    const raw = localStorage.getItem(CHAT_KEY(acc, sid))
     const items = raw ? (JSON.parse(raw) as Msg[]) : null
     if (!items?.length) return null
     return items.map((m) => ({ ...m, id: nid('s'), ...(m.kind === 'walkthrough' ? { autoplay: false } : {}) }))
   } catch { return null }
 }
+/** The single long thread kept before chats existed becomes the first saved chat. */
+function migrateLegacy(acc: number) {
+  try {
+    const raw = localStorage.getItem(LEGACY_KEY(acc))
+    if (!raw) return
+    localStorage.removeItem(LEGACY_KEY(acc))
+    const items = JSON.parse(raw) as Msg[]
+    if (!items?.some((m) => m.kind === 'user')) return
+    const sid = newChatId()
+    localStorage.setItem(CHAT_KEY(acc, sid), raw)
+    const idx = readIndex(acc)
+    const then = new Date(Date.now() - RESUME_MS - 60_000).toISOString()
+    idx.list = [...idx.list, { id: sid, title: `Earlier: ${chatTitle(items)}`, started: then, updated: then, turns: items.filter((m) => m.kind === 'user').length }]
+    writeIndex(acc, idx)
+  } catch { /* ignore */ }
+}
+function deleteChat(acc: number, sid: string): ChatIndex {
+  try { localStorage.removeItem(CHAT_KEY(acc, sid)) } catch { /* ignore */ }
+  const idx = readIndex(acc)
+  idx.list = idx.list.filter((c) => c.id !== sid)
+  if (idx.current === sid) idx.current = null
+  writeIndex(acc, idx)
+  return idx
+}
 export function clearSavedThreads() {
-  try { Object.keys(localStorage).filter((k) => k.startsWith('pulp.thread.')).forEach((k) => localStorage.removeItem(k)) } catch { /* ignore */ }
+  try { Object.keys(localStorage).filter((k) => /^pulp\.(thread|chat|chats)\./.test(k)).forEach((k) => localStorage.removeItem(k)) } catch { /* ignore */ }
+}
+function whenLabel(iso: string) {
+  const d = new Date(iso), now = new Date()
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const diff = Math.round((day(now) - day(d)) / 86_400_000)
+  const time = d.toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' })
+  if (diff === 0) return `Today, ${time}`
+  if (diff === 1) return `Yesterday, ${time}`
+  return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })
 }
 const feed = () => useAgentFeed.getState()
 
@@ -99,6 +161,9 @@ export default function PulpPanel() {
   const [undoing, setUndoing] = useState<string | null>(null)
   const [undone, setUndone] = useState<Set<string>>(new Set())
   const [personas, setPersonas] = useState<Persona[]>([])
+  const [chatId, setChatId] = useState<string | null>(null)
+  const [chats, setChats] = useState<ChatMeta[]>([])
+  const [chatsOpen, setChatsOpen] = useState(false)
   const active = useActiveAgents()
   const voiceStop = useRef<VoiceSession | null>(null)
   const voiceRequest = useRef(0)
@@ -288,30 +353,63 @@ export default function PulpPanel() {
     }
   }
 
-  /* ---- a new account: fresh thread, previous conversation restored if there is one */
+  /* ---- a new account: its open chat if it was used in the last few hours, else a fresh one */
   useEffect(() => {
     endVoice()
     source.current?.close(); source.current = null
     interacted.current = false
     setBusy(false); setStatus(null); setNotice(null); setPopout(null); setUndone(new Set())
     feed().reset()
-    const saved = id ? loadThread(id) : null
-    setThread(saved ?? (id ? [{ id: nid('g'), kind: 'pulp', text: GREETING }] : []))
-    let cancelled = false
-    if (id && !saved) api.context(id).then(({ context }) => {
-      if (cancelled || interacted.current) return
-      const history = context.conversation.slice(-16).map((m) => ({ id: nid('h'), kind: m.role === 'user' ? 'user' as const : 'pulp' as const, text: m.role === 'user' ? userText(m.text) : m.text }))
-      if (history.length) setThread(history)
-    }).catch(() => undefined)
-    return () => { cancelled = true; endVoice(); source.current?.close(); source.current = null }
+    setChatsOpen(false)
+    if (id) {
+      migrateLegacy(id)
+      const idx = readIndex(id)
+      const cur = idx.list.find((c) => c.id === idx.current)
+      const resume = cur && Date.now() - Date.parse(cur.updated) < RESUME_MS ? loadChat(id, cur.id) : null
+      const sid = resume && cur ? cur.id : newChatId()
+      setChatId(sid); setChats(idx.list)
+      setThread(resume ?? [{ id: nid('g'), kind: 'pulp', text: GREETING }])
+    } else { setChatId(null); setChats([]); setThread([]) }
+    return () => { endVoice(); source.current?.close(); source.current = null }
   }, [id, endVoice])
 
   /* ---- keep the thread, visuals included, so history survives scrolling, closing and reloading */
   useEffect(() => {
-    if (!id || !thread.length) return
-    const t = window.setTimeout(() => saveThread(id, thread), 400)
+    if (!id || !chatId || !thread.length) return
+    const t = window.setTimeout(() => { const idx = saveChat(id, chatId, thread); if (idx) setChats(idx.list) }, 400)
     return () => window.clearTimeout(t)
-  }, [id, thread])
+  }, [id, chatId, thread])
+
+  /* ---- chats: start a new one, reopen an earlier one, or delete one */
+  const resetTurn = () => {
+    endVoice(); source.current?.close(); source.current = null
+    interacted.current = false
+    setBusy(false); setStatus(null); setNotice(null); setPopout(null); setUndone(new Set()); setDraft('')
+    feed().reset()
+  }
+  const newChat = () => {
+    if (!id) return
+    resetTurn()
+    const sid = newChatId()
+    const idx = readIndex(id); idx.current = sid; writeIndex(id, idx)
+    setChatId(sid); setChats(idx.list); setChatsOpen(false)
+    setThread([{ id: nid('g'), kind: 'pulp', text: GREETING }])
+    window.setTimeout(() => inputRef.current?.focus(), 0)
+  }
+  const openChat = (sid: string) => {
+    if (!id) return
+    resetTurn()
+    const saved = loadChat(id, sid)
+    const idx = readIndex(id); idx.current = sid; writeIndex(id, idx)
+    setChatId(sid); setChats(idx.list); setChatsOpen(false)
+    setThread(saved ?? [{ id: nid('g'), kind: 'pulp', text: GREETING }])
+  }
+  const removeChat = (sid: string) => {
+    if (!id) return
+    const idx = deleteChat(id, sid)
+    setChats(idx.list)
+    if (sid === chatId) newChat()
+  }
 
   /* ---- opening: focus the input, run a seeded message from a page, Escape closes (a pop-out first) */
   useEffect(() => {
@@ -380,10 +478,7 @@ export default function PulpPanel() {
   return (
     <>
       {!pulpOpen && (
-        <button type="button" className="pulp-launcher" aria-label="Talk to Pulp" aria-expanded={false} aria-controls="pulp-panel" onClick={() => openPulp()}>
-          <Tangerine mood={mood} />
-          {active.size > 0 && <i className="pulp-launcher-dot" aria-hidden="true" />}
-        </button>
+        <PulpLauncher mood={mood} working={active.size > 0} ready={!!profile} onOpen={() => openPulp()} />
       )}
       <aside id="pulp-panel" className={`pulp-panel ${side ? `with-side side-${side}` : ''}`} aria-label="Pulp conversation" hidden={!pulpOpen}>
         {side && (
@@ -402,7 +497,9 @@ export default function PulpPanel() {
         <div className="pulp-panel-main">
           <header className="pulp-panel-head">
             <span className="pulp-panel-avatar" aria-hidden="true"><Tangerine mood={mood} /></span>
-            <div className="pulp-panel-title"><strong>Pulp</strong><span>{voice ? (voiceReady ? 'Listening' : 'Connecting…') : busy ? 'Squeezing…' : 'Your planning companion'}</span></div>
+            <div className="pulp-panel-title"><strong>Pulp</strong><span>{voice ? (voiceReady ? 'Listening' : 'Connecting…') : busy ? 'Squeezing…' : ''}</span></div>
+            <button type="button" className={`pulp-icon ${chatsOpen ? 'on' : ''}`} aria-pressed={chatsOpen} aria-label="Your chats" title="Your chats" onClick={() => setChatsOpen((v) => !v)} disabled={!profile}><History size={16} /></button>
+            <button type="button" className="pulp-icon" aria-label="New chat" title="New chat" onClick={newChat} disabled={!profile}><SquarePen size={15} /></button>
             <button type="button" className={`pulp-agents ${agentsOn ? 'on' : ''}`} aria-pressed={agentsOn} onClick={() => setAgentsOn((v) => !v)} title="Show the agent workflow beside the chat">
               <Users size={14} aria-hidden="true" />Agents{active.size > 0 && <i className="stage-live-dot" aria-hidden="true" />}
             </button>
@@ -411,7 +508,28 @@ export default function PulpPanel() {
             <button type="button" className="pulp-icon" aria-label="Close Pulp" onClick={closePulp}><X size={17} /></button>
           </header>
 
-          <div className="pulp-panel-thread thread" aria-live="polite">
+          {chatsOpen && profile && (
+            <section className="pulp-chats" aria-label="Your chats">
+              <header>
+                <strong>Your chats</strong>
+                <button type="button" className="pulp-chats-new" onClick={newChat}><SquarePen size={14} aria-hidden="true" />New chat</button>
+              </header>
+              <p className="pulp-chats-note">Each visit starts a fresh chat. Pulp still remembers your profile and what you told it.</p>
+              {chats.length === 0 && <p className="pulp-chats-empty">No saved chats yet. Ask Pulp something and it is kept here.</p>}
+              <ul>
+                {chats.map((c) => (
+                  <li key={c.id} className={c.id === chatId ? 'on' : ''}>
+                    <button type="button" className="pulp-chats-open" onClick={() => openChat(c.id)} aria-current={c.id === chatId ? 'true' : undefined}>
+                      <b>{c.title}</b>
+                      <span>{whenLabel(c.updated)} · {c.turns} {c.turns === 1 ? 'message' : 'messages'}{c.id === chatId ? ' · open now' : ''}</span>
+                    </button>
+                    <button type="button" className="pulp-chats-del" aria-label={`Delete chat: ${c.title}`} title="Delete this chat" onClick={() => removeChat(c.id)}><Trash2 size={14} /></button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <div className="pulp-panel-thread thread" aria-live="polite" hidden={chatsOpen && !!profile}>
             {!profile && <p className="pulp-panel-empty">Load a demo account first. Then ask Pulp anything, or press the mic and talk it through.</p>}
             {profile && thread.map((m) => {
               if (m.kind === 'user') return <div key={m.id} className="msg user"><p>{m.text}</p></div>
@@ -498,7 +616,6 @@ export default function PulpPanel() {
           <div className="pulp-panel-dock">
             <form className={`stage-input ${voice ? 'listening' : ''}`} onSubmit={(e) => { e.preventDefault(); send(draft) }}>
               <input ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={profile ? 'Tell Pulp what’s on your mind…' : 'Load an account first…'} disabled={!profile || busy} aria-label="Message Pulp" maxLength={2000} />
-              <button type="button" className="stage-chip" onClick={() => send('twist:random')} disabled={!profile || busy} title="Deal a random twist"><Shuffle size={15} aria-hidden="true" /><span>Shuffle</span></button>
               {/* Talk: with a typed draft it sends the draft like Send; with nothing typed it starts (or stops) voice. */}
               <button type="button" className={`stage-mic pulp-talk ${voice ? 'on' : ''}`} onClick={() => { if (!voice && draft.trim()) send(draft); else void toggleVoice() }} disabled={!profile || (busy && !voice && !!draft.trim())} aria-label={voice ? 'Stop voice conversation' : draft.trim() ? 'Talk: send what you typed' : 'Start voice conversation'} title={voice ? (voiceReady ? 'Listening, press to stop' : 'Connecting…') : draft.trim() ? 'Send what you typed' : 'Talk out loud'}>{voice ? <Square size={15} /> : <Mic size={17} />}</button>
               <button className="stage-send" aria-label="Send to Pulp" disabled={!draft.trim() || !profile || busy}><ArrowUp size={17} /></button>
