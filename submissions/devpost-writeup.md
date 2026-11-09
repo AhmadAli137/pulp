@@ -44,8 +44,8 @@ is checked against the engine before it is shown.
   column names.
 - **Feature Forge** turns months of records into about 78 behavioural signals per account: income regularity, payday and
   bill dates, penalty interest, recurring transfers, spending drift, past income drops and how the household responded.
-- **Pattern Hunter** searches all 4,500 accounts for patterns with statistical tools, and every finding is checked against
-  recorded loan outcomes.
+- **Pattern Hunter** searches all 4,500 accounts for patterns with statistical tools, and its strongest findings are
+  checked against recorded loan outcomes.
 - **Archetype Namer** labels six behavioural groups found by clustering.
 - **Profile Narrator** writes the few sentences worth hearing about one account.
 - **Persona Builder** imagines a realistic, clearly fictional person who fits the records: occupation guess, household,
